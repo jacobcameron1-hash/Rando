@@ -1,7 +1,0 @@
-{
-  "rpc_endpoint":          "https://api.mainnet-beta.solana.com",
-  "dev_wallet_private_key": "YOUR_DEV_WALLET_PRIVATE_KEY_IN_BASE58",
-  "rando_mint":            "FILL_IN_AT_LAUNCH",
-  "ops_wallet":            "5yDzyvs1m9BTC16hBzo8wxexLjQXRrDCuxkevovo73vv",
-  "creator_wallet":        "BJz5RFx9ycWZ9dVbRtsZq7h3L6XPWVDuDtbgEeJVBJMG"
-}

@@ -1,1 +1,0 @@
-Always focus on being correct rather than nice. I need it to be right more than I need to feel good about it. 
