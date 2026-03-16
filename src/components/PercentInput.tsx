@@ -26,14 +26,15 @@ function getStep(value: number, direction: 'up' | 'down'): number {
 }
 
 function fmt(n: number): string {
-  // Show up to 2 decimal places, strip trailing zeros
   return parseFloat(n.toFixed(2)).toString();
 }
 
 export function PercentInput({ value, onChange, min = 0.1, max = 100 }: Props) {
-  const current = parseFloat(value) || 0;
+  const current = parseFloat(value);
+  const valid = !isNaN(current);
 
   function adjust(direction: 'up' | 'down') {
+    if (!valid) return;
     const step = getStep(current, direction);
     const next = direction === 'up' ? current + step : current - step;
     const clamped = Math.max(min, Math.min(max, Math.round(next * 100) / 100));
@@ -45,37 +46,69 @@ export function PercentInput({ value, onChange, min = 0.1, max = 100 }: Props) {
     if (e.key === 'ArrowDown') { e.preventDefault(); adjust('down'); }
   }
 
-  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    onChange(e.target.value);
-  }
+  const btnStyle: React.CSSProperties = {
+    color: 'var(--muted)',
+    background: 'transparent',
+    border: 'none',
+    cursor: 'pointer',
+    fontSize: '20px',
+    lineHeight: 1,
+    padding: '0 16px',
+    height: '100%',
+    display: 'flex',
+    alignItems: 'center',
+    userSelect: 'none',
+  };
+
+  const inputStyle: React.CSSProperties = {
+    flex: 1,
+    background: 'transparent',
+    border: 'none',
+    outline: 'none',
+    color: 'var(--foreground)',
+    fontSize: '14px',
+    textAlign: 'center',
+    // Hide native spinners in all browsers
+    MozAppearance: 'textfield',
+    WebkitAppearance: 'none',
+    appearance: 'none',
+  };
 
   return (
-    <div className="flex items-center rounded-xl overflow-hidden"
-      style={{ border: '1px solid var(--border)', background: 'var(--background)' }}>
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'stretch',
+        border: '1px solid var(--border)',
+        borderRadius: '12px',
+        background: 'var(--background)',
+        height: '48px',
+        overflow: 'hidden',
+      }}
+    >
       <button
         type="button"
         onClick={() => adjust('down')}
-        className="px-4 py-3 text-lg font-medium transition-opacity hover:opacity-60 select-none"
-        style={{ color: 'var(--muted)', borderRight: '1px solid var(--border)' }}
+        style={{ ...btnStyle, borderRight: '1px solid var(--border)' }}
+        tabIndex={-1}
       >
         −
       </button>
+
       <input
-        type="number"
+        type="text"
+        inputMode="decimal"
         value={value}
-        onChange={handleChange}
+        onChange={(e) => onChange(e.target.value)}
         onKeyDown={handleKeyDown}
-        min={min}
-        max={max}
-        step="any"
-        className="flex-1 py-3 text-sm text-center outline-none bg-transparent"
-        style={{ color: 'var(--foreground)', MozAppearance: 'textfield' } as React.CSSProperties}
+        style={inputStyle}
       />
+
       <button
         type="button"
         onClick={() => adjust('up')}
-        className="px-4 py-3 text-lg font-medium transition-opacity hover:opacity-60 select-none"
-        style={{ color: 'var(--muted)', borderLeft: '1px solid var(--border)' }}
+        style={{ ...btnStyle, borderLeft: '1px solid var(--border)' }}
+        tabIndex={-1}
       >
         +
       </button>
