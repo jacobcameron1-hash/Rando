@@ -1,18 +1,24 @@
 @import "tailwindcss";
 
 :root {
-  --background: #0a0a0f;
-  --foreground: #f0f0f5;
-  --accent: #9b5de5;
-  --accent-glow: rgba(155, 93, 229, 0.3);
-  --card: #13131a;
-  --border: #2a2a3a;
-  --muted: #888;
+  --background: #0f0d0a;
+  --foreground: #f0ece4;
+  --accent: #D93A28;
+  --accent-glow: rgba(217, 58, 40, 0.22);
+  --accent-gold: #C89800;
+  --accent-gold-glow: rgba(200, 152, 0, 0.2);
+  --card: #1a1510;
+  --border: #2e2418;
+  --muted: #8a7a6a;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: var(--font-space-mono), 'Courier New', monospace;
   min-height: 100vh;
+}
+
+h1, h2, h3 {
+  font-family: var(--font-playfair), Georgia, serif;
 }

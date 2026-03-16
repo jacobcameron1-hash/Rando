@@ -46,6 +46,47 @@ export default function SetupPage() {
   const [loadingMsg, setLoadingMsg] = useState('');
   const [error, setError] = useState('');
   const [projectId, setProjectId] = useState('');
+  const [copied, setCopied] = useState(false);
+
+  function buildSummaryText(pid: string) {
+    const mintShort = form.tokenMint
+      ? `${form.tokenMint.slice(0, 6)}...${form.tokenMint.slice(-6)}`
+      : '(unknown)';
+    const eligLine =
+      form.eligibilityType === 'percent'
+        ? `${form.eligibilityValue}% of supply`
+        : `${form.eligibilityValue} tokens`;
+    const incLine =
+      !form.incrementInterval || form.incrementInterval === '0'
+        ? 'flat (no increment)'
+        : `+${form.incrementInterval} per draw, cap ${form.capInterval}`;
+    const prizePct = (form.vaultBps / 100).toFixed(1);
+    const dashboardUrl = `https://rando-mu.vercel.app/dashboard/${pid}`;
+
+    return [
+      `🎲 Rando Lottery — ${mintShort}`,
+      ``,
+      `✅ Now live on bags.fm`,
+      ``,
+      `  Eligibility : Hold ≥ ${eligLine} for the full interval`,
+      `  Draw timer  : Base ${form.baseInterval}, ${incLine}`,
+      `  Prize share : ${prizePct}% of all trading fees`,
+      ``,
+      `Dashboard : ${dashboardUrl}`,
+      ``,
+      `Powered by $RANDO — https://randocoin.netlify.app`,
+    ].join('\n');
+  }
+
+  async function copySummary(pid: string) {
+    try {
+      await navigator.clipboard.writeText(buildSummaryText(pid));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch {
+      // fallback: select the textarea text
+    }
+  }
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -351,13 +392,75 @@ export default function SetupPage() {
 
           {/* Step 4: Success */}
           {step === 4 && (
-            <div className="text-center space-y-4">
-              <div className="text-5xl mb-2">🎉</div>
-              <h2 className="text-xl font-semibold">Rando is live!</h2>
-              <p className="text-sm" style={{ color: 'var(--muted)' }}>
-                Your lottery is set up and running. The first draw will happen automatically
-                once fees accumulate in the prize pool.
-              </p>
+            <div className="space-y-5">
+              <div className="text-center space-y-2">
+                <div className="text-5xl mb-2">🎉</div>
+                <h2 className="text-xl font-semibold">Rando is live!</h2>
+                <p className="text-sm" style={{ color: 'var(--muted)' }}>
+                  Your lottery is set up and running. The first draw fires automatically
+                  once fees accumulate.
+                </p>
+              </div>
+
+              {/* Settings summary */}
+              <div
+                className="rounded-xl p-4 space-y-2 text-sm"
+                style={{ background: 'var(--background)', border: '1px solid var(--border)' }}
+              >
+                <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--accent)' }}>
+                  Your configuration
+                </p>
+                <SummaryRow label="Token" value={`${form.tokenMint.slice(0, 8)}...${form.tokenMint.slice(-8)}`} />
+                <SummaryRow
+                  label="Eligibility"
+                  value={
+                    form.eligibilityType === 'percent'
+                      ? `Hold ≥ ${form.eligibilityValue}% of supply`
+                      : `Hold ≥ ${form.eligibilityValue} tokens`
+                  }
+                />
+                <SummaryRow label="Base draw" value={form.baseInterval} />
+                <SummaryRow
+                  label="Progressive"
+                  value={
+                    !form.incrementInterval || form.incrementInterval === '0'
+                      ? 'Flat (no increment)'
+                      : `+${form.incrementInterval}/draw → cap ${form.capInterval}`
+                  }
+                />
+                <SummaryRow label="Prize share" value={`${(form.vaultBps / 100).toFixed(1)}% of trading fees`} />
+                {projectId && <SummaryRow label="Project ID" value={projectId} mono />}
+              </div>
+
+              {/* Copy-paste block */}
+              <div className="space-y-2">
+                <p className="text-xs" style={{ color: 'var(--muted)' }}>
+                  Share your lottery — copy and paste this anywhere:
+                </p>
+                <textarea
+                  readOnly
+                  value={buildSummaryText(projectId)}
+                  rows={9}
+                  className="w-full px-4 py-3 rounded-xl text-xs font-mono resize-none outline-none"
+                  style={{
+                    background: 'var(--background)',
+                    border: '1px solid var(--border)',
+                    color: 'var(--muted)',
+                  }}
+                />
+                <button
+                  onClick={() => copySummary(projectId)}
+                  className="w-full py-2 rounded-xl text-sm font-medium transition-all hover:opacity-80"
+                  style={{
+                    background: copied ? 'rgba(200,152,0,0.15)' : 'var(--card)',
+                    border: `1px solid ${copied ? 'var(--accent-gold)' : 'var(--border)'}`,
+                    color: copied ? 'var(--accent-gold)' : 'var(--muted)',
+                  }}
+                >
+                  {copied ? '✓ Copied!' : '📋 Copy summary'}
+                </button>
+              </div>
+
               <button
                 onClick={() => router.push(`/dashboard/${projectId}`)}
                 className="w-full py-3 rounded-xl text-white font-semibold hover:opacity-90 transition-opacity"
@@ -411,6 +514,20 @@ export default function SetupPage() {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function SummaryRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+  return (
+    <div className="flex justify-between gap-4 py-1 border-b border-[var(--border)] last:border-0">
+      <span className="text-xs" style={{ color: 'var(--muted)' }}>{label}</span>
+      <span
+        className={mono ? 'text-xs font-mono truncate max-w-[60%]' : 'text-xs text-right max-w-[60%]'}
+        style={{ color: 'var(--foreground)' }}
+      >
+        {value}
+      </span>
     </div>
   );
 }

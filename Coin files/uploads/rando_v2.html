@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>$RANDO — The Currency of Chaos</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Permanent+Marker&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --c1: #FF3B00;
+    --c2: #FFE500;
+    --c3: #00CFFF;
+    --c4: #FF00C8;
+    --c5: #00FF85;
+    --c6: #7B2FFF;
+    --dark: #0A0A0A;
+    --light: #F5F0E8;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--dark);
+    color: var(--light);
+    font-family: 'Space Mono', monospace;
+    overflow-x: hidden;
+    cursor: crosshair;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 1000;
+    opacity: 0.4;
+  }
+
+  /* ── TICKER ── */
+  .ticker-wrap {
+    width: 100%;
+    background: var(--c2);
+    color: var(--dark);
+    overflow: hidden;
+    padding: 10px 0;
+    border-bottom: 3px solid var(--dark);
+  }
+  .ticker {
+    display: flex;
+    gap: 60px;
+    white-space: nowrap;
+    animation: ticker 18s linear infinite;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px;
+    letter-spacing: 2px;
+  }
+  @keyframes ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+  .ticker span { flex-shrink: 0; }
+
+  /* ── HERO ── */
+  .hero {
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero-left {
+    padding: 48px 40px 48px 60px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    position: relative;
+    z-index: 2;
+    gap: 0;
+  }
+
+  .hero-eyebrow {
+    font-size: 11px;
+    letter-spacing: 4px;
+    color: var(--c3);
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+
+  .hero-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(80px, 11vw, 150px);
+    line-height: 0.85;
+    color: var(--light);
+  }
+  .hero-title .dollar { color: var(--c1); display: block; }
+
+  .hero-subtitle {
+    font-size: 12px;
+    line-height: 1.8;
+    color: #888;
+    margin-top: 18px;
+    max-width: 400px;
+  }
+  .hero-subtitle em { color: var(--c5); font-style: normal; }
+
+  .cta-row { display: flex; gap: 14px; margin-top: 28px; flex-wrap: wrap; }
+
+  .btn {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px;
+    letter-spacing: 2px;
+    padding: 14px 32px;
+    border: 2px solid;
+    text-decoration: none;
+    transition: all 0.15s;
+    cursor: pointer;
+    display: inline-block;
+  }
+  .btn-primary { background: var(--c1); border-color: var(--c1); color: var(--light); }
+  .btn-primary:hover { background: transparent; color: var(--c1); }
+  .btn-secondary { background: transparent; border-color: var(--light); color: var(--light); }
+  .btn-secondary:hover { background: var(--light); color: var(--dark); }
+
+  /* ── HERO RIGHT — countdown + winners ── */
+  .hero-right {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 40px 48px 20px;
+    gap: 24px;
+    position: relative;
+  }
+
+  /* COUNTDOWN */
+  .countdown-box {
+    width: 100%;
+    max-width: 380px;
+    border: 2px solid var(--c5);
+    padding: 24px 28px;
+    position: relative;
+    background: rgba(0,255,133,0.04);
+  }
+
+  .countdown-label {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 11px;
+    letter-spacing: 5px;
+    color: var(--c5);
+    margin-bottom: 12px;
+  }
+
+  .countdown-digits {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+  }
+
+  .cd-seg {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .cd-num {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 64px;
+    line-height: 1;
+    color: var(--c2);
+    min-width: 72px;
+    text-align: center;
+    transition: color 0.2s;
+  }
+
+  .cd-num.flash { color: var(--c1); }
+
+  .cd-unit {
+    font-size: 9px;
+    letter-spacing: 3px;
+    color: #444;
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+
+  .cd-colon {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 56px;
+    color: #333;
+    line-height: 1;
+    padding-bottom: 18px;
+  }
+
+  .pot-row {
+    display: flex;
+    gap: 16px;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid #1a1a1a;
+  }
+
+  .pot-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .pot-label {
+    font-size: 9px;
+    letter-spacing: 3px;
+    color: #444;
+    text-transform: uppercase;
+  }
+
+  .pot-value {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    color: var(--c3);
+  }
+
+  .hold-req {
+    font-size: 10px;
+    color: #444;
+    margin-top: 12px;
+    letter-spacing: 1px;
+  }
+  .hold-req span { color: var(--c4); }
+
+  /* WINNER FEED */
+  .winner-feed {
+    width: 100%;
+    max-width: 380px;
+    border: 2px solid #222;
+    position: relative;
+  }
+
+  .feed-header {
+    background: #111;
+    border-bottom: 2px solid #222;
+    padding: 12px 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .feed-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 13px;
+    letter-spacing: 4px;
+    color: var(--c4);
+  }
+
+  .feed-live {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: #555;
+    text-transform: uppercase;
+  }
+
+  .live-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--c5);
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.8); }
+  }
+
+  .feed-list {
+    max-height: 260px;
+    overflow-y: auto;
+    scrollbar-width: none;
+  }
+  .feed-list::-webkit-scrollbar { display: none; }
+
+  .feed-item {
+    padding: 12px 18px;
+    border-bottom: 1px solid #111;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 12px;
+    animation: slide-in 0.4s ease-out;
+    transition: background 0.15s;
+  }
+  .feed-item:hover { background: #111; }
+  .feed-item:last-child { border-bottom: none; }
+
+  @keyframes slide-in {
+    from { transform: translateX(20px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+
+  .feed-rank {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 11px;
+    color: #333;
+    width: 20px;
+  }
+
+  .feed-wallet {
+    font-size: 11px;
+    color: #666;
+    font-family: 'Space Mono', monospace;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .feed-wallet .short { color: var(--light); }
+
+  .feed-amount {
+    text-align: right;
+  }
+
+  .feed-sol {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 14px;
+    color: var(--c3);
+    display: block;
+  }
+
+  .feed-rando {
+    font-size: 9px;
+    color: #444;
+    display: block;
+    text-align: right;
+  }
+
+  .feed-time {
+    font-size: 9px;
+    color: #333;
+    white-space: nowrap;
+  }
+
+  .feed-mega {
+    display: inline-block;
+    background: var(--c2);
+    color: var(--dark);
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 9px;
+    letter-spacing: 2px;
+    padding: 2px 6px;
+    margin-left: 6px;
+    vertical-align: middle;
+  }
+
+  /* ── SPINNING COIN (hidden on smaller screens, shown on wide) ── */
+  .hero-coin-wrap {
+    display: none;
+  }
+
+  /* ── DIVIDER ── */
+  .divider {
+    width: 100%;
+    height: 60px;
+    background: repeating-linear-gradient(-45deg, var(--c1) 0px, var(--c1) 10px, var(--c2) 10px, var(--c2) 20px, var(--c3) 20px, var(--c3) 30px, var(--c4) 30px, var(--c4) 40px);
+    border-top: 3px solid var(--light);
+    border-bottom: 3px solid var(--light);
+  }
+
+  /* ── TOKENOMICS ── */
+  .tokenomics { padding: 80px 60px; background: var(--dark); }
+
+  .section-label {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 11px;
+    letter-spacing: 5px;
+    color: var(--c4);
+    margin-bottom: 12px;
+  }
+
+  .section-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(42px, 6vw, 72px);
+    line-height: 1;
+    margin-bottom: 48px;
+  }
+
+  .fee-bar {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    height: 80px;
+    border: 2px solid var(--light);
+    overflow: hidden;
+    margin-bottom: 20px;
+  }
+
+  .fee-seg {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 1px;
+    border-right: 2px solid var(--light);
+    transition: transform 0.2s;
+  }
+  .fee-seg:last-child { border-right: none; }
+  .fee-seg:hover { transform: scaleY(1.08); }
+  .fee-seg-1 { background: var(--c1); color: var(--dark); }
+  .fee-seg-2 { background: var(--c3); color: var(--dark); }
+  .fee-seg-3 { background: var(--c5); color: var(--dark); }
+
+  .fee-labels { display: grid; grid-template-columns: 1fr 1fr 1fr; }
+  .fee-label { font-size: 11px; color: #666; padding: 8px 0; line-height: 1.6; }
+
+  /* ── LORE ── */
+  .lore { padding: 80px 60px; background: #0F0F0F; border-top: 3px solid var(--light); }
+
+  .lore-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2px;
+    margin-top: 48px;
+  }
+
+  .lore-card {
+    padding: 36px 28px;
+    border: 2px solid #222;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .lore-card:hover { border-color: var(--light); }
+  .lore-card:hover .lore-card-bg { opacity: 0.12; }
+
+  .lore-card-bg { position: absolute; inset: 0; opacity: 0; transition: opacity 0.3s; }
+  .lore-card:nth-child(1) .lore-card-bg { background: var(--c1); }
+  .lore-card:nth-child(2) .lore-card-bg { background: var(--c3); }
+  .lore-card:nth-child(3) .lore-card-bg { background: var(--c5); }
+
+  .lore-icon {
+    font-size: 52px;
+    margin-bottom: 20px;
+    display: block;
+    animation: wobble 3s ease-in-out infinite;
+  }
+  .lore-card:nth-child(2) .lore-icon { animation-delay: -1s; }
+  .lore-card:nth-child(3) .lore-icon { animation-delay: -2s; }
+
+  @keyframes wobble { 0%, 100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } }
+
+  .lore-card-title { font-family: 'Bebas Neue', sans-serif; font-size: 28px; letter-spacing: 1px; margin-bottom: 14px; position: relative; z-index: 1; }
+  .lore-card-text { font-size: 12px; line-height: 1.9; color: #888; position: relative; z-index: 1; }
+  .lore-card-text strong { color: var(--light); font-weight: 700; }
+
+  /* ── HOW IT WORKS ── */
+  .how { padding: 80px 60px; background: var(--dark); border-top: 3px solid var(--light); }
+
+  .how-steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; margin-top: 48px; }
+
+  .how-step { padding: 32px 24px; border: 2px solid #222; position: relative; }
+
+  .step-num {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 72px;
+    line-height: 1;
+    opacity: 0.12;
+    position: absolute;
+    top: 16px;
+    right: 20px;
+    color: var(--light);
+  }
+
+  .step-dot { width: 12px; height: 12px; border-radius: 50%; margin-bottom: 20px; }
+  .how-step:nth-child(1) .step-dot { background: var(--c1); }
+  .how-step:nth-child(2) .step-dot { background: var(--c3); }
+  .how-step:nth-child(3) .step-dot { background: var(--c4); }
+  .how-step:nth-child(4) .step-dot { background: var(--c5); }
+
+  .step-title { font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 1px; margin-bottom: 10px; position: relative; z-index: 1; }
+  .step-text { font-size: 11px; line-height: 1.8; color: #666; position: relative; z-index: 1; }
+
+  /* ── MANIFESTO ── */
+  .manifesto {
+    padding: 80px 60px;
+    background: var(--c2);
+    color: var(--dark);
+    border-top: 3px solid var(--dark);
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .manifesto::before {
+    content: 'RANDO RANDO RANDO RANDO RANDO RANDO RANDO RANDO RANDO RANDO';
+    position: absolute;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 200px;
+    color: var(--dark);
+    opacity: 0.05;
+    white-space: nowrap;
+    top: 50%;
+    left: -5%;
+    transform: translateY(-50%) rotate(-5deg);
+    pointer-events: none;
+    letter-spacing: -4px;
+  }
+  .manifesto-quote { font-family: 'Permanent Marker', cursive; font-size: clamp(28px, 4vw, 52px); line-height: 1.3; max-width: 800px; margin: 0 auto; position: relative; z-index: 1; }
+  .manifesto-attr { font-size: 11px; letter-spacing: 3px; margin-top: 24px; color: #555; position: relative; z-index: 1; }
+
+  /* ── FOOTER ── */
+  footer {
+    background: var(--dark);
+    border-top: 3px solid var(--light);
+    padding: 40px 60px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 20px;
+  }
+  .footer-logo { font-family: 'Bebas Neue', sans-serif; font-size: 32px; color: var(--c2); letter-spacing: 3px; }
+  .footer-links { display: flex; gap: 24px; list-style: none; }
+  .footer-links a { color: #666; text-decoration: none; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; transition: color 0.15s; }
+  .footer-links a:hover { color: var(--light); }
+  .footer-disclaimer { font-size: 10px; color: #333; max-width: 400px; line-height: 1.6; }
+
+  /* ── FLOATERS ── */
+  .floater {
+    position: fixed;
+    pointer-events: none;
+    z-index: 999;
+    font-size: 24px;
+    animation: float-around linear infinite;
+    opacity: 0.15;
+  }
+  @keyframes float-around {
+    0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+    10% { opacity: 0.15; }
+    90% { opacity: 0.15; }
+    100% { transform: translateY(-120px) rotate(360deg); opacity: 0; }
+  }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 1024px) {
+    .hero { grid-template-columns: 1fr; }
+    .hero-left { padding: 48px 24px 24px; }
+    .hero-right { padding: 0 24px 48px; align-items: flex-start; }
+    .countdown-box, .winner-feed { max-width: 100%; }
+  }
+  @media (max-width: 760px) {
+    .lore-grid { grid-template-columns: 1fr; }
+    .how-steps { grid-template-columns: 1fr 1fr; }
+    .tokenomics, .lore, .how, footer { padding: 60px 24px; }
+  }
+  @media (max-width: 500px) {
+    .how-steps { grid-template-columns: 1fr; }
+    .fee-seg { font-size: 14px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- FLOATERS -->
+<div class="floater" style="left:5%;animation-duration:14s;animation-delay:0s;">🐦</div>
+<div class="floater" style="left:25%;animation-duration:19s;animation-delay:4s;">💾</div>
+<div class="floater" style="left:55%;animation-duration:16s;animation-delay:8s;">🦜</div>
+<div class="floater" style="left:80%;animation-duration:22s;animation-delay:2s;">🛹</div>
+<div class="floater" style="left:42%;animation-duration:17s;animation-delay:11s;">❓</div>
+
+<!-- TICKER -->
+<div class="ticker-wrap">
+  <div class="ticker">
+    <span>$RANDO</span><span>◆</span>
+    <span>THE PIGEON KNOWS</span><span>◆</span>
+    <span>HOLD OR PERISH</span><span>◆</span>
+    <span>USB STICK APPROVES</span><span>◆</span>
+    <span>PARROT ON DECK</span><span>◆</span>
+    <span>RANDOM REWARDS EVERY 20 MIN</span><span>◆</span>
+    <span>CHAOS IS THE PLAN</span><span>◆</span>
+    <span>$RANDO</span><span>◆</span>
+    <span>THE PIGEON KNOWS</span><span>◆</span>
+    <span>HOLD OR PERISH</span><span>◆</span>
+    <span>USB STICK APPROVES</span><span>◆</span>
+    <span>PARROT ON DECK</span><span>◆</span>
+    <span>RANDOM REWARDS EVERY 20 MIN</span><span>◆</span>
+    <span>CHAOS IS THE PLAN</span><span>◆</span>
+  </div>
+</div>
+
+<!-- HERO -->
+<section class="hero">
+
+  <!-- LEFT: branding + CTA -->
+  <div class="hero-left">
+    <p class="hero-eyebrow">Launched on bags.app · Solana · Est. Now</p>
+    <h1 class="hero-title">
+      <span class="dollar">$</span>RANDO
+    </h1>
+    <p class="hero-subtitle">
+      The only coin where <em>nobody knows</em> who wins next.<br>
+      Not you. Not us. Not the pigeon.<br>
+      Especially not the pigeon.
+    </p>
+    <div class="cta-row">
+      <a href="REPLACE_WITH_BAGS_BUY_URL" target="_blank" class="btn btn-primary">Buy $RANDO</a>
+      <a href="#how" class="btn btn-secondary">How It Works</a>
+    </div>
+  </div>
+
+  <!-- RIGHT: countdown + winner feed -->
+  <div class="hero-right">
+
+    <!-- COUNTDOWN -->
+    <div class="countdown-box">
+      <p class="countdown-label">// Next payout in</p>
+      <div class="countdown-digits">
+        <div class="cd-seg">
+          <span class="cd-num" id="cd-min">00</span>
+          <span class="cd-unit">min</span>
+        </div>
+        <span class="cd-colon">:</span>
+        <div class="cd-seg">
+          <span class="cd-num" id="cd-sec">00</span>
+          <span class="cd-unit">sec</span>
+        </div>
+      </div>
+      <div class="pot-row">
+        <div class="pot-item">
+          <span class="pot-label">Current pot</span>
+          <span class="pot-value" id="pot-sol">2.41 SOL</span>
+        </div>
+        <div class="pot-item">
+          <span class="pot-label">+ Rando</span>
+          <span class="pot-value" id="pot-rando">841,200 $RANDO</span>
+        </div>
+      </div>
+      <p class="hold-req">Eligibility: hold <span>≥ 0.1% supply</span> for <span>1 hour</span> without selling.</p>
+    </div>
+
+    <!-- WINNER FEED -->
+    <div class="winner-feed">
+      <div class="feed-header">
+        <span class="feed-title">Recent Winners</span>
+        <span class="feed-live"><span class="live-dot"></span>Live</span>
+      </div>
+      <div class="feed-list" id="feed-list">
+        <!-- populated by JS -->
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- TOKENOMICS -->
+<section class="tokenomics">
+  <p class="section-label">// Fee Structure</p>
+  <h2 class="section-title">Where The Money Goes</h2>
+  <div class="fee-bar">
+    <div class="fee-seg fee-seg-1">33% Creator</div>
+    <div class="fee-seg fee-seg-2">33% Liquidity</div>
+    <div class="fee-seg fee-seg-3">33% Rewards</div>
+  </div>
+  <div class="fee-labels">
+    <div class="fee-label">Sustains the operation.<br>Feeds the pigeon's informants.</div>
+    <div class="fee-label">Keeps the market alive.<br>Auto-added on every trade.</div>
+    <div class="fee-label">Goes to one random holder.<br>Every 20 minutes. Must hold ≥ 0.1% for 1 hr.</div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- LORE -->
+<section class="lore" id="lore">
+  <p class="section-label">// Sacred Lore</p>
+  <h2 class="section-title">The Prophets of Rando</h2>
+  <div class="lore-grid">
+    <div class="lore-card">
+      <div class="lore-card-bg"></div>
+      <span class="lore-icon">🐦</span>
+      <h3 class="lore-card-title">Gerald, The Pigeon</h3>
+      <p class="lore-card-text">
+        Gerald does not eat breadcrumbs. Gerald has never eaten breadcrumbs. Gerald controls
+        <strong>74% of all breadcrumb-adjacent financial instruments</strong> globally and has done so since 1987.<br><br>
+        He was observed outside the New York Stock Exchange on September 14, 2008, looking directly into a camera and then leaving.
+        <strong>Markets collapsed the following Monday.</strong><br><br>
+        Gerald does not tweet. Gerald does not have a wallet. Gerald is, however, somehow always watching the order book.
+        Analysts have confirmed this. They have not explained it. They have stopped trying.
+      </p>
+    </div>
+    <div class="lore-card">
+      <div class="lore-card-bg"></div>
+      <span class="lore-icon">💾</span>
+      <h3 class="lore-card-title">The USB Stick</h3>
+      <p class="lore-card-text">
+        Found in a parking lot in Akron, Ohio, in 2009. Nobody knows who put it there.
+        The USB stick contains <strong>one file: a spreadsheet</strong>. The spreadsheet has one column.
+        The column says "HOLD" repeated 847 times.<br><br>
+        The USB stick has been plugged in 23 times. Each time, it says "HOLD."
+        <strong>Three of those holders became millionaires.</strong>
+        Correlation has not been confirmed. The USB stick does not care about correlation.<br><br>
+        It is currently sitting in a drawer in Cincinnati, doing nothing. This is considered normal.
+      </p>
+    </div>
+    <div class="lore-card">
+      <div class="lore-card-bg"></div>
+      <span class="lore-icon">🦜</span>
+      <h3 class="lore-card-title">Crackers, The Parrot</h3>
+      <p class="lore-card-text">
+        Crackers has been skating since before skating was considered legal in his municipality.
+        He rides a <strong>standard 8.25" deck</strong> and refuses to wear a helmet because,
+        as he has stated directly to three separate reporters: <em>"Squawk."</em><br><br>
+        Financial experts who observed Crackers at the Santa Monica skate park in 2022 noted
+        that he fell exactly <strong>once for every bad trade they had made that quarter</strong>.
+        This is statistically impossible. Crackers does not care.<br><br>
+        He is the $RANDO mascot not because anyone decided this,
+        but because <strong>he was simply already there</strong> when the contract was deployed.
+      </p>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- HOW IT WORKS -->
+<section class="how" id="how">
+  <p class="section-label">// Mechanics</p>
+  <h2 class="section-title">How Rando Works</h2>
+  <div class="how-steps">
+    <div class="how-step">
+      <span class="step-num">01</span>
+      <div class="step-dot"></div>
+      <h3 class="step-title">Buy &amp; Hold</h3>
+      <p class="step-text">Acquire ≥ 0.1% of supply.<br>Hold for 1 hour without selling.<br>Any sell — even 1 token — resets your clock to zero.<br>Gerald is watching.</p>
+    </div>
+    <div class="how-step">
+      <span class="step-num">02</span>
+      <div class="step-dot"></div>
+      <h3 class="step-title">Fees Accumulate</h3>
+      <p class="step-text">Every trade generates fees.<br>33% flows to the reward vault.<br>SOL + $RANDO pile up.<br>The vault answers to no one.</p>
+    </div>
+    <div class="how-step">
+      <span class="step-num">03</span>
+      <div class="step-dot"></div>
+      <h3 class="step-title">Random Draw</h3>
+      <p class="step-text">Every 20 minutes, one eligible holder wins everything.<br>Verified on-chain. Pure flat odds.<br>Even Crackers can't rig it.</p>
+    </div>
+    <div class="how-step">
+      <span class="step-num">04</span>
+      <div class="step-dot"></div>
+      <h3 class="step-title">Mega Jackpot</h3>
+      <p class="step-text">If SOL runs low, draws pause.<br>$RANDO accumulates silently.<br>When SOL refills: one winner.<br>All of it. At once. No warning.</p>
+    </div>
+  </div>
+</section>
+
+<section class="manifesto">
+  <p class="manifesto-quote">"Nobody promised you anything. That's the whole point."</p>
+  <p class="manifesto-attr">— The USB Stick, Akron Ohio, 2009 (paraphrased)</p>
+</section>
+
+<footer>
+  <div class="footer-logo">$RANDO</div>
+  <ul class="footer-links">
+    <!-- REPLACE href values after migration -->
+    <li><a href="REPLACE_WITH_BAGS_BUY_URL" target="_blank">Buy</a></li>
+    <li><a href="REPLACE_WITH_DEXSCREENER_URL" target="_blank">Chart</a></li>
+    <li><a href="REPLACE_WITH_SOLANA_EXPLORER_PROGRAM_URL" target="_blank">Contract</a></li>
+    <li><a href="https://bags.app" target="_blank">Bags.app</a></li>
+  </ul>
+  <p class="footer-disclaimer">
+    $RANDO is a memecoin on Solana. Not financial advice.
+    The pigeon is not a licensed advisor. The USB stick has not been audited by the SEC.
+    Crackers has no fiduciary responsibility. Rewards distributed randomly.
+    Hold time requirements increase over time. Past randomness does not guarantee future randomness.
+  </p>
+</footer>
+
+<script>
+  // ════════════════════════════════════════════════════════════
+  // $RANDO — ON-CHAIN DATA CONFIGURATION
+  // ════════════════════════════════════════════════════════════
+  //
+  // PRE-LAUNCH: LIVE_MODE = false
+  //   The site runs entirely on simulated data. Safe to publish
+  //   before migration. No RPC calls are made.
+  //
+  // POST-MIGRATION: flip LIVE_MODE = true, fill in the three
+  //   addresses below, and redeploy. The site will pull real
+  //   data from chain automatically.
+  //
+  // ════════════════════════════════════════════════════════════
+
+  const LIVE_MODE = false; // ← SET TO true AFTER MIGRATION
+
+  // Fill these in after deployment:
+  const PROGRAM_ID      = "REPLACE_WITH_YOUR_PROGRAM_ID";   // your deployed vault program
+  const VAULT_STATE_PDA = "REPLACE_WITH_VAULT_STATE_PDA";   // seeds: ["state"]
+  const VAULT_TOKEN_ACC = "REPLACE_WITH_VAULT_TOKEN_ACCOUNT"; // vault's $RANDO token account
+
+  // RPC endpoint — use your own for production (Helius, QuickNode, etc.)
+  const RPC_URL = "https://api.mainnet-beta.solana.com";
+
+  // Draw interval in seconds — must match contract constant
+  const DRAW_INTERVAL = 20 * 60;
+
+  // ════════════════════════════════════════════════════════════
+  // ON-CHAIN DATA FETCHING
+  // ════════════════════════════════════════════════════════════
+
+  // Fetches vault SOL balance, $RANDO token balance, and last_draw_time
+  // from the vault state PDA. Returns null on any error.
+  async function fetchVaultState() {
+    try {
+      // Fetch SOL balance
+      const solRes = await fetch(RPC_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0', id: 1, method: 'getBalance',
+          params: [VAULT_STATE_PDA, { commitment: 'confirmed' }]
+        })
+      });
+      const solData = await solRes.json();
+      const solBalance = (solData.result?.value ?? 0) / 1e9;
+
+      // Fetch $RANDO token account balance
+      const tokenRes = await fetch(RPC_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0', id: 2, method: 'getTokenAccountBalance',
+          params: [VAULT_TOKEN_ACC, { commitment: 'confirmed' }]
+        })
+      });
+      const tokenData = await tokenRes.json();
+      const randoBalance = tokenData.result?.value?.uiAmount ?? 0;
+
+      // Fetch state account to read last_draw_time
+      // last_draw_time is an i64 at byte offset 8+32+32 = 72 in the account data
+      const accRes = await fetch(RPC_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0', id: 3, method: 'getAccountInfo',
+          params: [VAULT_STATE_PDA, { commitment: 'confirmed', encoding: 'base64' }]
+        })
+      });
+      const accData = await accRes.json();
+      const rawB64 = accData.result?.value?.data?.[0];
+      let lastDrawTime = null;
+      if (rawB64) {
+        const bytes = Uint8Array.from(atob(rawB64), c => c.charCodeAt(0));
+        // Anchor discriminator = 8 bytes
+        // creator pubkey       = 32 bytes
+        // rando_mint pubkey    = 32 bytes
+        // launch_time i64      = 8 bytes
+        // last_draw_time i64   = 8 bytes  ← offset 80
+        const view = new DataView(bytes.buffer);
+        const lo = view.getUint32(80, true);
+        const hi = view.getInt32(84, true);
+        lastDrawTime = hi * 2**32 + lo; // reconstruct i64 as JS number
+      }
+
+      return { solBalance, randoBalance, lastDrawTime };
+    } catch (e) {
+      console.warn('[RANDO] Failed to fetch vault state:', e);
+      return null;
+    }
+  }
+
+  // Fetches recent DrawCompleted events by scanning transaction signatures
+  // on the vault state account. Returns array of winner objects.
+  async function fetchRecentWinners() {
+    try {
+      const sigRes = await fetch(RPC_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0', id: 1,
+          method: 'getSignaturesForAddress',
+          params: [VAULT_STATE_PDA, { limit: 20, commitment: 'confirmed' }]
+        })
+      });
+      const sigData = await sigRes.json();
+      const sigs = (sigData.result ?? []).map(s => s.signature);
+
+      const winners = [];
+      const now = Math.floor(Date.now() / 1000);
+
+      for (const sig of sigs) {
+        if (winners.length >= 8) break;
+        try {
+          const txRes = await fetch(RPC_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              jsonrpc: '2.0', id: 1,
+              method: 'getTransaction',
+              params: [sig, { encoding: 'jsonParsed', commitment: 'confirmed', maxSupportedTransactionVersion: 0 }]
+            })
+          });
+          const txData = await txRes.json();
+          const logs = txData.result?.meta?.logMessages ?? [];
+          // Look for DrawCompleted event log emitted by Anchor
+          const drawLog = logs.find(l => l.includes('DrawCompleted'));
+          if (!drawLog) continue;
+
+          const blockTime = txData.result?.blockTime ?? now;
+          const elapsed = now - blockTime;
+          const timeStr = elapsed < 120 ? 'just now'
+            : elapsed < 3600 ? `${Math.floor(elapsed/60)} min ago`
+            : `${Math.floor(elapsed/3600)} hr${Math.floor(elapsed/3600) > 1 ? 's' : ''} ago`;
+
+          // Parse winner pubkey from log — Anchor emits it as base58
+          const winnerMatch = drawLog.match(/winner":"([A-Za-z0-9]{32,44})/);
+          const solMatch    = drawLog.match(/sol_payout":(\d+)/);
+          const randoMatch  = drawLog.match(/rando_payout":(\d+)/);
+          const megaMatch   = drawLog.match(/is_mega_jackpot":(true|false)/);
+
+          const walletFull = winnerMatch?.[1] ?? '???';
+          const wallet = walletFull.length > 8
+            ? `${walletFull.slice(0,4)}...${walletFull.slice(-4)}`
+            : walletFull;
+          const sol    = solMatch    ? (parseInt(solMatch[1]) / 1e9).toFixed(2) : '?';
+          const rando  = randoMatch  ? parseInt(randoMatch[1]).toLocaleString() : '?';
+          const mega   = megaMatch?.[1] === 'true';
+
+          winners.push({ wallet, sol, rando, time: timeStr, mega });
+        } catch { continue; }
+      }
+      return winners;
+    } catch (e) {
+      console.warn('[RANDO] Failed to fetch recent winners:', e);
+      return [];
+    }
+  }
+
+  // ════════════════════════════════════════════════════════════
+  // MOCK DATA (pre-launch fallback)
+  // ════════════════════════════════════════════════════════════
+
+  let winners = [
+    { wallet: "7xKp...mR4q", sol: "3.82", rando: "1,204,500", time: "2 min ago",          mega: true  },
+    { wallet: "BnQw...9Zt2", sol: "1.14", rando: "388,200",   time: "22 min ago",          mega: false },
+    { wallet: "F3aL...vH7c", sol: "0.91", rando: "312,800",   time: "42 min ago",          mega: false },
+    { wallet: "9mPx...jK1d", sol: "2.07", rando: "701,100",   time: "1 hr ago",            mega: false },
+    { wallet: "Cs4R...oN8f", sol: "0.63", rando: "214,600",   time: "1 hr 20 min ago",     mega: false },
+    { wallet: "Eh7T...bW2s", sol: "1.55", rando: "527,300",   time: "1 hr 40 min ago",     mega: false },
+    { wallet: "Kp2A...uD5g", sol: "0.44", rando: "149,900",   time: "2 hrs ago",           mega: false },
+    { wallet: "Wv9M...iE3h", sol: "1.88", rando: "639,700",   time: "2 hrs 20 min ago",    mega: false },
+  ];
+
+  // last_draw_time used for countdown. Pre-launch: sync to wall clock.
+  let lastDrawTime = Math.floor(Date.now() / 1000) - (Math.floor(Date.now() / 1000) % DRAW_INTERVAL);
+
+  // ════════════════════════════════════════════════════════════
+  // UI RENDERING
+  // ════════════════════════════════════════════════════════════
+
+  function buildFeed() {
+    const list = document.getElementById('feed-list');
+    if (!list) return;
+    if (winners.length === 0) {
+      list.innerHTML = '<div class="feed-item" style="justify-content:center;color:#444;font-size:11px;letter-spacing:2px;">NO DRAWS YET</div>';
+      return;
+    }
+    list.innerHTML = winners.map((w, i) => `
+      <div class="feed-item">
+        <span class="feed-rank">#${i + 1}</span>
+        <div>
+          <div class="feed-wallet"><span class="short">${w.wallet}</span></div>
+          <div class="feed-time">${w.time}${w.mega ? '<span class="feed-mega">MEGA</span>' : ''}</div>
+        </div>
+        <div class="feed-amount">
+          <span class="feed-sol">${w.sol} SOL</span>
+          <span class="feed-rando">${w.rando} $RANDO</span>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function updatePot(sol, rando) {
+    const solEl   = document.getElementById('pot-sol');
+    const randoEl = document.getElementById('pot-rando');
+    if (solEl)   solEl.textContent   = parseFloat(sol).toFixed(2) + ' SOL';
+    if (randoEl) randoEl.textContent = typeof rando === 'number'
+      ? Math.floor(rando).toLocaleString() + ' $RANDO'
+      : rando + ' $RANDO';
+  }
+
+  // ════════════════════════════════════════════════════════════
+  // COUNTDOWN — driven by lastDrawTime from chain (or wall clock)
+  // ════════════════════════════════════════════════════════════
+
+  function updateCountdown() {
+    const now = Math.floor(Date.now() / 1000);
+    const elapsed = now - lastDrawTime;
+    const remaining = Math.max(DRAW_INTERVAL - elapsed, 0);
+
+    const mins = Math.floor(remaining / 60);
+    const secs = remaining % 60;
+
+    const minEl = document.getElementById('cd-min');
+    const secEl = document.getElementById('cd-sec');
+    if (!minEl || !secEl) return;
+
+    minEl.textContent = String(mins).padStart(2, '0');
+    secEl.textContent = String(secs).padStart(2, '0');
+
+    if (remaining <= 10) {
+      minEl.classList.add('flash');
+      secEl.classList.add('flash');
+    } else {
+      minEl.classList.remove('flash');
+      secEl.classList.remove('flash');
+    }
+  }
+
+  // ════════════════════════════════════════════════════════════
+  // MOCK POT SIMULATION (pre-launch only)
+  // ════════════════════════════════════════════════════════════
+
+  let mockSol   = 2.41;
+  let mockRando = 841200;
+
+  function tickMockPot() {
+    mockSol   = Math.min(mockSol   + (Math.random() * 0.02),  9.99);
+    mockRando = Math.min(mockRando + Math.floor(Math.random() * 3000), 9999999);
+    updatePot(mockSol, mockRando);
+  }
+
+  // ════════════════════════════════════════════════════════════
+  // MAIN LOOP
+  // ════════════════════════════════════════════════════════════
+
+  async function init() {
+    buildFeed();
+    updateCountdown();
+    updatePot(mockSol, mockRando);
+
+    if (LIVE_MODE) {
+      // Fetch real chain data on load
+      const [state, liveWinners] = await Promise.all([
+        fetchVaultState(),
+        fetchRecentWinners()
+      ]);
+
+      if (state) {
+        if (state.lastDrawTime) lastDrawTime = state.lastDrawTime;
+        updatePot(state.solBalance, state.randoBalance);
+      }
+      if (liveWinners.length > 0) {
+        winners = liveWinners;
+        buildFeed();
+      }
+
+      // Refresh chain data every 30 seconds
+      setInterval(async () => {
+        const s = await fetchVaultState();
+        if (s) {
+          if (s.lastDrawTime) lastDrawTime = s.lastDrawTime;
+          updatePot(s.solBalance, s.randoBalance);
+        }
+        const w = await fetchRecentWinners();
+        if (w.length > 0) { winners = w; buildFeed(); }
+      }, 30_000);
+
+    } else {
+      // Pre-launch: simulate pot growth
+      setInterval(tickMockPot, 4000);
+    }
+
+    // Countdown ticks every second regardless of mode
+    setInterval(updateCountdown, 1000);
+  }
+
+  init();
+</script>
+</body>
+</html>

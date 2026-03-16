@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { shortenAddress, formatSol, formatCountdown } from '@/lib/utils';
 
@@ -45,6 +45,8 @@ export default function DashboardPage({
   const [countdown, setCountdown] = useState('');
   const [locking, setLocking] = useState(false);
   const [lockConfirm, setLockConfirm] = useState(false);
+  const [embedCopied, setEmbedCopied] = useState(false);
+  const embedRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     params.then((p) => setId(p.id));
@@ -130,7 +132,7 @@ export default function DashboardPage({
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {project.isLocked && (
             <span
               className="px-3 py-1 rounded-full text-xs font-medium"
@@ -139,6 +141,17 @@ export default function DashboardPage({
               🔒 Locked
             </span>
           )}
+          <a
+            href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(
+              `🎲 $RANDO draw #${project.drawCount + 1} — ${project.vaultBalanceSol.toFixed(2)} SOL prize pool\n\nHold ≥${project.eligibilityValue}% without selling to qualify. Next draw live:\n`,
+            )}&url=${encodeURIComponent(`https://rando-mu.vercel.app/timer/${project.id}`)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-3 py-1 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
+            style={{ background: '#000', color: '#fff', border: '1px solid #333' }}
+          >
+            Share on 𝕏
+          </a>
           <Link href="/" className="text-sm" style={{ color: 'var(--muted)' }}>← Home</Link>
         </div>
       </div>
@@ -169,6 +182,49 @@ export default function DashboardPage({
           <ConfigRow label="Increment" value={project.increment} />
           <ConfigRow label="Cap" value={project.cap} />
         </div>
+      </div>
+
+      {/* Payout Summary */}
+      <div
+        className="rounded-2xl p-6 mb-6"
+        style={{ background: 'var(--card)', border: '1px solid var(--border)' }}
+      >
+        <h2 className="font-semibold mb-4">How Payouts Work</h2>
+        <PayoutSummary project={project} />
+      </div>
+
+      {/* Embed Widget */}
+      <div
+        className="rounded-2xl p-6 mb-6"
+        style={{ background: 'var(--card)', border: '1px solid var(--border)' }}
+      >
+        <h2 className="font-semibold mb-1">Embed Widget</h2>
+        <p className="text-sm mb-4" style={{ color: 'var(--muted)' }}>
+          Paste this into any webpage to show a live countdown and prize pool for your project.
+        </p>
+        <textarea
+          ref={embedRef}
+          readOnly
+          value={buildEmbedCode(project.id)}
+          className="w-full rounded-xl p-4 text-xs font-mono resize-none"
+          style={{
+            background: 'var(--background)',
+            border: '1px solid var(--border)',
+            color: 'var(--muted)',
+            height: '160px',
+          }}
+        />
+        <button
+          onClick={() => {
+            navigator.clipboard.writeText(buildEmbedCode(project.id));
+            setEmbedCopied(true);
+            setTimeout(() => setEmbedCopied(false), 2000);
+          }}
+          className="mt-3 px-5 py-2 rounded-lg text-sm font-medium transition-opacity hover:opacity-80"
+          style={{ background: 'var(--accent)', color: '#fff' }}
+        >
+          {embedCopied ? '✓ Copied!' : 'Copy embed code'}
+        </button>
       </div>
 
       {/* Admin lock */}
@@ -277,6 +333,72 @@ export default function DashboardPage({
     </div>
   );
 }
+
+// ─── Payout Summary ────────────────────────────────────────────────────────
+
+function PayoutSummary({ project }: { project: ProjectData }) {
+  const eligibility =
+    project.eligibilityType === 'percent'
+      ? `hold at least ${project.eligibilityValue}% of the total token supply`
+      : `hold at least ${Number(project.eligibilityValue).toLocaleString()} tokens`;
+
+  const schedule = (() => {
+    const base = project.baseInterval;
+    const inc  = project.increment;
+    const cap  = project.cap;
+    if (inc === '0m' || inc === '0s' || inc === '0h') {
+      return `Draws run on a fixed ${base} interval.`;
+    }
+    return `The first draw fires ${base} after launch. Each draw adds ${inc} to the next interval, capping permanently at ${cap}.`;
+  })();
+
+  const lines = [
+    { icon: '🎯', text: `Eligibility — To qualify for a draw, holders must ${eligibility} for the entire draw interval without selling. Any outbound transfer resets the clock.` },
+    { icon: '⏱', text: `Schedule — ${schedule}` },
+    { icon: '💰', text: `Prize split — Each draw distributes 33% of the available pot to the winner, 33% to operations, and 33% is used for a token buyback via Jupiter.` },
+    { icon: '🔒', text: `Minimum pot — A draw only fires if the wallet holds at least 0.5 SOL above the 0.1 SOL transaction-fee reserve. If the pot is too low, draws pause and fees accumulate until the threshold is met — then the next winner collects everything.` },
+  ];
+
+  return (
+    <div className="space-y-4">
+      {lines.map(({ icon, text }, i) => (
+        <div key={i} className="flex gap-3 text-sm">
+          <span className="text-lg leading-snug">{icon}</span>
+          <p style={{ color: 'var(--muted)' }}>{text}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Embed code builder ────────────────────────────────────────────────────
+
+function buildEmbedCode(projectId: string): string {
+  const apiUrl = `https://rando-mu.vercel.app/api/projects/${projectId}`;
+  return `<div id="rando-widget"></div>
+<script>
+(function(){
+  var API='${apiUrl}',RESERVE=0.1,el=document.getElementById('rando-widget');
+  if(!el)return;
+  var cached=null;
+  function pad(n){return String(n).padStart(2,'0');}
+  function fmt(s){var h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sc=s%60;return pad(h)+':'+pad(m)+':'+pad(sc);}
+  function render(){
+    if(!cached)return;
+    var pot=Math.max((cached.vaultBalanceSol||0)-RESERVE,0).toFixed(2);
+    var rem=Math.max(Math.floor((new Date(cached.nextDrawAt)-Date.now())/1000),0);
+    el.innerHTML='<div style="font-family:monospace;text-align:center;line-height:1.8">'
+      +'<div>Next draw in: <strong>'+fmt(rem)+'</strong></div>'
+      +'<div>Prize pool: <strong>'+pot+' SOL</strong></div>'
+      +'</div>';
+  }
+  function load(){fetch(API).then(function(r){return r.json();}).then(function(d){cached=d;render();}).catch(function(){});}
+  load();setInterval(load,30000);setInterval(render,1000);
+})();
+<\/script>`;
+}
+
+// ─── Shared sub-components ─────────────────────────────────────────────────
 
 function StatCard({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
   return (
