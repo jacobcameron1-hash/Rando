@@ -10,6 +10,7 @@ import {
   PublicKey,
 } from '@solana/web3.js';
 import { IntervalInput } from '@/components/IntervalInput';
+import { PercentInput } from '@/components/PercentInput';
 import { parseInterval } from '@/lib/interval';
 
 type Step = 1 | 2 | 3 | 4;
@@ -253,22 +254,34 @@ export default function SetupPage() {
                 </div>
               </div>
 
-              <FormField
-                label={
-                  form.eligibilityType === 'percent'
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  {form.eligibilityType === 'percent'
                     ? 'Minimum % of total supply'
-                    : 'Minimum token amount'
-                }
-                placeholder={form.eligibilityType === 'percent' ? '1' : '1000000'}
-                value={form.eligibilityValue}
-                onChange={(v) => update('eligibilityValue', v)}
-                hint={
-                  form.eligibilityType === 'percent'
-                    ? 'e.g. "1" = must hold at least 1% of total supply'
-                    : 'Raw token amount (not accounting for decimals)'
-                }
-                type="number"
-              />
+                    : 'Minimum token amount'}
+                </label>
+                {form.eligibilityType === 'percent' ? (
+                  <PercentInput
+                    value={form.eligibilityValue}
+                    onChange={(v) => update('eligibilityValue', v)}
+                    min={0.1}
+                    max={100}
+                  />
+                ) : (
+                  <FormField
+                    label=""
+                    placeholder="1000000"
+                    value={form.eligibilityValue}
+                    onChange={(v) => update('eligibilityValue', v)}
+                    type="number"
+                  />
+                )}
+                <p className="text-xs mt-1" style={{ color: 'var(--muted)' }}>
+                  {form.eligibilityType === 'percent'
+                    ? 'Holders must hold this % of total supply for the entire draw interval'
+                    : 'Raw token amount (not accounting for decimals)'}
+                </p>
+              </div>
             </div>
           )}
 
