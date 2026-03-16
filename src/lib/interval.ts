@@ -30,19 +30,21 @@ export function parseInterval(input: string): number {
 
 /**
  * Format milliseconds back to a human-readable shorthand string.
+ * Always uses the largest applicable unit, with up to 1 decimal place.
+ * e.g. 90m → "1.5h", 36h → "1.5d", 30m → "30m"
  */
 export function formatInterval(ms: number): string {
   if (ms === 0) return '0s';
-  const units: [string, number][] = [
-    ['w', UNITS.w],
-    ['d', UNITS.d],
-    ['h', UNITS.h],
-    ['m', UNITS.m],
-    ['s', UNITS.s],
-  ];
-  for (const [label, size] of units) {
-    if (ms >= size && ms % size === 0) return `${ms / size}${label}`;
-  }
+
+  const fmt = (val: number, unit: string) => {
+    const rounded = Math.round(val * 10) / 10;
+    return `${rounded % 1 === 0 ? rounded : rounded}${unit}`;
+  };
+
+  if (ms >= UNITS.d) return fmt(ms / UNITS.d, 'd');
+  if (ms >= UNITS.h) return fmt(ms / UNITS.h, 'h');
+  if (ms >= UNITS.m) return fmt(ms / UNITS.m, 'm');
+  if (ms >= UNITS.s) return fmt(ms / UNITS.s, 's');
   return `${ms}ms`;
 }
 
