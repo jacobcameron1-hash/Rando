@@ -2,14 +2,18 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useWallet } from '@solana/wallet-adapter-react';
+import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
-import { PublicKey } from '@solana/web3.js';
+import {
+  VersionedTransaction,
+  TransactionMessage,
+  PublicKey,
+} from '@solana/web3.js';
 import { IntervalInput } from '@/components/IntervalInput';
 import { PercentInput } from '@/components/PercentInput';
 import { parseInterval } from '@/lib/interval';
 
-type Step = 1 | 2 | 3 | 4 | 5;
+type Step = 1 | 2 | 3 | 4;
 
 interface FormState {
   tokenMint: string;
@@ -19,7 +23,6 @@ interface FormState {
   incrementInterval: string;
   capInterval: string;
   vaultBps: number;
-  privateKeyRaw: string;   // raw textarea input (JSON array string)
 }
 
 const DEFAULT_FORM: FormState = {
@@ -30,36 +33,12 @@ const DEFAULT_FORM: FormState = {
   incrementInterval: '0',
   capInterval: '7d',
   vaultBps: 9500,
-  privateKeyRaw: '',
 };
-
-/** Parse the raw textarea input into a 64-element number array, or return null. */
-function parsePrivateKey(raw: string): number[] | null {
-  try {
-    const arr = JSON.parse(raw.trim());
-    if (Array.isArray(arr) && arr.length === 64 && arr.every((n) => typeof n === 'number')) {
-      return arr as number[];
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-/** Derive the public key from a 64-byte secret key array, or return null. */
-function derivePublicKey(arr: number[]): string | null {
-  try {
-    const { Keypair } = require('@solana/web3.js');
-    const kp = Keypair.fromSecretKey(Uint8Array.from(arr));
-    return kp.publicKey.toBase58();
-  } catch {
-    return null;
-  }
-}
 
 export default function SetupPage() {
   const router = useRouter();
-  const { publicKey, connected } = useWallet();
+  const { publicKey, sendTransaction, connected } = useWallet();
+  const { connection } = useConnection();
 
   const [step, setStep] = useState<Step>(1);
   const [form, setForm] = useState<FormState>(DEFAULT_FORM);
@@ -105,7 +84,7 @@ export default function SetupPage() {
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
     } catch {
-      // fallback: user can manually copy
+      // fallback: select the textarea text
     }
   }
 
@@ -136,52 +115,63 @@ export default function SetupPage() {
         return e instanceof Error ? e.message : 'Invalid interval format';
       }
     }
-    if (s === 4) {
-      if (!form.privateKeyRaw.trim()) return 'Private key is required';
-      const arr = parsePrivateKey(form.privateKeyRaw);
-      if (!arr) return 'Invalid private key — paste the full JSON array (64 numbers) exported from your wallet';
-    }
     return '';
   }
 
   function next() {
     const err = validateStep(step);
     if (err) { setError(err); return; }
-    setStep((prev) => Math.min(prev + 1, 5) as Step);
+    setStep((prev) => Math.min(prev + 1, 4) as Step);
   }
 
   async function submit() {
-    const err = validateStep(4);
+    const err = validateStep(3);
     if (err) { setError(err); return; }
     if (!publicKey) { setError('Wallet not connected'); return; }
-
-    const privateKeyJson = parsePrivateKey(form.privateKeyRaw)!;
 
     setLoading(true);
     setError('');
 
     try {
+      // Step 1: Create the project and get setup transactions back
       setLoadingMsg('Creating lottery...');
       const res = await fetch('/api/projects', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          tokenMint: form.tokenMint,
+          ...form,
           creatorWallet: publicKey.toBase58(),
-          privateKeyJson,
-          eligibilityType: form.eligibilityType,
-          eligibilityValue: form.eligibilityValue,
-          baseInterval: form.baseInterval,
-          incrementInterval: form.incrementInterval,
-          capInterval: form.capInterval,
-          vaultBps: form.vaultBps,
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to create project');
 
-      setProjectId(data.projectId);
-      setStep(5);
+      const { projectId: pid, setupTransactions } = data as {
+        projectId: string;
+        setupTransactions: string[];
+      };
+
+      // Step 2: Sign and send each setup transaction
+      if (setupTransactions && setupTransactions.length > 0) {
+        setLoadingMsg(`Signing ${setupTransactions.length} transaction(s)...`);
+
+        for (let i = 0; i < setupTransactions.length; i++) {
+          setLoadingMsg(`Sending transaction ${i + 1} of ${setupTransactions.length}...`);
+          const txBytes = Buffer.from(setupTransactions[i], 'base64');
+          const tx = VersionedTransaction.deserialize(txBytes);
+
+          const sig = await sendTransaction(tx, connection, {
+            skipPreflight: false,
+            preflightCommitment: 'confirmed',
+          });
+
+          // Wait for confirmation before sending next tx
+          await connection.confirmTransaction(sig, 'confirmed');
+        }
+      }
+
+      setProjectId(pid);
+      setStep(4);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Unknown error');
     } finally {
@@ -189,10 +179,6 @@ export default function SetupPage() {
       setLoadingMsg('');
     }
   }
-
-  // Derived public key preview for step 4
-  const parsedKey = parsePrivateKey(form.privateKeyRaw);
-  const derivedPubkey = parsedKey ? derivePublicKey(parsedKey) : null;
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 py-16">
@@ -207,9 +193,9 @@ export default function SetupPage() {
         </div>
 
         {/* Progress */}
-        {step < 5 && (
+        {step < 4 && (
           <div className="flex items-center gap-2 mb-8">
-            {([1, 2, 3, 4] as const).map((s) => (
+            {([1, 2, 3] as const).map((s) => (
               <div key={s} className="flex items-center gap-2 flex-1">
                 <div
                   className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all"
@@ -221,7 +207,7 @@ export default function SetupPage() {
                 >
                   {s}
                 </div>
-                {s < 4 && (
+                {s < 3 && (
                   <div
                     className="flex-1 h-px"
                     style={{ background: step > s ? 'var(--accent)' : 'var(--border)' }}
@@ -243,10 +229,11 @@ export default function SetupPage() {
               <div>
                 <h2 className="text-xl font-semibold mb-1">Connect wallet & token</h2>
                 <p className="text-sm" style={{ color: 'var(--muted)' }}>
-                  Connect the wallet you use to manage this token.
+                  Connect the wallet that owns the fee share admin for your token.
                 </p>
               </div>
 
+              {/* Wallet connect button */}
               <div>
                 <label className="block text-sm font-medium mb-2">Your wallet</label>
                 <WalletMultiButton
@@ -377,7 +364,7 @@ export default function SetupPage() {
                 label="Cap (maximum interval)"
                 value={form.capInterval}
                 onChange={(v) => update('capInterval', v)}
-                hint="The interval will never exceed this. e.g. 12h"
+                hint="The interval will never exceed this. e.g. 7d"
                 minMs={60_000}
                 maxMs={30 * 86_400_000}
               />
@@ -403,80 +390,8 @@ export default function SetupPage() {
             </div>
           )}
 
-          {/* Step 4: Prize wallet private key */}
+          {/* Step 4: Success */}
           {step === 4 && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-xl font-semibold mb-1">Prize wallet</h2>
-                <p className="text-sm" style={{ color: 'var(--muted)' }}>
-                  Paste the private key of the wallet that receives fees from bags.fm.
-                  The app stores it encrypted and uses it to automatically send prizes to winners.
-                </p>
-              </div>
-
-              {/* Warning box */}
-              <div
-                className="rounded-xl p-4 text-sm space-y-1"
-                style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', color: '#f87171' }}
-              >
-                <p className="font-semibold">⚠️ Security notice</p>
-                <p style={{ color: 'var(--muted)' }}>
-                  Only use a wallet dedicated to this prize pool — not your main wallet.
-                  The private key is encrypted with AES-256-GCM before being stored.
-                </p>
-              </div>
-
-              {/* How to export hint */}
-              <div
-                className="rounded-xl p-4 text-xs space-y-1"
-                style={{ background: 'var(--background)', border: '1px solid var(--border)', color: 'var(--muted)' }}
-              >
-                <p className="font-semibold" style={{ color: 'var(--foreground)' }}>How to export from Solflare</p>
-                <p>Settings → Security → Export Private Key → select "JSON" format → copy the array.</p>
-                <p>It should look like: <span className="font-mono">[12, 34, 56, ...]</span> (64 numbers).</p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2">Private key (JSON array)</label>
-                <textarea
-                  rows={4}
-                  placeholder='[12, 34, 56, 78, ...]'
-                  value={form.privateKeyRaw}
-                  onChange={(e) => update('privateKeyRaw', e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl text-xs font-mono outline-none transition-all resize-none"
-                  style={{
-                    background: 'var(--background)',
-                    border: '1px solid var(--border)',
-                    color: 'var(--foreground)',
-                  }}
-                  onFocus={(e) => (e.target.style.borderColor = 'var(--accent)')}
-                  onBlur={(e) => (e.target.style.borderColor = 'var(--border)')}
-                />
-              </div>
-
-              {/* Live derived public key confirmation */}
-              {derivedPubkey && (
-                <div
-                  className="rounded-xl p-3 text-xs"
-                  style={{ background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.25)' }}
-                >
-                  <p className="font-semibold mb-1" style={{ color: '#4ade80' }}>✓ Valid key — derived address:</p>
-                  <p className="font-mono break-all" style={{ color: 'var(--muted)' }}>{derivedPubkey}</p>
-                  <p className="mt-1" style={{ color: 'var(--muted)' }}>
-                    Make sure this matches the wallet receiving bags.fm fees.
-                  </p>
-                </div>
-              )}
-              {form.privateKeyRaw.trim() && !derivedPubkey && (
-                <p className="text-xs" style={{ color: '#f87171' }}>
-                  Not a valid 64-element JSON array. Double-check your export format.
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* Step 5: Success */}
-          {step === 5 && (
             <div className="space-y-5">
               <div className="text-center space-y-2">
                 <div className="text-5xl mb-2">🎉</div>
@@ -571,7 +486,7 @@ export default function SetupPage() {
           )}
 
           {/* Actions */}
-          {step < 5 && (
+          {step < 4 && (
             <div className="flex gap-3 mt-8">
               {step > 1 && (
                 <button
@@ -584,14 +499,14 @@ export default function SetupPage() {
                 </button>
               )}
               <button
-                onClick={step === 4 ? submit : next}
+                onClick={step === 3 ? submit : next}
                 disabled={loading}
                 className="flex-1 py-3 rounded-xl text-white font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
                 style={{ background: 'var(--accent)' }}
               >
                 {loading
                   ? (loadingMsg || 'Working...')
-                  : step === 4
+                  : step === 3
                   ? 'Create Lottery'
                   : 'Continue →'}
               </button>

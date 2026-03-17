@@ -30,17 +30,6 @@ export function generateVaultKeypair(): Keypair {
 }
 
 /**
- * Import a keypair from a secret key byte array (e.g. exported from Phantom/Solflare).
- * Accepts a 64-byte Uint8Array or plain number[] as exported by most Solana wallets.
- */
-export function keypairFromSecretKeyArray(secretKeyArray: number[]): Keypair {
-  if (!Array.isArray(secretKeyArray) || secretKeyArray.length !== 64) {
-    throw new Error('Invalid secret key: expected a 64-element byte array');
-  }
-  return Keypair.fromSecretKey(Uint8Array.from(secretKeyArray));
-}
-
-/**
  * Encrypt a keypair's secret key for DB storage.
  * Returns a hex string: iv(24) + authTag(32) + ciphertext
  */
