@@ -1,22 +1,25 @@
 /**
  * POST /api/projects
  *
- * Creates a new Rando project. Generates a vault keypair, stores the project
- * config, takes an initial holder snapshot, and returns the fee share setup
- * transactions for the launcher to sign client-side.
+ * Creates a new Rando project. Accepts the user's existing fee-wallet private
+ * key (already configured on bags.fm to receive trading fees), stores it
+ * encrypted, takes an initial holder snapshot, and returns the project ID.
+ * No bags.fm API interaction is required — fees flow to the wallet automatically
+ * and the server uses the stored keypair to pay winners.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { db, projects, snapshots } from '@/db';
-import { generateVaultKeypair, encryptKeypair } from '@/lib/vault';
+import { keypairFromSecretKeyArray, encryptKeypair } from '@/lib/vault';
 import { parseInterval, calcNextDrawTime } from '@/lib/interval';
 import { snapshotHolders } from '@/lib/holders';
-import { buildFeeShareSetupTransactions, getConnection } from '@/lib/bags';
+import { getConnection } from '@/lib/bags';
 import { nanoid } from '@/lib/nanoid';
 
 export interface CreateProjectBody {
   tokenMint: string;
   creatorWallet: string;
+  privateKeyJson: number[];           // 64-byte secret key array from Solflare/Phantom export
   eligibilityType: 'percent' | 'amount';
   eligibilityValue: string;
   baseInterval: string;
@@ -32,6 +35,7 @@ export async function POST(req: NextRequest) {
     const {
       tokenMint,
       creatorWallet,
+      privateKeyJson,
       eligibilityType,
       eligibilityValue,
       baseInterval,
@@ -42,6 +46,12 @@ export async function POST(req: NextRequest) {
 
     if (!tokenMint || !creatorWallet || !eligibilityType || !eligibilityValue) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    }
+    if (!Array.isArray(privateKeyJson) || privateKeyJson.length !== 64) {
+      return NextResponse.json(
+        { error: 'privateKeyJson must be a 64-element byte array' },
+        { status: 400 },
+      );
     }
     if (!['percent', 'amount'].includes(eligibilityType)) {
       return NextResponse.json(
@@ -58,7 +68,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Cap must be >= base interval' }, { status: 400 });
     }
 
-    const vaultKeypair = generateVaultKeypair();
+    // Import the user's existing fee wallet keypair (already receives bags.fm fees)
+    const vaultKeypair = keypairFromSecretKeyArray(privateKeyJson);
     const vaultPublicKey = vaultKeypair.publicKey.toBase58();
     const vaultKeypairEncrypted = encryptKeypair(vaultKeypair);
 
@@ -95,19 +106,10 @@ export async function POST(req: NextRequest) {
       })),
     });
 
-    // Build fee share setup transactions for client signing
-    const setupTransactions = await buildFeeShareSetupTransactions(
-      tokenMint,
-      creatorWallet,
-      vaultPublicKey,
-      vaultBps,
-    );
-
     return NextResponse.json({
       projectId,
       vaultPublicKey,
       nextDrawAt: nextDrawAt.toISOString(),
-      setupTransactions, // array of base64 VersionedTransactions; launcher signs each
     });
   } catch (err) {
     console.error('[POST /api/projects]', err);
