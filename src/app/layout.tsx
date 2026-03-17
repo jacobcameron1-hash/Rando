@@ -28,6 +28,9 @@ export const metadata: Metadata = {
     description: 'Automated holder lotteries powered by bags.fm fee share',
     type: 'website',
   },
+  icons: {
+    icon: '/favicon.svg',
+  },
 };
 
 export default function RootLayout({

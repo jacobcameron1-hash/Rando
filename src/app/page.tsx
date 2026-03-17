@@ -13,10 +13,9 @@ export default function Home() {
           className="flex items-center gap-3 hover:opacity-80 transition-opacity"
         >
           <img
-            src="/mascot_hero.jpg"
+            src="/logo.svg"
             alt="Rando"
-            className="w-8 h-8 rounded-full object-cover object-top"
-            style={{ border: '1px solid var(--border)' }}
+            className="w-8 h-8"
           />
           <span className="text-xl font-bold tracking-tight">Rando</span>
         </a>
