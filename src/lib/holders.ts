@@ -46,12 +46,12 @@ export async function snapshotHolders(
   const byWallet = new Map<string, bigint>();
 
   for (const { account } of accounts) {
-    const data = AccountLayout.decode(account.data) as {
-      owner: Uint8Array;
-      amount: bigint;
-    };
+   const data = AccountLayout.decode(account.data) as {
+  owner: PublicKey;
+  amount: bigint;
+};
     if (data.amount > 0n) {
-      const wallet = new PublicKey(data.owner).toBase58();
+      const wallet = data.owner.toBase58();
       byWallet.set(wallet, (byWallet.get(wallet) ?? 0n) + data.amount);
     }
   }
