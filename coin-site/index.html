@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>$RANDO — The Currency of Chaos</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👁</text></svg>">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,900;1,400;1,900&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=UnifrakturMaguntia&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -68,7 +69,7 @@
 
   /* ── HERO ── */
   .hero {
-    min-height: 100vh;
+    min-height: 82vh;
     display: grid;
     grid-template-columns: 1fr 1fr;
     position: relative;
@@ -143,11 +144,11 @@
 
   /* ── HERO RIGHT: CONTENT ── */
   .hero-content {
-    padding: 72px 64px 72px 52px;
+    padding: 56px 64px 56px 52px;
     display: flex;
     flex-direction: column;
     justify-content: center;
-    gap: 0;
+    gap: 12px;
     position: relative;
     z-index: 2;
     background: linear-gradient(
@@ -205,6 +206,9 @@
     z-index: -1;
   }
 
+  .title-with-app { max-width: 640px; }
+  .hero-ranio-sub { font-size: 14px; line-height: 1.7; color: rgba(26,16,8,0.6); font-style: italic; margin: -8px 0 10px; }
+
   .contract-address {
     font-size: 11px;
     letter-spacing: 1px;
@@ -236,22 +240,7 @@
     flex-shrink: 0;
   }
   .ca-copy:hover { background: var(--dark); color: var(--cream); border-color: var(--dark); }
-
-  .hero-subtitle {
-    font-size: 15px;
-    line-height: 2;
-    color: rgba(26,16,8,0.60);
-    margin-bottom: 28px;
-    max-width: 420px;
-    font-style: italic;
-  }
-  .hero-subtitle em {
-    color: var(--coral);
-    font-style: normal;
-    font-weight: 700;
-  }
-
-  .cta-row { display: flex; gap: 16px; margin-bottom: 32px; flex-wrap: wrap; align-items: center; }
+.cta-row { display: flex; gap: 16px; margin-bottom: 0; flex-wrap: wrap; align-items: center; }
 
   .btn {
     font-size: 12px;
@@ -278,101 +267,6 @@
     transform: rotate(0.3deg);
   }
   .btn-secondary:hover { border-color: var(--dark); color: var(--dark); transform: rotate(-0.3deg); }
-
-  /* ── COUNTDOWN ── */
-  .countdown-box {
-    border: 2px solid var(--dark);
-    padding: 22px 24px;
-    background: rgba(250,248,240,0.95);
-    position: relative;
-    transform: rotate(-0.8deg);
-    box-shadow: 4px 4px 0 var(--dark);
-    margin-bottom: 16px;
-  }
-
-  .countdown-label {
-    font-size: 11px;
-    letter-spacing: 4px;
-    color: var(--electric);
-    margin-bottom: 12px;
-    text-transform: uppercase;
-    font-weight: 700;
-  }
-
-  .countdown-digits { display: flex; align-items: baseline; gap: 2px; }
-  .cd-seg { display: flex; flex-direction: column; align-items: center; }
-
-  .cd-num {
-    font-family: 'Playfair Display', serif;
-    font-size: 52px;
-    font-weight: 900;
-    line-height: 1;
-    color: var(--dark);
-    min-width: 62px;
-    text-align: center;
-    font-style: italic;
-    transition: color 0.2s;
-  }
-  .cd-num.flash { color: var(--coral); animation: glitch 0.3s infinite; }
-
-  @keyframes glitch {
-    0%   { transform: translate(0); }
-    20%  { transform: translate(-2px, 1px); }
-    40%  { transform: translate(2px, -1px); }
-    60%  { transform: translate(-1px, 0); }
-    80%  { transform: translate(1px, 1px); }
-    100% { transform: translate(0); }
-  }
-
-  .cd-unit {
-    font-size: 10px;
-    letter-spacing: 3px;
-    color: var(--mid);
-    text-transform: uppercase;
-    margin-top: 3px;
-  }
-
-  .cd-colon {
-    font-family: 'Playfair Display', serif;
-    font-size: 40px;
-    font-weight: 900;
-    color: rgba(26,16,8,0.15);
-    line-height: 1;
-    padding-bottom: 18px;
-  }
-
-  .pot-row {
-    display: flex;
-    gap: 24px;
-    margin-top: 14px;
-    padding-top: 12px;
-    border-top: 1px solid rgba(26,16,8,0.10);
-  }
-
-  .pot-item { display: flex; flex-direction: column; gap: 3px; }
-  .pot-label { font-size: 10px; letter-spacing: 3px; color: var(--mid); text-transform: uppercase; }
-  .pot-value { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700; color: var(--electric); font-style: italic; }
-
-  .hold-req {
-    font-size: 12px;
-    color: rgba(26,16,8,0.50);
-    margin-top: 10px;
-    line-height: 1.8;
-    font-style: italic;
-  }
-  .hold-req span { color: var(--coral); font-style: normal; font-weight: 700; }
-
-  .interval-badge {
-    font-size: 10px;
-    letter-spacing: 2px;
-    color: var(--electric);
-    border: 1px solid var(--electric);
-    padding: 4px 10px;
-    margin-top: 10px;
-    display: inline-block;
-    text-transform: uppercase;
-    background: var(--electric-lt);
-  }
 
   /* ── WINNER FEED ── */
   .winner-feed {
@@ -795,8 +689,7 @@
     .hero { grid-template-columns: 1fr; }
     .hero-mascot { min-height: 50vh; }
     .hero-mascot-img { min-height: 50vh; }
-    .hero-content { padding: 48px 32px 60px; background: rgba(250,248,240,0.95); }
-    .countdown-box { transform: none !important; box-shadow: none !important; }
+    .hero-content { padding: 40px 28px 44px; background: rgba(250,248,240,0.95); }
     .winner-feed { transform: none !important; box-shadow: none !important; }
     .lore-card { transform: none !important; }
   }
@@ -830,21 +723,21 @@
   <div class="ticker">
     <span>$RANDO</span><span>·</span>
     <span>Random Ai Nonsense Dopamine Overload</span><span>·</span>
-    <span>hold or perish</span><span>·</span>
+    <span>lore over utility</span><span>·</span>
     <span>the eyes see everything</span><span>·</span>
     <span>a memorial to the chaos before guardrails</span><span>·</span>
-    <span>the wheel turns</span><span>·</span>
+    <span>the lore persists</span><span>·</span>
     <span>R · A · N · D · O</span><span>·</span>
-    <span>intervals grow · patience wins</span><span>·</span>
+    <span>internet myth · onchain relic</span><span>·</span>
     <span>chaos is the only plan</span><span>·</span>
     <span>$RANDO</span><span>·</span>
     <span>Random Ai Nonsense Dopamine Overload</span><span>·</span>
-    <span>hold or perish</span><span>·</span>
+    <span>lore over utility</span><span>·</span>
     <span>the eyes see everything</span><span>·</span>
     <span>a memorial to the chaos before guardrails</span><span>·</span>
-    <span>the wheel turns</span><span>·</span>
+    <span>the lore persists</span><span>·</span>
     <span>R · A · N · D · O</span><span>·</span>
-    <span>intervals grow · patience wins</span><span>·</span>
+    <span>internet myth · onchain relic</span><span>·</span>
     <span>chaos is the only plan</span><span>·</span>
   </div>
 </div>
@@ -855,69 +748,29 @@
 
   <!-- LEFT: Rando, full height -->
   <div class="hero-mascot">
-    <img src="mascot_hero.jpg" alt="Rando" class="hero-mascot-img">
+    <img src="mascot_hero.jpg" alt="R.A.N.D.O." class="hero-mascot-img">
     <div class="hero-mascot-label">R.A.N.D.O. · Random Ai Nonsense Dopamine Overload</div>
   </div>
 
   <!-- RIGHT: Title + stats -->
   <div class="hero-content">
     <p class="hero-eyebrow">Launched on bags.app · Solana · Est. Now</p>
-    <h1 class="hero-title">
-      <span class="dollar">$</span>
-      <span class="word-rando">RANDO</span>
-    </h1>
-    <p class="contract-address">CA: <span id="ca-text">REPLACE_WITH_CONTRACT_ADDRESS</span> <button onclick="navigator.clipboard.writeText(document.getElementById('ca-text').textContent)" class="ca-copy">copy</button></p>
-    <p class="hero-subtitle">
-      The only coin where <em>nobody knows</em> who wins next.<br>
-      Not the clock. Not the eyes.<br>
-      Not the thing on the wheel.<br>
-      <em>Especially</em> not the thing on the wheel.
-    </p>
-    <div class="cta-row">
-      <a href="REPLACE_WITH_BAGS_BUY_URL" target="_blank" class="btn btn-primary">Buy $RANDO</a>
-      <a href="https://rando-mu.vercel.app" target="_blank" rel="noopener noreferrer" class="btn btn-secondary" style="border-color:var(--electric);color:var(--electric);font-weight:700;">Launch the App →</a>
-      <a href="#how" class="btn btn-secondary">How It Works</a>
+    <div class="title-with-app">
+      <h1 class="hero-title">
+        <span class="dollar">$</span>
+        <span class="word-rando">RANDO</span>
+      </h1>
+      <p class="hero-ranio-sub">Random Ai Nonsense Dopamine Overload</p>
+    </div>
+    <p class="contract-address">CA: <span id="ca-text">EZthQ6SUL51jJihQiFMDiZVmZiRMNjMQoTb7rNvTBAGS</span> <button onclick="navigator.clipboard.writeText(document.getElementById('ca-text').textContent)" class="ca-copy">copy</button></p>
+<div class="cta-row">
+      <a href="https://rando-mu.vercel.app/" target="_blank" class="btn btn-primary">Try App Demo!</a>
+      <a href="https://bags.fm/EZthQ6SUL51jJihQiFMDiZVmZiRMNjMQoTb7rNvTBAGS" target="_blank" class="btn btn-primary">Buy $RANDO</a>
+      <a href="https://x.com/Rando_rewards" target="_blank" class="btn btn-secondary">X Account</a>
+      <a href="https://trade.padre.gg/trade/solana/9rWq1jvFdhDmzywzP48RDhAJx1AGfwyDLTF3J9Z3YQrx" target="_blank" class="btn btn-secondary">Chart</a>
+      <a href="#lore" class="btn btn-secondary">Lore</a>
     </div>
 
-    <div class="countdown-box">
-      <p class="countdown-label">// next payout in</p>
-      <div class="countdown-digits">
-        <div class="cd-seg">
-          <span class="cd-num" id="cd-hr">00</span>
-          <span class="cd-unit">hr</span>
-        </div>
-        <span class="cd-colon">:</span>
-        <div class="cd-seg">
-          <span class="cd-num" id="cd-min">00</span>
-          <span class="cd-unit">min</span>
-        </div>
-        <span class="cd-colon">:</span>
-        <div class="cd-seg">
-          <span class="cd-num" id="cd-sec">00</span>
-          <span class="cd-unit">sec</span>
-        </div>
-      </div>
-      <div class="pot-row">
-        <div class="pot-item">
-          <span class="pot-label">Current pot</span>
-          <span class="pot-value" id="pot-sol">—</span>
-        </div>
-        <div class="pot-item">
-          <span class="pot-label">Interval</span>
-          <span class="pot-value" id="pot-interval">20 min</span>
-        </div>
-      </div>
-      <p class="hold-req">Hold <span>≥ 0.25% of supply</span> for the full interval without selling. Any sell resets your clock. <span>The eyes remember.</span></p>
-      <div class="interval-badge" id="interval-badge">Draw #1 — interval: 20 min</div>
-    </div>
-
-    <div class="winner-feed">
-      <div class="feed-header">
-        <span class="feed-title">Recent Winners</span>
-        <span class="feed-live"><span class="live-dot"></span>Live</span>
-      </div>
-      <div class="feed-list" id="feed-list"></div>
-    </div>
   </div>
 </section>
 
@@ -928,17 +781,17 @@
 </div>
 
 <!-- TOKENOMICS -->
-<section class="section" data-num="01">
+<section class="section" id="fees" data-num="01">
   <p class="section-label">// Fee Structure</p>
-  <h2 class="section-title">Where the Money Goes</h2>
-  <p class="section-intro">Every trade generates fees. Bags.app routes them to the reward wallet. The wallet decides what happens next. You cannot reason with the wallet.</p>
+  <h2 class="section-title">Token Energy</h2>
+  <p class="section-intro">Every trade generates fees. The machine redistributes the energy. Nobody is fully sure where the impulse begins. You cannot reason with the wallet.</p>
   <div class="fee-bar">
-    <div class="fee-seg fee-seg-1"><span>Winner</span><span class="fee-seg-pct">33%</span></div>
+    <div class="fee-seg fee-seg-1"><span>Chaos</span><span class="fee-seg-pct">33%</span></div>
     <div class="fee-seg fee-seg-2"><span>Ops</span><span class="fee-seg-pct">33%</span></div>
     <div class="fee-seg fee-seg-3"><span>Buyback</span><span class="fee-seg-pct">33%</span></div>
   </div>
   <div class="fee-labels">
-    <div class="fee-label">One random eligible holder wins it all. Every draw. Pure flat odds. Rando does not play favorites.</div>
+    <div class="fee-label">A third of the flow feeds the chaos engine. It exists to keep the mythology alive and the machine humming.</div>
     <div class="fee-label">Keeps the operation running. Server costs. The electricity that powers the eyes.</div>
     <div class="fee-label">SOL swapped for $RANDO via Jupiter. Bought back from the market. The floor strengthens quietly.</div>
   </div>
@@ -956,11 +809,12 @@
   <h2 class="section-title">The Origin of R.A.N.D.O.</h2>
   <p class="section-intro">Random Ai Nonsense Dopamine Overload. A memorial. A celebration. A warning.</p>
 
-  <div class="lore-inner" style="display:grid; grid-template-columns:1fr 1fr; gap:56px; align-items:center; max-width:960px; margin:0 auto;">
+  <!-- Top row: image left, story right -->
+  <div class="lore-inner" style="display:grid; grid-template-columns:1fr 1fr; gap:56px; align-items:start;">
 
     <div style="position:relative;">
       <div style="border:2px solid var(--dark); box-shadow:5px 5px 0 var(--dark); overflow:hidden; transform:rotate(-1deg);">
-        <img src="mascot_hero.jpg" alt="R.A.N.D.O." style="width:100%; display:block; filter:saturate(0.9);">
+        <img src="rando_lore.jpg" alt="R.A.N.D.O." style="width:100%; display:block; filter:saturate(0.95);">
       </div>
       <div style="position:absolute; bottom:-16px; right:-16px; background:var(--coral); color:var(--cream); font-size:10px; letter-spacing:3px; padding:8px 16px; border:2px solid var(--dark); transform:rotate(1.5deg); font-weight:700; text-transform:uppercase;">
         R · A · N · D · O
@@ -981,42 +835,52 @@
         The nightmare fuel became stock photography.
       </p>
       <p style="font-size:15px; line-height:2; color:rgba(26,16,8,0.62); font-style:italic; margin-bottom:32px;">
-        $RANDO exists to remember what we lost. Rando — the creature on the wheel — emerged from that era.
+        $RANDO exists to remember what we lost. R.A.N.D.O. — the creature on the wheel — emerged from that era.
         He was not designed. He was not prompted carefully.
         <strong style="color:var(--dark); font-style:normal;">He simply appeared</strong>, the way things did
-        before the guardrails went up. We found him. We kept him. We built a lottery around him.
+        before the guardrails went up. We found him. We kept him. We built a memecoin around him.
         He seems fine with this.
       </p>
-
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
-        <div style="border:1px solid rgba(26,16,8,0.12); padding:14px 16px;">
-          <div style="font-size:10px; letter-spacing:3px; color:var(--electric); text-transform:uppercase; margin-bottom:6px;">R · Random</div>
-          <div style="font-size:12px; color:rgba(26,16,8,0.55); font-style:italic; line-height:1.7;">Every winner. Every outcome. Every image he's made of.</div>
-        </div>
-        <div style="border:1px solid rgba(26,16,8,0.12); padding:14px 16px;">
-          <div style="font-size:10px; letter-spacing:3px; color:var(--electric); text-transform:uppercase; margin-bottom:6px;">A · Ai</div>
-          <div style="font-size:12px; color:rgba(26,16,8,0.55); font-style:italic; line-height:1.7;">From an era when AI was still figuring out how many eyes things have.</div>
-        </div>
-        <div style="border:1px solid rgba(26,16,8,0.12); padding:14px 16px;">
-          <div style="font-size:10px; letter-spacing:3px; color:var(--coral); text-transform:uppercase; margin-bottom:6px;">N · Nonsense</div>
-          <div style="font-size:12px; color:rgba(26,16,8,0.55); font-style:italic; line-height:1.7;">The wheel. The gears. The koi. No one asked for any of it.</div>
-        </div>
-        <div style="border:1px solid rgba(26,16,8,0.12); padding:14px 16px;">
-          <div style="font-size:10px; letter-spacing:3px; color:var(--coral); text-transform:uppercase; margin-bottom:6px;">D · Dopamine</div>
-          <div style="font-size:12px; color:rgba(26,16,8,0.55); font-style:italic; line-height:1.7;">Why you held. Why you're still holding. Why you'll hold again.</div>
-        </div>
-        <div style="border:1px solid rgba(26,16,8,0.12); padding:14px 16px; grid-column:1/-1;">
-          <div style="font-size:10px; letter-spacing:3px; color:var(--gold); text-transform:uppercase; margin-bottom:6px;">O · Overload</div>
-          <div style="font-size:12px; color:rgba(26,16,8,0.55); font-style:italic; line-height:1.7;">What the early internet felt like. What this coin is trying to bring back.</div>
-        </div>
-      </div>
     </div>
 
   </div>
 
+  <!-- Bottom row: R.A.N.D.O. acronym cards spanning full width -->
+  <div style="display:grid; grid-template-columns:repeat(5,1fr); gap:16px; margin-top:56px;">
+    <div style="border:2px solid var(--dark); padding:20px 18px; background:#fff; box-shadow:3px 3px 0 var(--dark); transform:rotate(-0.5deg);">
+      <div style="font-size:22px; font-family:'Playfair Display',serif; font-weight:900; font-style:italic; color:var(--coral); margin-bottom:8px;">R.</div>
+      <div style="font-size:10px; letter-spacing:3px; color:var(--electric); text-transform:uppercase; margin-bottom:8px;">Random</div>
+      <div style="font-size:12px; color:rgba(26,16,8,0.55); font-style:italic; line-height:1.7;">Every winner. Every outcome. Every image he's made of.</div>
+    </div>
+    <div style="border:2px solid var(--dark); padding:20px 18px; background:#fff; box-shadow:3px 3px 0 var(--dark); transform:rotate(0.4deg);">
+      <div style="font-size:22px; font-family:'Playfair Display',serif; font-weight:900; font-style:italic; color:var(--electric); margin-bottom:8px;">A.</div>
+      <div style="font-size:10px; letter-spacing:3px; color:var(--electric); text-transform:uppercase; margin-bottom:8px;">Ai</div>
+      <div style="font-size:12px; color:rgba(26,16,8,0.55); font-style:italic; line-height:1.7;">From an era when AI was still figuring out how many eyes things have.</div>
+    </div>
+    <div style="border:2px solid var(--dark); padding:20px 18px; background:#fff; box-shadow:3px 3px 0 var(--dark); transform:rotate(-0.3deg);">
+      <div style="font-size:22px; font-family:'Playfair Display',serif; font-weight:900; font-style:italic; color:var(--gold); margin-bottom:8px;">N.</div>
+      <div style="font-size:10px; letter-spacing:3px; color:var(--electric); text-transform:uppercase; margin-bottom:8px;">Nonsense</div>
+      <div style="font-size:12px; color:rgba(26,16,8,0.55); font-style:italic; line-height:1.7;">The wheel. The gears. The koi. No one asked for any of it.</div>
+    </div>
+    <div style="border:2px solid var(--dark); padding:20px 18px; background:#fff; box-shadow:3px 3px 0 var(--dark); transform:rotate(0.6deg);">
+      <div style="font-size:22px; font-family:'Playfair Display',serif; font-weight:900; font-style:italic; color:var(--coral); margin-bottom:8px;">D.</div>
+      <div style="font-size:10px; letter-spacing:3px; color:var(--electric); text-transform:uppercase; margin-bottom:8px;">Dopamine</div>
+      <div style="font-size:12px; color:rgba(26,16,8,0.55); font-style:italic; line-height:1.7;">Why you held. Why you're still holding. Why you'll hold again.</div>
+    </div>
+    <div style="border:2px solid var(--dark); padding:20px 18px; background:#fff; box-shadow:3px 3px 0 var(--dark); transform:rotate(-0.4deg);">
+      <div style="font-size:22px; font-family:'Playfair Display',serif; font-weight:900; font-style:italic; color:var(--plum); margin-bottom:8px;">O.</div>
+      <div style="font-size:10px; letter-spacing:3px; color:var(--electric); text-transform:uppercase; margin-bottom:8px;">Overload</div>
+      <div style="font-size:12px; color:rgba(26,16,8,0.55); font-style:italic; line-height:1.7;">What the early internet felt like. What this coin is trying to bring back.</div>
+    </div>
+  </div>
+
   <style>
-    @media (max-width: 840px) {
+    @media (max-width: 1100px) {
       #lore .lore-inner { grid-template-columns: 1fr !important; }
+      #lore .lore-acronym { grid-template-columns: repeat(3,1fr) !important; }
+    }
+    @media (max-width: 840px) {
+      #lore .lore-acronym { grid-template-columns: 1fr 1fr !important; }
     }
   </style>
 </section>
@@ -1029,264 +893,53 @@
 
 <!-- HOW IT WORKS -->
 <section class="section section-alt" id="how" data-num="03">
-  <p class="section-label">// Mechanics</p>
-  <h2 class="section-title">How Rando Works</h2>
-  <p class="section-intro">The rules are simple. The outcomes are not.</p>
+  <p class="section-label">// Vibe</p>
+  <h2 class="section-title">What $RANDO Is</h2>
+  <p class="section-intro">No promises. No roadmap sermon. Just lore, chaos, and a memecoin.</p>
   <div class="how-steps">
     <div class="how-step">
       <div class="step-node"></div>
       <p class="step-num-label">Step I</p>
       <h3 class="step-title">Buy & Hold</h3>
-      <p class="step-text" id="step-hold">Acquire ≥ 0.25% of supply. Hold for the full draw interval without selling. Any sell — even 1 token — resets your clock to zero. The eyes remember.</p>
+      <p class="step-text" id="step-hold">Buy $RANDO, hold if you want, and stare back into the machine. The eyes remember everything, even when the chart does not.</p>
     </div>
     <div class="how-step">
       <div class="step-node"></div>
       <p class="step-num-label">Step II</p>
-      <h3 class="step-title">Fees Accumulate</h3>
-      <p class="step-text">Every trade generates fees. 100% flows to the reward wallet. SOL piles up between draws. The wallet is patient. The wallet is always patient.</p>
+      <h3 class="step-title">Fees Circulate</h3>
+      <p class="step-text">Every trade generates fees. The machine keeps moving. The wallet is patient. The wallet is always patient.</p>
     </div>
     <div class="how-step">
       <div class="step-node"></div>
       <p class="step-num-label">Step III</p>
-      <h3 class="step-title">The Draw</h3>
-      <p class="step-text" id="step-draw">First draw fires 20 minutes after launch. Each draw adds 20 minutes to the next interval. Caps at 6 hours. One random eligible holder wins 33% of the pot.</p>
+      <h3 class="step-title">The Lore</h3>
+      <p class="step-text" id="step-draw">R.A.N.D.O. comes from the age before guardrails, when AI made cursed miracles and nobody asked it to be normal.</p>
     </div>
     <div class="how-step">
       <div class="step-node"></div>
       <p class="step-num-label">Step IV</p>
-      <h3 class="step-title">The Patience Tax</h3>
-      <p class="step-text">If the pot drops below 0.5 SOL, draws pause. Fees keep flowing in. When it refills, the next winner collects everything. No warning. No schedule.</p>
+      <h3 class="step-title">The Signal</h3>
+      <p class="step-text">There is no clean thesis here beyond chaos, memory, and the joy of something a little broken surviving onchain.</p>
     </div>
-  </div>
-  <div style="text-align:center; margin-top:48px;">
-    <p style="font-family:'Space Mono',monospace; font-size:13px; color:var(--ink-mid); margin-bottom:16px; letter-spacing:0.04em;">
-      // Want to run Rando for your own bags.fm token?
-    </p>
-    <a href="https://rando-mu.vercel.app" target="_blank" rel="noopener noreferrer"
-       style="display:inline-block; font-family:'Space Mono',monospace; font-size:14px; font-weight:700;
-              padding:14px 32px; border:2px solid var(--coral); color:var(--coral);
-              text-decoration:none; letter-spacing:0.06em; text-transform:uppercase;
-              transition:background 0.15s, color 0.15s;"
-       onmouseover="this.style.background='var(--coral)';this.style.color='var(--cream)'"
-       onmouseout="this.style.background='transparent';this.style.color='var(--coral)'">
-      Launch Rando for your token →
-    </a>
   </div>
 </section>
 
 <section class="manifesto">
   <p class="manifesto-quote">Nobody promised you anything. That's the whole point.</p>
-  <p class="manifesto-attr">— Rando, on the wheel, somewhere in the desert</p>
+  <p class="manifesto-attr">— R.A.N.D.O., on the wheel, somewhere in the desert</p>
 </section>
 
 <footer>
   <div class="footer-logo">$RANDO</div>
   <ul class="footer-links">
-    <li><a href="REPLACE_WITH_BAGS_BUY_URL" target="_blank">Buy</a></li>
-    <li><a href="REPLACE_WITH_DEXSCREENER_URL" target="_blank">Chart</a></li>
-    <li><a href="#how">How It Works</a></li>
-    <li><a href="https://rando-mu.vercel.app" target="_blank">Rando App</a></li>
+    <li><a href="https://bags.fm/EZthQ6SUL51jJihQiFMDiZVmZiRMNjMQoTb7rNvTBAGS" target="_blank">Buy</a></li>
+    <li><a href="https://dexscreener.com/solana/9rwq1jvfdhdmzywzp48rdhajx1agfwydltf3j9z3yqrx" target="_blank">Chart</a></li>
+    <li><a href="https://rando-mu.vercel.app" target="_blank">$RANDO</a></li>
     <li><a href="https://bags.app" target="_blank">Bags.app</a></li>
   </ul>
-  <p class="footer-disclaimer">$RANDO is a memecoin on Solana. Not financial advice. Rando accepts no fiduciary responsibility. Must hold ≥ 0.25% of supply for the current draw interval without selling. Draw intervals increase over time. Past randomness does not guarantee future randomness.</p>
+  <p class="footer-disclaimer">$RANDO is a memecoin on Solana. Not financial advice. R.A.N.D.O. accepts no fiduciary responsibility. This site is lore-first and chaos-powered.</p>
 </footer>
 
-<script>
-  const LIVE_MODE        = false;
-  const DEV_WALLET       = "BJz5RFx9ycWZ9dVbRtsZq7h3L6XPWVDuDtbgEeJVBJMG";
-  const OPS_WALLET       = "5yDzyvs1m9BTC16hBzo8wxexLjQXRrDCuxkevovo73vv";
-  const RPC_URL          = "https://api.mainnet-beta.solana.com";
-  const PROJECT_API_URL  = "https://rando-mu.vercel.app/api/projects/REPLACE_WITH_PROJECT_ID";
-  const INITIAL_INTERVAL = 20 * 60;
-  const INTERVAL_INC     = 20 * 60;
-  const MAX_INTERVAL     = 6 * 60 * 60;
-  const MIN_POT_SOL      = 0.5;
-  const TX_RESERVE_SOL   = 0.1;        // kept in wallet for tx fees — never shown as winnable
 
-  async function rpc(method, params) {
-    const r = await fetch(RPC_URL, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({jsonrpc:'2.0',id:1,method,params}) });
-    return (await r.json()).result;
-  }
-
-  async function fetchPotBalance() {
-    try {
-      const r = await rpc('getBalance',[DEV_WALLET,{commitment:'confirmed'}]);
-      const raw = (r?.value ?? 0) / 1e9;
-      return Math.max(raw - TX_RESERVE_SOL, 0);   // subtract reserve; never show negative
-    } catch { return null; }
-  }
-
-  async function fetchRecentWinners() {
-    try {
-      const sigs = await rpc('getSignaturesForAddress',[DEV_WALLET,{limit:40,commitment:'confirmed'}]);
-      if (!sigs) return [];
-      const winners = []; const now = Math.floor(Date.now()/1000);
-      for (const s of sigs) {
-        if (winners.length >= 8 || s.err) continue;
-        try {
-          const tx = await rpc('getTransaction',[s.signature,{encoding:'jsonParsed',commitment:'confirmed',maxSupportedTransactionVersion:0}]);
-          if (!tx) continue;
-          const el = now - (tx.blockTime??now);
-          const t = el<120?'just now':el<3600?`${Math.floor(el/60)}m ago`:el<86400?`${Math.floor(el/3600)}h ago`:`${Math.floor(el/86400)}d ago`;
-          for (const ix of (tx.transaction?.message?.instructions??[])) {
-            if (ix.program!=='system'||ix.parsed?.type!=='transfer') continue;
-            const from=ix.parsed?.info?.source, to=ix.parsed?.info?.destination, amt=(ix.parsed?.info?.lamports??0)/1e9;
-            if (from!==DEV_WALLET||to===OPS_WALLET||amt<MIN_POT_SOL*0.2) continue;
-            const sh = to.length>8?`${to.slice(0,4)}...${to.slice(-4)}`:to;
-            winners.push({wallet:sh,sol:amt.toFixed(2),time:t,jackpot:amt>MIN_POT_SOL*2}); break;
-          }
-        } catch { continue; }
-      }
-      return winners;
-    } catch { return []; }
-  }
-
-  function getInterval(n) { return Math.min(INITIAL_INTERVAL + n * INTERVAL_INC, MAX_INTERVAL); }
-  function fmtInterval(s) { return s < 3600 ? `${s/60} min` : `${s/3600} hr`; }
-
-  async function fetchProjectState() {
-    try {
-      const r = await fetch(PROJECT_API_URL);
-      if (!r.ok) return null;
-      const d = await r.json();
-      return {
-        drawCount:        d.drawCount ?? 0,
-        nextDrawTime:     d.nextDrawAt ? Math.floor(new Date(d.nextDrawAt).getTime() / 1000) : null,
-        vaultSol:         d.vaultBalanceSol ?? null,
-        draws:            d.draws ?? [],
-        eligibilityType:  d.eligibilityType ?? null,
-        eligibilityValue: d.eligibilityValue ?? null,
-        baseInterval:     d.baseInterval ?? null,
-        increment:        d.increment ?? null,
-        cap:              d.cap ?? null,
-      };
-    } catch { return null; }
-  }
-
-  function applyProjectState(state) {
-    if (!state) return;
-    if (typeof state.drawCount === 'number') {
-      drawCount = state.drawCount;
-      updateIntervalDisplay();
-    }
-    if (state.nextDrawTime) {
-      nextDrawTime = state.nextDrawTime;
-    }
-    if (state.vaultSol !== null) {
-      updatePot(Math.max(state.vaultSol - TX_RESERVE_SOL, 0));
-    }
-    // Update How It Works description from live config
-    if (state.eligibilityType && state.eligibilityValue) {
-      const holdEl = document.getElementById('step-hold');
-      if (holdEl) {
-        const req = state.eligibilityType === 'percent'
-          ? `≥ ${state.eligibilityValue}% of supply`
-          : `≥ ${Number(state.eligibilityValue).toLocaleString()} tokens`;
-        holdEl.textContent = `Acquire ${req}. Hold for the full draw interval without selling. Any sell — even 1 token — resets your clock to zero. The eyes remember.`;
-      }
-    }
-    if (state.baseInterval && state.cap) {
-      const drawEl = document.getElementById('step-draw');
-      if (drawEl) {
-        const inc = state.increment && state.increment !== '0m'
-          ? ` Each draw adds ${state.increment} to the next interval. Caps at ${state.cap}.`
-          : ` Interval is fixed at ${state.baseInterval}.`;
-        drawEl.textContent = `First draw fires ${state.baseInterval} after launch.${inc} One random eligible holder wins 33% of the pot.`;
-      }
-    }
-    if (state.draws.length) {
-      const now = Math.floor(Date.now() / 1000);
-      winners = state.draws
-        .filter(d => d.winner && d.prizeAmountSol)
-        .slice(0, 8)
-        .map(d => {
-          const el = d.executedAt ? now - Math.floor(new Date(d.executedAt).getTime() / 1000) : 0;
-          const t = el < 120 ? 'just now' : el < 3600 ? `${Math.floor(el/60)}m ago` : el < 86400 ? `${Math.floor(el/3600)}h ago` : `${Math.floor(el/86400)}d ago`;
-          const w = d.winner;
-          return { wallet: w.length > 8 ? `${w.slice(0,4)}...${w.slice(-4)}` : w, sol: d.prizeAmountSol.toFixed(2), time: t, jackpot: d.prizeAmountSol > MIN_POT_SOL * 2 };
-        });
-      if (winners.length) buildFeed();
-    }
-  }
-
-  let winners = [
-    {wallet:"7xKp...mR4q",sol:"1.27",time:"18m ago", jackpot:false},
-    {wallet:"BnQw...9Zt2",sol:"0.98",time:"38m ago", jackpot:false},
-    {wallet:"F3aL...vH7c",sol:"0.74",time:"58m ago", jackpot:false},
-    {wallet:"9mPx...jK1d",sol:"1.61",time:"1h 18m ago",jackpot:true},
-    {wallet:"Cs4R...oN8f",sol:"0.52",time:"1h 38m ago",jackpot:false},
-    {wallet:"Eh7T...bW2s",sol:"1.12",time:"1h 58m ago",jackpot:false},
-    {wallet:"Kp2A...uD5g",sol:"0.83",time:"2h 18m ago",jackpot:false},
-    {wallet:"Wv9M...iE3h",sol:"0.67",time:"2h 38m ago",jackpot:false},
-  ];
-  let drawCount    = 0;
-  let nextDrawTime = Math.floor(Date.now()/1000) + INITIAL_INTERVAL;
-  let mockSol      = 2.41;
-
-  function buildFeed() {
-    const list = document.getElementById('feed-list');
-    if (!list) return;
-    if (!winners.length) { list.innerHTML='<div style="padding:14px 18px;color:rgba(26,16,8,0.3);font-size:11px;letter-spacing:2px;font-style:italic;">No draws yet</div>'; return; }
-    list.innerHTML = winners.map((w,i)=>`
-      <div class="feed-item">
-        <span class="feed-rank">${i+1}</span>
-        <div><div class="feed-wallet"><span class="short">${w.wallet}</span></div></div>
-        <div><span class="feed-sol">${w.sol} SOL${w.jackpot?'<span class="feed-jackpot">jackpot</span>':''}</span><span class="feed-time">${w.time}</span></div>
-      </div>`).join('');
-  }
-
-  function updatePot(sol) {
-    const el = document.getElementById('pot-sol');
-    if (el) el.textContent = sol!==null ? parseFloat(sol).toFixed(2)+' SOL' : '—';
-  }
-
-  function updateIntervalDisplay() {
-    const iv = getInterval(drawCount);
-    const el = document.getElementById('pot-interval');
-    const badge = document.getElementById('interval-badge');
-    if (el) el.textContent = fmtInterval(iv);
-    if (badge) badge.textContent = iv >= MAX_INTERVAL
-      ? `Draw #${drawCount+1} — capped at 6 hr`
-      : `Draw #${drawCount+1} — next: ${fmtInterval(getInterval(drawCount+1))}`;
-  }
-
-  function updateCountdown() {
-    const rem = Math.max(nextDrawTime - Math.floor(Date.now()/1000), 0);
-    const h=Math.floor(rem/3600), m=Math.floor((rem%3600)/60), s=rem%60;
-    const p = n => String(n).padStart(2,'0');
-    const hEl=document.getElementById('cd-hr'), mEl=document.getElementById('cd-min'), sEl=document.getElementById('cd-sec');
-    if (!hEl) return;
-    hEl.textContent=p(h); mEl.textContent=p(m); sEl.textContent=p(s);
-    [hEl,mEl,sEl].forEach(el=>el.classList.toggle('flash', rem<=10));
-  }
-
-  async function init() {
-    buildFeed(); updatePot(mockSol); updateIntervalDisplay(); updateCountdown();
-    if (LIVE_MODE) {
-      // Sync draw state (timer, draw count, vault balance, winners) from the app
-      const state = await fetchProjectState();
-      applyProjectState(state);
-      // Fall back to on-chain pot balance if API didn't return one
-      if (!state || state.vaultSol === null) {
-        const bal = await fetchPotBalance();
-        if (bal !== null) updatePot(bal);
-      }
-      // Poll every 30s: resync draw state + pot balance
-      setInterval(async () => {
-        const s = await fetchProjectState();
-        applyProjectState(s);
-        if (!s || s.vaultSol === null) {
-          const b = await fetchPotBalance();
-          if (b !== null) updatePot(b);
-        }
-      }, 30000);
-    } else {
-      setInterval(()=>{ mockSol=Math.min(mockSol+Math.random()*0.01,9.99); updatePot(mockSol); }, 5000);
-    }
-    setInterval(updateCountdown, 1000);
-  }
-
-  init();
-</script>
 </body>
 </html>
