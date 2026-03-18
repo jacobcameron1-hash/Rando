@@ -1,570 +1,226 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useWallet, useConnection } from '@solana/wallet-adapter-react';
-import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
-import {
-  VersionedTransaction,
-  TransactionMessage,
-  PublicKey,
-} from '@solana/web3.js';
-import { IntervalInput } from '@/components/IntervalInput';
-import { PercentInput } from '@/components/PercentInput';
-import { parseInterval } from '@/lib/interval';
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 
-type Step = 1 | 2 | 3 | 4;
-
-interface FormState {
+type SetupFormData = {
+  name: string;
   tokenMint: string;
-  eligibilityType: 'percent' | 'amount';
-  eligibilityValue: string;
-  baseInterval: string;
-  incrementInterval: string;
-  capInterval: string;
-  vaultBps: number;
-}
-
-const DEFAULT_FORM: FormState = {
-  tokenMint: '',
-  eligibilityType: 'percent',
-  eligibilityValue: '1',
-  baseInterval: '1h',
-  incrementInterval: '0',
-  capInterval: '7d',
-  vaultBps: 9500,
+  vaultAddress: string;
+  thresholdType: "amount" | "percent";
+  thresholdValue: string;
+  drawIntervalHours: string;
 };
 
 export default function SetupPage() {
   const router = useRouter();
-  const { publicKey, sendTransaction, connected } = useWallet();
-  const { connection } = useConnection();
 
-  const [step, setStep] = useState<Step>(1);
-  const [form, setForm] = useState<FormState>(DEFAULT_FORM);
-  const [loading, setLoading] = useState(false);
-  const [loadingMsg, setLoadingMsg] = useState('');
-  const [error, setError] = useState('');
-  const [projectId, setProjectId] = useState('');
-  const [copied, setCopied] = useState(false);
+  const [formData, setFormData] = useState<SetupFormData>({
+    name: "",
+    tokenMint: "",
+    vaultAddress: "",
+    thresholdType: "amount",
+    thresholdValue: "",
+    drawIntervalHours: "24",
+  });
 
-  function buildSummaryText(pid: string) {
-    const mintShort = form.tokenMint
-      ? `${form.tokenMint.slice(0, 6)}...${form.tokenMint.slice(-6)}`
-      : '(unknown)';
-    const eligLine =
-      form.eligibilityType === 'percent'
-        ? `${form.eligibilityValue}% of supply`
-        : `${form.eligibilityValue} tokens`;
-    const incLine =
-      !form.incrementInterval || form.incrementInterval === '0'
-        ? 'flat (no increment)'
-        : `+${form.incrementInterval} per draw, cap ${form.capInterval}`;
-    const prizePct = (form.vaultBps / 100).toFixed(1);
-    const dashboardUrl = `https://rando-mu.vercel.app/dashboard/${pid}`;
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-    return [
-      `🎲 Rando Lottery — ${mintShort}`,
-      ``,
-      `✅ Now live on bags.fm`,
-      ``,
-      `  Eligibility : Hold ≥ ${eligLine} for the full interval`,
-      `  Draw timer  : Base ${form.baseInterval}, ${incLine}`,
-      `  Prize share : ${prizePct}% of all trading fees`,
-      ``,
-      `Dashboard : ${dashboardUrl}`,
-      ``,
-      `Powered by $RANDO — https://randocoin.netlify.app`,
-    ].join('\n');
+  function updateField<K extends keyof SetupFormData>(
+    key: K,
+    value: SetupFormData[K]
+  ) {
+    setFormData((prev) => ({
+      ...prev,
+      [key]: value,
+    }));
   }
 
-  async function copySummary(pid: string) {
-    try {
-      await navigator.clipboard.writeText(buildSummaryText(pid));
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2500);
-    } catch {
-      // fallback: select the textarea text
-    }
-  }
-
-  function update<K extends keyof FormState>(key: K, value: FormState[K]) {
-    setForm((prev) => ({ ...prev, [key]: value }));
-    setError('');
-  }
-
-  function validateStep(s: Step): string {
-    if (s === 1) {
-      if (!connected || !publicKey) return 'Please connect your wallet first';
-      if (!form.tokenMint.trim()) return 'Token mint address is required';
-    }
-    if (s === 2) {
-      const v = parseFloat(form.eligibilityValue);
-      if (isNaN(v) || v <= 0) return 'Eligibility value must be a positive number';
-      if (form.eligibilityType === 'percent' && v > 100) return 'Percent must be ≤ 100';
-    }
-    if (s === 3) {
-      try {
-        const base = parseInterval(form.baseInterval);
-        const inc = parseInterval(form.incrementInterval || '0');
-        const cap = parseInterval(form.capInterval);
-        if (base <= 0) return 'Base interval must be > 0';
-        if (cap < base) return 'Cap must be ≥ base interval';
-        if (inc < 0) return 'Increment cannot be negative';
-      } catch (e) {
-        return e instanceof Error ? e.message : 'Invalid interval format';
-      }
-    }
-    return '';
-  }
-
-  function next() {
-    const err = validateStep(step);
-    if (err) { setError(err); return; }
-    setStep((prev) => Math.min(prev + 1, 4) as Step);
-  }
-
-  async function submit() {
-    const err = validateStep(3);
-    if (err) { setError(err); return; }
-    if (!publicKey) { setError('Wallet not connected'); return; }
-
-    setLoading(true);
-    setError('');
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setError(null);
+    setSuccessMessage(null);
+    setIsSubmitting(true);
 
     try {
-      // Step 1: Create the project and get setup transactions back
-      setLoadingMsg('Creating lottery...');
-      const res = await fetch('/api/projects', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...form,
-          creatorWallet: publicKey.toBase58(),
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to create project');
-
-      const { projectId: pid, setupTransactions } = data as {
-        projectId: string;
-        setupTransactions: string[];
+      const payload = {
+        name: formData.name.trim(),
+        tokenMint: formData.tokenMint.trim(),
+        vaultAddress: formData.vaultAddress.trim(),
+        thresholdType: formData.thresholdType,
+        thresholdValue:
+          formData.thresholdValue === ""
+            ? null
+            : Number(formData.thresholdValue),
+        drawIntervalHours:
+          formData.drawIntervalHours === ""
+            ? 24
+            : Number(formData.drawIntervalHours),
       };
 
-      // Step 2: Sign and send each setup transaction
-      if (setupTransactions && setupTransactions.length > 0) {
-        setLoadingMsg(`Signing ${setupTransactions.length} transaction(s)...`);
+      console.log("Submitting setup payload:", payload);
 
-        for (let i = 0; i < setupTransactions.length; i++) {
-          setLoadingMsg(`Sending transaction ${i + 1} of ${setupTransactions.length}...`);
-          const txBytes = Buffer.from(setupTransactions[i], 'base64');
-          const tx = VersionedTransaction.deserialize(txBytes);
+      const res = await fetch("/api/projects", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
 
-          const sig = await sendTransaction(tx, connection, {
-            skipPreflight: false,
-            preflightCommitment: 'confirmed',
-          });
+      const data = await res.json().catch(() => null);
 
-          // Wait for confirmation before sending next tx
-          await connection.confirmTransaction(sig, 'confirmed');
-        }
+      console.log("Setup API response:", data);
+
+      if (!res.ok) {
+        throw new Error(
+          data?.error || data?.message || "Failed to create project"
+        );
       }
 
-      setProjectId(pid);
-      setStep(4);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Unknown error');
+      const projectId = data?.projectId ?? data?.project?.id;
+
+      console.log("Resolved projectId:", projectId);
+
+      if (!projectId || typeof projectId !== "string") {
+        throw new Error("Project created but no valid projectId was returned");
+      }
+
+      setSuccessMessage("Rando is live");
+
+      router.push(`/dashboard/${projectId}`);
+    } catch (err) {
+      console.error("Setup failed:", err);
+      setError(
+        err instanceof Error ? err.message : "Something went wrong during setup"
+      );
     } finally {
-      setLoading(false);
-      setLoadingMsg('');
+      setIsSubmitting(false);
     }
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4 py-16">
-      <div className="w-full max-w-xl">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <span className="text-4xl">🎲</span>
-          <h1 className="text-2xl font-bold mt-2">Set up Rando</h1>
-          <p className="text-sm mt-1" style={{ color: 'var(--muted)' }}>
-            Automated holder lotteries for your bags.fm token
-          </p>
+    <main className="mx-auto max-w-2xl px-6 py-10">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold">Create a Rando Lottery</h1>
+        <p className="mt-2 text-sm text-gray-500">
+          Set up a holder lottery, connect fees to the vault, and launch your
+          project.
+        </p>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-6 rounded-2xl border p-6 shadow-sm">
+        <div>
+          <label className="mb-2 block text-sm font-medium">Project Name</label>
+          <input
+            type="text"
+            value={formData.name}
+            onChange={(e) => updateField("name", e.target.value)}
+            placeholder="My Token Lottery"
+            className="w-full rounded-xl border px-4 py-3 outline-none"
+            required
+          />
         </div>
 
-        {/* Progress */}
-        {step < 4 && (
-          <div className="flex items-center gap-2 mb-8">
-            {([1, 2, 3] as const).map((s) => (
-              <div key={s} className="flex items-center gap-2 flex-1">
-                <div
-                  className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all"
-                  style={{
-                    background: step >= s ? 'var(--accent)' : 'var(--card)',
-                    border: `1px solid ${step >= s ? 'var(--accent)' : 'var(--border)'}`,
-                    color: step >= s ? 'white' : 'var(--muted)',
-                  }}
-                >
-                  {s}
-                </div>
-                {s < 3 && (
-                  <div
-                    className="flex-1 h-px"
-                    style={{ background: step > s ? 'var(--accent)' : 'var(--border)' }}
-                  />
-                )}
-              </div>
-            ))}
+        <div>
+          <label className="mb-2 block text-sm font-medium">Token Mint</label>
+          <input
+            type="text"
+            value={formData.tokenMint}
+            onChange={(e) => updateField("tokenMint", e.target.value)}
+            placeholder="Token mint address"
+            className="w-full rounded-xl border px-4 py-3 outline-none"
+            required
+          />
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium">Vault Address</label>
+          <input
+            type="text"
+            value={formData.vaultAddress}
+            onChange={(e) => updateField("vaultAddress", e.target.value)}
+            placeholder="Vault wallet address"
+            className="w-full rounded-xl border px-4 py-3 outline-none"
+            required
+          />
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <div>
+            <label className="mb-2 block text-sm font-medium">
+              Threshold Type
+            </label>
+            <select
+              value={formData.thresholdType}
+              onChange={(e) =>
+                updateField(
+                  "thresholdType",
+                  e.target.value as "amount" | "percent"
+                )
+              }
+              className="w-full rounded-xl border px-4 py-3 outline-none"
+            >
+              <option value="amount">Amount</option>
+              <option value="percent">Percent</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-medium">
+              Threshold Value
+            </label>
+            <input
+              type="number"
+              min="0"
+              step="any"
+              value={formData.thresholdValue}
+              onChange={(e) => updateField("thresholdValue", e.target.value)}
+              placeholder="1000"
+              className="w-full rounded-xl border px-4 py-3 outline-none"
+              required
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium">
+            Draw Interval (hours)
+          </label>
+          <input
+            type="number"
+            min="1"
+            step="1"
+            value={formData.drawIntervalHours}
+            onChange={(e) => updateField("drawIntervalHours", e.target.value)}
+            placeholder="24"
+            className="w-full rounded-xl border px-4 py-3 outline-none"
+            required
+          />
+        </div>
+
+        {error && (
+          <div className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {error}
           </div>
         )}
 
-        {/* Card */}
-        <div
-          className="rounded-2xl p-8"
-          style={{ background: 'var(--card)', border: '1px solid var(--border)' }}
+        {successMessage && !error && (
+          <div className="rounded-xl border border-green-300 bg-green-50 px-4 py-3 text-sm text-green-700">
+            ✅ {successMessage}
+          </div>
+        )}
+
+        <button
+          type="submit"
+          disabled={isSubmitting}
+          className="w-full rounded-xl bg-black px-4 py-3 text-white disabled:opacity-50"
         >
-          {/* Step 1: Connect Wallet + Token */}
-          {step === 1 && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-xl font-semibold mb-1">Connect wallet & token</h2>
-                <p className="text-sm" style={{ color: 'var(--muted)' }}>
-                  Connect the wallet that owns the fee share admin for your token.
-                </p>
-              </div>
-
-              {/* Wallet connect button */}
-              <div>
-                <label className="block text-sm font-medium mb-2">Your wallet</label>
-                <WalletMultiButton
-                  style={{
-                    width: '100%',
-                    justifyContent: 'center',
-                    borderRadius: '12px',
-                    background: connected ? 'var(--card)' : 'var(--accent)',
-                    border: connected ? '1px solid var(--border)' : 'none',
-                    color: connected ? 'var(--foreground)' : 'white',
-                    fontSize: '14px',
-                    height: '48px',
-                  }}
-                />
-                {connected && publicKey && (
-                  <p className="text-xs mt-1" style={{ color: 'var(--muted)' }}>
-                    {publicKey.toBase58().slice(0, 8)}...{publicKey.toBase58().slice(-8)}
-                  </p>
-                )}
-              </div>
-
-              <FormField
-                label="Token mint address"
-                placeholder="So11111...111112"
-                value={form.tokenMint}
-                onChange={(v) => update('tokenMint', v)}
-                hint="The mint address of your bags.fm token."
-              />
-            </div>
-          )}
-
-          {/* Step 2: Eligibility */}
-          {step === 2 && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-xl font-semibold mb-1">Holder eligibility</h2>
-                <p className="text-sm" style={{ color: 'var(--muted)' }}>
-                  Set the minimum holding requirement. Holders must meet this threshold for
-                  the entire draw interval to be eligible.
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2">Threshold type</label>
-                <div className="flex rounded-lg overflow-hidden border" style={{ borderColor: 'var(--border)' }}>
-                  {(['percent', 'amount'] as const).map((t) => (
-                    <button
-                      key={t}
-                      onClick={() => update('eligibilityType', t)}
-                      className="flex-1 py-2 text-sm font-medium transition-all"
-                      style={{
-                        background: form.eligibilityType === t ? 'var(--accent)' : 'transparent',
-                        color: form.eligibilityType === t ? 'white' : 'var(--muted)',
-                      }}
-                    >
-                      {t === 'percent' ? '% of supply' : 'Token amount'}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  {form.eligibilityType === 'percent'
-                    ? 'Minimum % of total supply'
-                    : 'Minimum token amount'}
-                </label>
-                {form.eligibilityType === 'percent' ? (
-                  <PercentInput
-                    value={form.eligibilityValue}
-                    onChange={(v) => update('eligibilityValue', v)}
-                    min={0.1}
-                    max={100}
-                  />
-                ) : (
-                  <FormField
-                    label=""
-                    placeholder="1000000"
-                    value={form.eligibilityValue}
-                    onChange={(v) => update('eligibilityValue', v)}
-                    type="number"
-                  />
-                )}
-                <p className="text-xs mt-1" style={{ color: 'var(--muted)' }}>
-                  {form.eligibilityType === 'percent'
-                    ? 'Holders must hold this % of total supply for the entire draw interval'
-                    : 'Raw token amount (not accounting for decimals)'}
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Step 3: Timer */}
-          {step === 3 && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-xl font-semibold mb-1">Draw timer</h2>
-                <p className="text-sm" style={{ color: 'var(--muted)' }}>
-                  Configure the interval between draws. Use progressive timing to start fast
-                  and slow down automatically.
-                </p>
-              </div>
-
-              <div className="space-y-1">
-                <p className="text-xs font-mono p-3 rounded-lg" style={{ background: 'var(--background)', color: 'var(--accent)' }}>
-                  next_interval = min(base + (draws × increment), cap)
-                </p>
-              </div>
-
-              <IntervalInput
-                label="Base interval"
-                value={form.baseInterval}
-                onChange={(v) => update('baseInterval', v)}
-                hint="Starting draw frequency. e.g. 1h, 30m, 6h"
-                minMs={60_000}
-                maxMs={7 * 86_400_000}
-              />
-              <IntervalInput
-                label="Increment (per draw)"
-                value={form.incrementInterval}
-                onChange={(v) => update('incrementInterval', v)}
-                hint="How much to add after each draw. Use 0 for flat interval."
-                minMs={0}
-                maxMs={86_400_000}
-                allowZero
-              />
-              <IntervalInput
-                label="Cap (maximum interval)"
-                value={form.capInterval}
-                onChange={(v) => update('capInterval', v)}
-                hint="The interval will never exceed this. e.g. 7d"
-                minMs={60_000}
-                maxMs={30 * 86_400_000}
-              />
-
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Vault fee share ({(form.vaultBps / 100).toFixed(1)}%)
-                </label>
-                <input
-                  type="range"
-                  min={1000}
-                  max={9900}
-                  step={100}
-                  value={form.vaultBps}
-                  onChange={(e) => update('vaultBps', Number(e.target.value))}
-                  className="w-full accent-purple-500"
-                />
-                <p className="text-xs mt-1" style={{ color: 'var(--muted)' }}>
-                  {(form.vaultBps / 100).toFixed(1)}% of your fees go to the prize pool.{' '}
-                  Remaining {((10000 - form.vaultBps) / 100).toFixed(1)}% stays with you.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Step 4: Success */}
-          {step === 4 && (
-            <div className="space-y-5">
-              <div className="text-center space-y-2">
-                <div className="text-5xl mb-2">🎉</div>
-                <h2 className="text-xl font-semibold">Rando is live!</h2>
-                <p className="text-sm" style={{ color: 'var(--muted)' }}>
-                  Your lottery is set up and running. The first draw fires automatically
-                  once fees accumulate.
-                </p>
-              </div>
-
-              {/* Settings summary */}
-              <div
-                className="rounded-xl p-4 space-y-2 text-sm"
-                style={{ background: 'var(--background)', border: '1px solid var(--border)' }}
-              >
-                <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--accent)' }}>
-                  Your configuration
-                </p>
-                <SummaryRow label="Token" value={`${form.tokenMint.slice(0, 8)}...${form.tokenMint.slice(-8)}`} />
-                <SummaryRow
-                  label="Eligibility"
-                  value={
-                    form.eligibilityType === 'percent'
-                      ? `Hold ≥ ${form.eligibilityValue}% of supply`
-                      : `Hold ≥ ${form.eligibilityValue} tokens`
-                  }
-                />
-                <SummaryRow label="Base draw" value={form.baseInterval} />
-                <SummaryRow
-                  label="Progressive"
-                  value={
-                    !form.incrementInterval || form.incrementInterval === '0'
-                      ? 'Flat (no increment)'
-                      : `+${form.incrementInterval}/draw → cap ${form.capInterval}`
-                  }
-                />
-                <SummaryRow label="Prize share" value={`${(form.vaultBps / 100).toFixed(1)}% of trading fees`} />
-                {projectId && <SummaryRow label="Project ID" value={projectId} mono />}
-              </div>
-
-              {/* Copy-paste block */}
-              <div className="space-y-2">
-                <p className="text-xs" style={{ color: 'var(--muted)' }}>
-                  Share your lottery — copy and paste this anywhere:
-                </p>
-                <textarea
-                  readOnly
-                  value={buildSummaryText(projectId)}
-                  rows={9}
-                  className="w-full px-4 py-3 rounded-xl text-xs font-mono resize-none outline-none"
-                  style={{
-                    background: 'var(--background)',
-                    border: '1px solid var(--border)',
-                    color: 'var(--muted)',
-                  }}
-                />
-                <button
-                  onClick={() => copySummary(projectId)}
-                  className="w-full py-2 rounded-xl text-sm font-medium transition-all hover:opacity-80"
-                  style={{
-                    background: copied ? 'rgba(200,152,0,0.15)' : 'var(--card)',
-                    border: `1px solid ${copied ? 'var(--accent-gold)' : 'var(--border)'}`,
-                    color: copied ? 'var(--accent-gold)' : 'var(--muted)',
-                  }}
-                >
-                  {copied ? '✓ Copied!' : '📋 Copy summary'}
-                </button>
-              </div>
-
-              <button
-                onClick={() => router.push(`/dashboard/${projectId}`)}
-                className="w-full py-3 rounded-xl text-white font-semibold hover:opacity-90 transition-opacity"
-                style={{ background: 'var(--accent)' }}
-              >
-                View Dashboard →
-              </button>
-            </div>
-          )}
-
-          {/* Error */}
-          {error && (
-            <p className="mt-4 text-sm text-red-400 rounded-lg p-3" style={{ background: 'rgba(239,68,68,0.1)' }}>
-              {error}
-            </p>
-          )}
-
-          {/* Loading state */}
-          {loading && loadingMsg && (
-            <p className="mt-4 text-sm rounded-lg p-3 text-center" style={{ background: 'var(--background)', color: 'var(--accent)' }}>
-              {loadingMsg}
-            </p>
-          )}
-
-          {/* Actions */}
-          {step < 4 && (
-            <div className="flex gap-3 mt-8">
-              {step > 1 && (
-                <button
-                  onClick={() => setStep((prev) => Math.max(prev - 1, 1) as Step)}
-                  className="flex-1 py-3 rounded-xl font-medium transition-all hover:opacity-70"
-                  style={{ border: '1px solid var(--border)', color: 'var(--muted)' }}
-                  disabled={loading}
-                >
-                  Back
-                </button>
-              )}
-              <button
-                onClick={step === 3 ? submit : next}
-                disabled={loading}
-                className="flex-1 py-3 rounded-xl text-white font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
-                style={{ background: 'var(--accent)' }}
-              >
-                {loading
-                  ? (loadingMsg || 'Working...')
-                  : step === 3
-                  ? 'Create Lottery'
-                  : 'Continue →'}
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function SummaryRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
-  return (
-    <div className="flex justify-between gap-4 py-1 border-b border-[var(--border)] last:border-0">
-      <span className="text-xs" style={{ color: 'var(--muted)' }}>{label}</span>
-      <span
-        className={mono ? 'text-xs font-mono truncate max-w-[60%]' : 'text-xs text-right max-w-[60%]'}
-        style={{ color: 'var(--foreground)' }}
-      >
-        {value}
-      </span>
-    </div>
-  );
-}
-
-function FormField({
-  label,
-  placeholder,
-  value,
-  onChange,
-  hint,
-  type = 'text',
-}: {
-  label: string;
-  placeholder: string;
-  value: string;
-  onChange: (v: string) => void;
-  hint?: string;
-  type?: string;
-}) {
-  return (
-    <div>
-      <label className="block text-sm font-medium mb-2">{label}</label>
-      <input
-        type={type}
-        placeholder={placeholder}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full px-4 py-3 rounded-xl text-sm outline-none transition-all"
-        style={{
-          background: 'var(--background)',
-          border: '1px solid var(--border)',
-          color: 'var(--foreground)',
-        }}
-        onFocus={(e) => (e.target.style.borderColor = 'var(--accent)')}
-        onBlur={(e) => (e.target.style.borderColor = 'var(--border)')}
-      />
-      {hint && <p className="text-xs mt-1" style={{ color: 'var(--muted)' }}>{hint}</p>}
-    </div>
+          {isSubmitting ? "Launching..." : "Launch Rando"}
+        </button>
+      </form>
+    </main>
   );
 }
