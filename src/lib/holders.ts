@@ -50,11 +50,10 @@ export async function snapshotHolders(
   owner: PublicKey;
   amount: bigint;
 };
-    if (data.amount > 0n) {
-      const wallet = data.owner.toBase58();
-      byWallet.set(wallet, (byWallet.get(wallet) ?? 0n) + data.amount);
-    }
-  }
+    if (data.amount > BigInt(0)) {
+  const wallet = data.owner.toBase58();
+  byWallet.set(wallet, (byWallet.get(wallet) ?? BigInt(0)) + data.amount);
+}
 
   return Array.from(byWallet.entries()).map(([wallet, balance]) => ({
     wallet,
@@ -131,7 +130,7 @@ export async function verifyCandidateContinuousHold(
       return { wallet, passed: false, reason: 'no_token_accounts' };
     }
 
-    let currentBalance = 0n;
+    let currentBalance = BigInt(0);
     const accountPubkeys = tokenAccounts.value.map((a) => a.pubkey);
 
     for (const acc of tokenAccounts.value) {
