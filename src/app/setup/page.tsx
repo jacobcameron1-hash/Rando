@@ -71,7 +71,6 @@ export default function SetupPage() {
       });
 
       const data = await res.json().catch(() => null);
-
       console.log("Setup API response:", data);
 
       if (!res.ok) {
@@ -81,7 +80,6 @@ export default function SetupPage() {
       }
 
       const projectId = data?.projectId ?? data?.project?.id;
-
       console.log("Resolved projectId:", projectId);
 
       if (!projectId || typeof projectId !== "string") {
@@ -89,12 +87,13 @@ export default function SetupPage() {
       }
 
       setSuccessMessage("Rando is live");
-
       router.push(`/dashboard/${projectId}`);
     } catch (err) {
       console.error("Setup failed:", err);
       setError(
-        err instanceof Error ? err.message : "Something went wrong during setup"
+        err instanceof Error
+          ? err.message
+          : "Something went wrong during setup"
       );
     } finally {
       setIsSubmitting(false);
@@ -102,20 +101,23 @@ export default function SetupPage() {
   }
 
   return (
-    <main className="mx-auto max-w-2xl px-6 py-10">
+    <main className="mx-auto max-w-2xl px-6 py-12">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold">Create a Rando Lottery</h1>
-        <p className="mt-2 text-sm text-gray-500">
-          Set up a holder lottery, connect fees to the vault, and launch your
-          project.
+        <h1 className="text-3xl font-bold tracking-tight">
+          Create a Rando Lottery
+        </h1>
+        <p className="mt-3 text-sm text-gray-600">
+          Set up a holder lottery, point it at the wallet already receiving fees
+          from Bags, and launch your project.
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6 rounded-2xl border p-6 shadow-sm">
+      <form onSubmit={handleSubmit} className="space-y-6">
         <div>
-          <label className="mb-2 block text-sm font-medium">Project Name</label>
+          <label className="mb-2 block text-sm font-medium">
+            Project Name
+          </label>
           <input
-            type="text"
             value={formData.name}
             onChange={(e) => updateField("name", e.target.value)}
             placeholder="My Token Lottery"
@@ -127,7 +129,6 @@ export default function SetupPage() {
         <div>
           <label className="mb-2 block text-sm font-medium">Token Mint</label>
           <input
-            type="text"
             value={formData.tokenMint}
             onChange={(e) => updateField("tokenMint", e.target.value)}
             placeholder="Token mint address"
@@ -137,52 +138,52 @@ export default function SetupPage() {
         </div>
 
         <div>
-          <label className="mb-2 block text-sm font-medium">Vault Address</label>
+          <label className="mb-2 block text-sm font-medium">
+            Prize Pool Wallet (from Bags)
+          </label>
           <input
-            type="text"
             value={formData.vaultAddress}
             onChange={(e) => updateField("vaultAddress", e.target.value)}
-            placeholder="Vault wallet address"
+            placeholder="Paste wallet from Bags fee sharing"
             className="w-full rounded-xl border px-4 py-3 outline-none"
             required
           />
+          <p className="mt-2 text-sm text-gray-600">
+            This should be a wallet already receiving fees from Bags. Rando will
+            use it as the prize pool for the lottery.
+          </p>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2">
-          <div>
-            <label className="mb-2 block text-sm font-medium">
-              Threshold Type
-            </label>
-            <select
-              value={formData.thresholdType}
-              onChange={(e) =>
-                updateField(
-                  "thresholdType",
-                  e.target.value as "amount" | "percent"
-                )
-              }
-              className="w-full rounded-xl border px-4 py-3 outline-none"
-            >
-              <option value="amount">Amount</option>
-              <option value="percent">Percent</option>
-            </select>
-          </div>
+        <div>
+          <label className="mb-2 block text-sm font-medium">
+            Threshold Type
+          </label>
+          <select
+            value={formData.thresholdType}
+            onChange={(e) =>
+              updateField(
+                "thresholdType",
+                e.target.value as "amount" | "percent"
+              )
+            }
+            className="w-full rounded-xl border px-4 py-3 outline-none"
+          >
+            <option value="amount">Amount</option>
+            <option value="percent">Percent</option>
+          </select>
+        </div>
 
-          <div>
-            <label className="mb-2 block text-sm font-medium">
-              Threshold Value
-            </label>
-            <input
-              type="number"
-              min="0"
-              step="any"
-              value={formData.thresholdValue}
-              onChange={(e) => updateField("thresholdValue", e.target.value)}
-              placeholder="1000"
-              className="w-full rounded-xl border px-4 py-3 outline-none"
-              required
-            />
-          </div>
+        <div>
+          <label className="mb-2 block text-sm font-medium">
+            Threshold Value
+          </label>
+          <input
+            value={formData.thresholdValue}
+            onChange={(e) => updateField("thresholdValue", e.target.value)}
+            placeholder="1000"
+            className="w-full rounded-xl border px-4 py-3 outline-none"
+            required
+          />
         </div>
 
         <div>
@@ -190,9 +191,6 @@ export default function SetupPage() {
             Draw Interval (hours)
           </label>
           <input
-            type="number"
-            min="1"
-            step="1"
             value={formData.drawIntervalHours}
             onChange={(e) => updateField("drawIntervalHours", e.target.value)}
             placeholder="24"
@@ -202,13 +200,13 @@ export default function SetupPage() {
         </div>
 
         {error && (
-          <div className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             {error}
           </div>
         )}
 
         {successMessage && !error && (
-          <div className="rounded-xl border border-green-300 bg-green-50 px-4 py-3 text-sm text-green-700">
+          <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
             ✅ {successMessage}
           </div>
         )}
@@ -216,7 +214,7 @@ export default function SetupPage() {
         <button
           type="submit"
           disabled={isSubmitting}
-          className="w-full rounded-xl bg-black px-4 py-3 text-white disabled:opacity-50"
+          className="w-full rounded-xl bg-black px-4 py-3 text-white transition disabled:opacity-50"
         >
           {isSubmitting ? "Launching..." : "Launch Rando"}
         </button>
