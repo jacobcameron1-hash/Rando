@@ -25,10 +25,6 @@ export interface VerificationResult {
   reason: VerificationReason;
 }
 
-/**
- * Fetch all token holders for a given mint using getProgramAccounts.
- * Returns wallets with non-zero balances, grouped across multiple token accounts.
- */
 export async function snapshotHolders(
   connection: Connection,
   mintAddress: string,
@@ -46,14 +42,16 @@ export async function snapshotHolders(
   const byWallet = new Map<string, bigint>();
 
   for (const { account } of accounts) {
-   const data = AccountLayout.decode(account.data) as {
-  owner: PublicKey;
-  amount: bigint;
-};
+    const data = AccountLayout.decode(account.data) as unknown as {
+      owner: PublicKey;
+      amount: bigint;
+    };
+
     if (data.amount > BigInt(0)) {
-  const wallet = data.owner.toBase58();
-  byWallet.set(wallet, (byWallet.get(wallet) ?? BigInt(0)) + data.amount);
-}
+      const wallet = data.owner.toBase58();
+      byWallet.set(wallet, (byWallet.get(wallet) ?? BigInt(0)) + data.amount);
+    }
+  }
 
   return Array.from(byWallet.entries()).map(([wallet, balance]) => ({
     wallet,
@@ -76,18 +74,14 @@ export function calcMinBalance(
   decimals: number,
 ): bigint {
   if (eligibilityType === 'amount') {
-    const rawAmount = parseFloat(eligibilityValue);
-    return BigInt(Math.floor(rawAmount * 10 ** decimals));
+    const rawAmount = Number.parseFloat(eligibilityValue);
+    return BigInt(Math.floor(rawAmount * Math.pow(10, decimals)));
   }
 
-  const pct = parseFloat(eligibilityValue) / 100;
+  const pct = Number.parseFloat(eligibilityValue) / 100;
   return BigInt(Math.floor(Number(totalSupply) * pct));
 }
 
-/**
- * Build the current candidate pool.
- * Everyone above threshold right now gets one equal-probability ticket.
- */
 export async function buildCandidatePool(
   connection: Connection,
   mintAddress: string,
@@ -109,11 +103,6 @@ export async function buildCandidatePool(
   return { candidates, minBalance, totalSupply };
 }
 
-/**
- * Verify that a wallet continuously held at least minBalance from intervalStartUnix until now.
- * Transfers out are treated the same as sells because we only care whether the wallet's
- * balance ever dipped below the threshold.
- */
 export async function verifyCandidateContinuousHold(
   connection: Connection,
   mintAddress: string,
@@ -126,6 +115,7 @@ export async function verifyCandidateContinuousHold(
     const mint = new PublicKey(mintAddress);
 
     const tokenAccounts = await connection.getTokenAccountsByOwner(owner, { mint });
+
     if (tokenAccounts.value.length === 0) {
       return { wallet, passed: false, reason: 'no_token_accounts' };
     }
@@ -134,7 +124,7 @@ export async function verifyCandidateContinuousHold(
     const accountPubkeys = tokenAccounts.value.map((a) => a.pubkey);
 
     for (const acc of tokenAccounts.value) {
-      const decoded = AccountLayout.decode(acc.account.data) as {
+      const decoded = AccountLayout.decode(acc.account.data) as unknown as {
         amount: bigint;
       };
       currentBalance += decoded.amount;
@@ -152,7 +142,7 @@ export async function verifyCandidateContinuousHold(
 
     const allSignatures = sigArrays
       .flat()
-      .filter((s) => s.blockTime && s.blockTime >= intervalStartUnix);
+      .filter((s) => typeof s.blockTime === 'number' && s.blockTime >= intervalStartUnix);
 
     const uniqueSigs = [
       ...new Map(allSignatures.map((s) => [s.signature, s])).values(),
@@ -173,7 +163,7 @@ export async function verifyCandidateContinuousHold(
       );
 
       for (const tx of txs) {
-        if (!tx?.meta) continue;
+        if (!tx || !tx.meta) continue;
 
         const pre = tx.meta.preTokenBalances ?? [];
         const post = tx.meta.postTokenBalances ?? [];
@@ -181,12 +171,13 @@ export async function verifyCandidateContinuousHold(
         for (let j = 0; j < post.length; j++) {
           const preBal = pre[j];
           const postBal = post[j];
+
           if (!preBal || !postBal) continue;
 
           if (postBal.owner === wallet && postBal.mint === mintAddress) {
-            const delta =
-              BigInt(postBal.uiTokenAmount.amount) -
-              BigInt(preBal.uiTokenAmount.amount);
+            const preAmount = BigInt(preBal.uiTokenAmount.amount);
+            const postAmount = BigInt(postBal.uiTokenAmount.amount);
+            const delta = postAmount - preAmount;
 
             runningBalance -= delta;
 
