@@ -1,10 +1,10 @@
 # Rando
 
-A provably fair, on-chain holder lottery for Solana tokens.
+A provably fair, on-chain randomized rewards system for Solana token holders.
 
 ## 🚀 Phase 1 Complete
 
-Rando is a Solana-based holder lottery app that selects a random winner from token holders at scheduled intervals.
+Rando is a Solana-based system that selects a random eligible wallet from token holders at scheduled intervals.
 
 Core features implemented:
 
@@ -13,7 +13,7 @@ Core features implemented:
 - Holder snapshot + filtering
 - Duplicate draw protection
 - Due-time enforcement
-- Random winner selection
+- Random selection of eligible wallet
 - Proof logging system
 
 ## 🔧 How it works
@@ -23,14 +23,14 @@ Core features implemented:
    - Minimum token requirement
    - Excluded wallets (dev / fee wallets)
 3. Store a snapshot
-4. Randomly select a winner
-5. Save proof of the draw
+4. Randomly select an eligible wallet
+5. Save proof of the selection
 
 ## 🧪 API Routes
 
-- `/api/proof/run-draw` → executes a draw
-- `/api/proof/next-draw` → returns next scheduled draw
-- `/api/proof/history` → returns past draws
+- `/api/proof/run-draw` → executes a selection
+- `/api/proof/next-draw` → returns next scheduled selection
+- `/api/proof/history` → returns past selections
 - `/api/proof/create-payout-tx` → prepares payout transaction
 
 ## ⚠️ Notes
@@ -44,11 +44,3 @@ Core features implemented:
 ```bash
 npm install
 npm run dev
-🌐 Live Demo
-
-https://rando-mu.vercel.app
-
-
----
-
-# Step (only one)
