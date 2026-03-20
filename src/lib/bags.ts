@@ -117,15 +117,14 @@ export async function claimFeesForVault(
 
   for (const position of relevant) {
     try {
-      const claimTxArray: VersionedTransaction[] =
-        await sdk.fee.getClaimTransactions(vaultKeypair.publicKey, position);
+      const claimTxArray: Transaction[] = await sdk.fee.getClaimTransactions(
+        vaultKeypair.publicKey,
+        position
+      );
 
       for (const tx of claimTxArray) {
-        tx.sign([vaultKeypair]);
-
-        const signature = await connection.sendTransaction(tx, {
-          skipPreflight: false,
-          preflightCommitment: "confirmed",
+        const signature = await sendAndConfirmTransaction(connection, tx, [vaultKeypair], {
+          commitment: "confirmed",
         });
 
         await connection.confirmTransaction(signature, "confirmed");
