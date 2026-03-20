@@ -11,10 +11,10 @@ export async function POST(req: Request) {
       setupTransactions: [],
     });
   } catch (error) {
-    console.error("Failed to create project:", error);
+    console.error("Failed to create rewards project:", error);
 
     return Response.json(
-      { error: "Failed to create project" },
+      { error: "Failed to create rewards project" },
       { status: 500 }
     );
   }
