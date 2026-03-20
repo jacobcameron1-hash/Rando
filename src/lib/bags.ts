@@ -23,7 +23,8 @@ import {
 export const SYSTEM_PROGRAM_ADDRESS = SystemProgram.programId.toBase58();
 
 export function getConnection(): Connection {
-  const rpc = process.env.SOLANA_RPC_URL;
+  const rpc =
+    process.env.SOLANA_RPC_URL || process.env.NEXT_PUBLIC_SOLANA_RPC_URL;
   if (!rpc) throw new Error("SOLANA_RPC_URL env var is not set");
   return new Connection(rpc, "confirmed");
 }
@@ -104,33 +105,51 @@ export async function claimFeesForVault(
   const connection = getConnection();
   const sdk = getSDK(connection);
 
-  const positions = await sdk.fee.getAllClaimablePositions(
+  const feeApi = sdk.fee as unknown as {
+    getAllClaimablePositions: (
+      owner: PublicKey
+    ) => Promise<Array<Record<string, unknown>>>;
+    getClaimTransactions: (
+      position: Record<string, unknown>,
+      owner: PublicKey
+    ) => Promise<Array<Transaction | VersionedTransaction>>;
+  };
+
+  const positions = await feeApi.getAllClaimablePositions(
     vaultKeypair.publicKey
   );
 
   const relevant = positions.filter(
-    (p: Record<string, unknown>) =>
-      !p["baseMint"] || p["baseMint"] === baseMint
+    (p) => !p["baseMint"] || p["baseMint"] === baseMint
   );
 
   let totalClaimed = 0;
 
   for (const position of relevant) {
     try {
-      const claimTxArray: Transaction[] = await sdk.fee.getClaimTransactions(
-        vaultKeypair.publicKey,
-        position
+      const claimTxArray = await feeApi.getClaimTransactions(
+        position,
+        vaultKeypair.publicKey
       );
 
       for (const tx of claimTxArray) {
-        const signature = await sendAndConfirmTransaction(connection, tx, [vaultKeypair], {
-          commitment: "confirmed",
-        });
+        if (tx instanceof Transaction) {
+          await sendAndConfirmTransaction(connection, tx, [vaultKeypair], {
+            commitment: "confirmed",
+          });
+        } else {
+          tx.sign([vaultKeypair]);
 
-        await connection.confirmTransaction(signature, "confirmed");
+          const signature = await connection.sendTransaction(tx, {
+            skipPreflight: false,
+            preflightCommitment: "confirmed",
+          });
+
+          await connection.confirmTransaction(signature, "confirmed");
+        }
       }
 
-      const amount = (position as Record<string, unknown>)["amount"];
+      const amount = position["amount"];
       if (typeof amount === "number") {
         totalClaimed += Math.floor(amount * LAMPORTS_PER_SOL);
       }
@@ -198,9 +217,7 @@ export async function buildAdminLockTransaction(
 /**
  * Get token decimals from the mint account.
  */
-export async function getTokenDecimals(
-  mintAddress: string
-): Promise<number> {
+export async function getTokenDecimals(mintAddress: string): Promise<number> {
   const connection = getConnection();
   const info = await connection.getParsedAccountInfo(new PublicKey(mintAddress));
 
