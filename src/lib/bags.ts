@@ -118,7 +118,7 @@ export async function claimFeesForVault(
   for (const position of relevant) {
     try {
       const claimTxArray: VersionedTransaction[] =
-        await sdk.fee.getClaimTransaction(vaultKeypair.publicKey, position);
+        await sdk.fee.getClaimTransactions(vaultKeypair.publicKey, position);
 
       for (const tx of claimTxArray) {
         tx.sign([vaultKeypair]);
