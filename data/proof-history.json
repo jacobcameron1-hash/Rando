@@ -1,0 +1,694 @@
+[
+  {
+    "drawId": "rando-EZthQ6-2026-03-20T20-35-14-508Z-54",
+    "snapshotAt": "2026-03-20T20:35:14.508Z",
+    "tokenMint": "EZthQ6SUL51jJihQiFMDiZVmZiRMNjMQoTb7rNvTBAGS",
+    "slotId": "draw-0-2026-03-22T00-00-00-000Z",
+    "scheduledDrawAt": "2026-03-22T00:00:00.000Z",
+    "winner": {
+      "owner": "3Rd3WGmnpUrPiC9AtejBHPQhCvp8bis1c8h9NJ6qZ1rs",
+      "uiAmount": 12018068.039878,
+      "winnerIndex": 16
+    },
+    "counts": {
+      "totalTokenAccounts": 77,
+      "totalHolders": 77,
+      "holderCountAfterExclusions": 75,
+      "eligibleCount": 54,
+      "excludedWalletCount": 2,
+      "pagesScanned": 1
+    }
+  },
+  {
+    "drawId": "rando-EZthQ6-2026-03-20T20-32-51-489Z-54",
+    "snapshotAt": "2026-03-20T20:32:51.489Z",
+    "tokenMint": "EZthQ6SUL51jJihQiFMDiZVmZiRMNjMQoTb7rNvTBAGS",
+    "winner": {
+      "owner": "rWZaju2cGkcTQLGT79Vg3TyfsSZSGkRKTrqAu5szmTs",
+      "uiAmount": 2216447.705558,
+      "winnerIndex": 27
+    },
+    "counts": {
+      "totalTokenAccounts": 77,
+      "totalHolders": 77,
+      "holderCountAfterExclusions": 75,
+      "eligibleCount": 54,
+      "excludedWalletCount": 2,
+      "pagesScanned": 1
+    },
+    "rules": {
+      "decimals": 9,
+      "minTokens": 1000000,
+      "excludedWallets": [
+        "4FMEhKstf4AnZi6bdnVb5wvcffWPCebsvthvkPYTzC99",
+        "BJz5RFx9ycWZ9dVbRtsZq7h3L6XPWVDuDtbgEeJVBJMG"
+      ]
+    },
+    "proof": {
+      "eligibleWalletSample": [
+        {
+          "owner": "EaWaqtZB7P9ktGMEQj6c4MGJixFjWyRk2wMPmEecmkm8",
+          "uiAmount": 19795211.75881
+        },
+        {
+          "owner": "ERpgpKo9aBxSDbnn3mSqUHRW6qnuKkRmsxWq6roGN6U3",
+          "uiAmount": 1011708.173767
+        },
+        {
+          "owner": "He1qAZzitL87JpNPkzKuRu2MuUSpjmKjoyVxMTEXn46S",
+          "uiAmount": 7700050.187921
+        },
+        {
+          "owner": "5GA8swsrgawCSLXuVTWPGNzQDM4GNxNbSn3kekdGRuY1",
+          "uiAmount": 10527094.451443
+        },
+        {
+          "owner": "4sC3Cqvjz5FK95Xki636Wnudydmo3ZPJj9DNETrZUc3B",
+          "uiAmount": 22126806.744073
+        },
+        {
+          "owner": "2RvT5QiMv9FxeUKxZ64FxpLzCtQzBFaST9J3UA6w113s",
+          "uiAmount": 15341461.386752
+        },
+        {
+          "owner": "F1FmEFgz2S83ySWEYWedqP1NZoP9aRZRQwNijoeiRcEm",
+          "uiAmount": 3246759.026415
+        },
+        {
+          "owner": "2dTJwA7X3RbVJ6C9fJpVtU9uoB8gYh1x4XZF5qz5jw12",
+          "uiAmount": 4805635.683393
+        },
+        {
+          "owner": "AGAEc1HZaTxfS3dEcBnNztv9HPtZ7ScJfGD8P6jJnjxe",
+          "uiAmount": 23444798.702505
+        },
+        {
+          "owner": "FW2hXoAf6ABSZ7iTyXfCFtpiwHPxC3m2b2hG942yJxy4",
+          "uiAmount": 5000000
+        }
+      ],
+      "topEligibleSample": [
+        {
+          "owner": "FhVo3mqL8PW5pH5U2CN4XE33DokiyZnUwuGpH2hmHLuM",
+          "uiAmount": 489251925.825941
+        },
+        {
+          "owner": "AcsTKxJXcKzKjPnYm9Ccwj57UwJ71BXcY5MgykzXhbAy",
+          "uiAmount": 29344234.293581
+        },
+        {
+          "owner": "Gtg4qSMkxME783rNdwHYQ11DbQvoXgLodTBLAAa8G5C2",
+          "uiAmount": 25732259.826207
+        },
+        {
+          "owner": "AGAEc1HZaTxfS3dEcBnNztv9HPtZ7ScJfGD8P6jJnjxe",
+          "uiAmount": 23444798.702505
+        },
+        {
+          "owner": "4sC3Cqvjz5FK95Xki636Wnudydmo3ZPJj9DNETrZUc3B",
+          "uiAmount": 22126806.744073
+        },
+        {
+          "owner": "Auf3nsLDfF1C5Ew5c9zwLj1nBtyRSHPUc34m3dqnF5v2",
+          "uiAmount": 20112834.520256
+        },
+        {
+          "owner": "EaWaqtZB7P9ktGMEQj6c4MGJixFjWyRk2wMPmEecmkm8",
+          "uiAmount": 19795211.75881
+        },
+        {
+          "owner": "4g62Ptso7wb7dDJw6exd3iR8gvWnxS78RfPTzjDzfLWQ",
+          "uiAmount": 18746868.074718
+        },
+        {
+          "owner": "EM9BWsTNzoTfv68btcSP2A2baa2DWPPFVvBHtwnyzBQ5",
+          "uiAmount": 18017581.794577
+        },
+        {
+          "owner": "5jer4b9TbkWYqMtdCmGrzDsMMVjT9dsSAwbxC3vwAFBS",
+          "uiAmount": 16208271.951943
+        }
+      ]
+    }
+  },
+  {
+    "drawId": "rando-EZthQ6-2026-03-20T20-13-39-383Z-54",
+    "snapshotAt": "2026-03-20T20:13:39.383Z",
+    "tokenMint": "EZthQ6SUL51jJihQiFMDiZVmZiRMNjMQoTb7rNvTBAGS",
+    "winner": {
+      "owner": "H5P4v7gPe7BnfTJtRdUzEgUjCyE4dSF4ofyxknGjTZ5J",
+      "uiAmount": 11463996.928879,
+      "winnerIndex": 39
+    },
+    "counts": {
+      "totalTokenAccounts": 77,
+      "totalHolders": 77,
+      "holderCountAfterExclusions": 75,
+      "eligibleCount": 54,
+      "excludedWalletCount": 2,
+      "pagesScanned": 1
+    },
+    "rules": {
+      "decimals": 9,
+      "minTokens": 1000000,
+      "excludedWallets": [
+        "4FMEhKstf4AnZi6bdnVb5wvcffWPCebsvthvkPYTzC99",
+        "BJz5RFx9ycWZ9dVbRtsZq7h3L6XPWVDuDtbgEeJVBJMG"
+      ]
+    },
+    "proof": {
+      "eligibleWalletSample": [
+        {
+          "owner": "EaWaqtZB7P9ktGMEQj6c4MGJixFjWyRk2wMPmEecmkm8",
+          "uiAmount": 19795211.75881
+        },
+        {
+          "owner": "ERpgpKo9aBxSDbnn3mSqUHRW6qnuKkRmsxWq6roGN6U3",
+          "uiAmount": 1011708.173767
+        },
+        {
+          "owner": "He1qAZzitL87JpNPkzKuRu2MuUSpjmKjoyVxMTEXn46S",
+          "uiAmount": 2337803.98172
+        },
+        {
+          "owner": "5GA8swsrgawCSLXuVTWPGNzQDM4GNxNbSn3kekdGRuY1",
+          "uiAmount": 10527094.451443
+        },
+        {
+          "owner": "4sC3Cqvjz5FK95Xki636Wnudydmo3ZPJj9DNETrZUc3B",
+          "uiAmount": 22126806.744073
+        },
+        {
+          "owner": "2RvT5QiMv9FxeUKxZ64FxpLzCtQzBFaST9J3UA6w113s",
+          "uiAmount": 15341461.386752
+        },
+        {
+          "owner": "F1FmEFgz2S83ySWEYWedqP1NZoP9aRZRQwNijoeiRcEm",
+          "uiAmount": 3246759.026415
+        },
+        {
+          "owner": "2dTJwA7X3RbVJ6C9fJpVtU9uoB8gYh1x4XZF5qz5jw12",
+          "uiAmount": 4805635.683393
+        },
+        {
+          "owner": "AGAEc1HZaTxfS3dEcBnNztv9HPtZ7ScJfGD8P6jJnjxe",
+          "uiAmount": 23444798.702505
+        },
+        {
+          "owner": "FW2hXoAf6ABSZ7iTyXfCFtpiwHPxC3m2b2hG942yJxy4",
+          "uiAmount": 5000000
+        }
+      ],
+      "topEligibleSample": [
+        {
+          "owner": "FhVo3mqL8PW5pH5U2CN4XE33DokiyZnUwuGpH2hmHLuM",
+          "uiAmount": 494614172.032142
+        },
+        {
+          "owner": "AcsTKxJXcKzKjPnYm9Ccwj57UwJ71BXcY5MgykzXhbAy",
+          "uiAmount": 29344234.293581
+        },
+        {
+          "owner": "Gtg4qSMkxME783rNdwHYQ11DbQvoXgLodTBLAAa8G5C2",
+          "uiAmount": 25732259.826207
+        },
+        {
+          "owner": "AGAEc1HZaTxfS3dEcBnNztv9HPtZ7ScJfGD8P6jJnjxe",
+          "uiAmount": 23444798.702505
+        },
+        {
+          "owner": "4sC3Cqvjz5FK95Xki636Wnudydmo3ZPJj9DNETrZUc3B",
+          "uiAmount": 22126806.744073
+        },
+        {
+          "owner": "Auf3nsLDfF1C5Ew5c9zwLj1nBtyRSHPUc34m3dqnF5v2",
+          "uiAmount": 20112834.520256
+        },
+        {
+          "owner": "EaWaqtZB7P9ktGMEQj6c4MGJixFjWyRk2wMPmEecmkm8",
+          "uiAmount": 19795211.75881
+        },
+        {
+          "owner": "4g62Ptso7wb7dDJw6exd3iR8gvWnxS78RfPTzjDzfLWQ",
+          "uiAmount": 18746868.074718
+        },
+        {
+          "owner": "EM9BWsTNzoTfv68btcSP2A2baa2DWPPFVvBHtwnyzBQ5",
+          "uiAmount": 18017581.794577
+        },
+        {
+          "owner": "5jer4b9TbkWYqMtdCmGrzDsMMVjT9dsSAwbxC3vwAFBS",
+          "uiAmount": 16208271.951943
+        }
+      ]
+    }
+  },
+  {
+    "drawId": "rando-EZthQ6-2026-03-20T19-57-12-720Z-54",
+    "snapshotAt": "2026-03-20T19:57:12.720Z",
+    "tokenMint": "EZthQ6SUL51jJihQiFMDiZVmZiRMNjMQoTb7rNvTBAGS",
+    "winner": {
+      "owner": "AJuAmT7rPVbND5ivgibi1vabRN33raqspmmdo38skgtv",
+      "uiAmount": 3408559.932553,
+      "winnerIndex": 34
+    },
+    "counts": {
+      "totalTokenAccounts": 77,
+      "totalHolders": 77,
+      "holderCountAfterExclusions": 75,
+      "eligibleCount": 54,
+      "excludedWalletCount": 2,
+      "pagesScanned": 1
+    },
+    "rules": {
+      "decimals": 9,
+      "minTokens": 1000000,
+      "excludedWallets": [
+        "4FMEhKstf4AnZi6bdnVb5wvcffWPCebsvthvkPYTzC99",
+        "BJz5RFx9ycWZ9dVbRtsZq7h3L6XPWVDuDtbgEeJVBJMG"
+      ]
+    },
+    "proof": {
+      "eligibleWalletSample": [
+        {
+          "owner": "EaWaqtZB7P9ktGMEQj6c4MGJixFjWyRk2wMPmEecmkm8",
+          "uiAmount": 19795211.75881
+        },
+        {
+          "owner": "ERpgpKo9aBxSDbnn3mSqUHRW6qnuKkRmsxWq6roGN6U3",
+          "uiAmount": 1011708.173767
+        },
+        {
+          "owner": "He1qAZzitL87JpNPkzKuRu2MuUSpjmKjoyVxMTEXn46S",
+          "uiAmount": 2337803.98172
+        },
+        {
+          "owner": "5GA8swsrgawCSLXuVTWPGNzQDM4GNxNbSn3kekdGRuY1",
+          "uiAmount": 10527094.451443
+        },
+        {
+          "owner": "4sC3Cqvjz5FK95Xki636Wnudydmo3ZPJj9DNETrZUc3B",
+          "uiAmount": 22126806.744073
+        },
+        {
+          "owner": "2RvT5QiMv9FxeUKxZ64FxpLzCtQzBFaST9J3UA6w113s",
+          "uiAmount": 15341461.386752
+        },
+        {
+          "owner": "F1FmEFgz2S83ySWEYWedqP1NZoP9aRZRQwNijoeiRcEm",
+          "uiAmount": 3246759.026415
+        },
+        {
+          "owner": "2dTJwA7X3RbVJ6C9fJpVtU9uoB8gYh1x4XZF5qz5jw12",
+          "uiAmount": 4805635.683393
+        },
+        {
+          "owner": "AGAEc1HZaTxfS3dEcBnNztv9HPtZ7ScJfGD8P6jJnjxe",
+          "uiAmount": 23444798.702505
+        },
+        {
+          "owner": "FW2hXoAf6ABSZ7iTyXfCFtpiwHPxC3m2b2hG942yJxy4",
+          "uiAmount": 5000000
+        }
+      ],
+      "topEligibleSample": [
+        {
+          "owner": "FhVo3mqL8PW5pH5U2CN4XE33DokiyZnUwuGpH2hmHLuM",
+          "uiAmount": 494614172.032142
+        },
+        {
+          "owner": "AcsTKxJXcKzKjPnYm9Ccwj57UwJ71BXcY5MgykzXhbAy",
+          "uiAmount": 29344234.293581
+        },
+        {
+          "owner": "Gtg4qSMkxME783rNdwHYQ11DbQvoXgLodTBLAAa8G5C2",
+          "uiAmount": 25732259.826207
+        },
+        {
+          "owner": "AGAEc1HZaTxfS3dEcBnNztv9HPtZ7ScJfGD8P6jJnjxe",
+          "uiAmount": 23444798.702505
+        },
+        {
+          "owner": "4sC3Cqvjz5FK95Xki636Wnudydmo3ZPJj9DNETrZUc3B",
+          "uiAmount": 22126806.744073
+        },
+        {
+          "owner": "Auf3nsLDfF1C5Ew5c9zwLj1nBtyRSHPUc34m3dqnF5v2",
+          "uiAmount": 20112834.520256
+        },
+        {
+          "owner": "EaWaqtZB7P9ktGMEQj6c4MGJixFjWyRk2wMPmEecmkm8",
+          "uiAmount": 19795211.75881
+        },
+        {
+          "owner": "4g62Ptso7wb7dDJw6exd3iR8gvWnxS78RfPTzjDzfLWQ",
+          "uiAmount": 18746868.074718
+        },
+        {
+          "owner": "EM9BWsTNzoTfv68btcSP2A2baa2DWPPFVvBHtwnyzBQ5",
+          "uiAmount": 18017581.794577
+        },
+        {
+          "owner": "5jer4b9TbkWYqMtdCmGrzDsMMVjT9dsSAwbxC3vwAFBS",
+          "uiAmount": 16208271.951943
+        }
+      ]
+    }
+  },
+  {
+    "drawId": "rando-EZthQ6-2026-03-20T19-57-11-550Z-54",
+    "snapshotAt": "2026-03-20T19:57:11.550Z",
+    "tokenMint": "EZthQ6SUL51jJihQiFMDiZVmZiRMNjMQoTb7rNvTBAGS",
+    "winner": {
+      "owner": "79jaStonziyG47PC5JcGX9GVTBUSKUQQ7fyCDSuQH5Fc",
+      "uiAmount": 5059970.632657,
+      "winnerIndex": 10
+    },
+    "counts": {
+      "totalTokenAccounts": 77,
+      "totalHolders": 77,
+      "holderCountAfterExclusions": 75,
+      "eligibleCount": 54,
+      "excludedWalletCount": 2,
+      "pagesScanned": 1
+    },
+    "rules": {
+      "decimals": 9,
+      "minTokens": 1000000,
+      "excludedWallets": [
+        "4FMEhKstf4AnZi6bdnVb5wvcffWPCebsvthvkPYTzC99",
+        "BJz5RFx9ycWZ9dVbRtsZq7h3L6XPWVDuDtbgEeJVBJMG"
+      ]
+    },
+    "proof": {
+      "eligibleWalletSample": [
+        {
+          "owner": "EaWaqtZB7P9ktGMEQj6c4MGJixFjWyRk2wMPmEecmkm8",
+          "uiAmount": 19795211.75881
+        },
+        {
+          "owner": "ERpgpKo9aBxSDbnn3mSqUHRW6qnuKkRmsxWq6roGN6U3",
+          "uiAmount": 1011708.173767
+        },
+        {
+          "owner": "He1qAZzitL87JpNPkzKuRu2MuUSpjmKjoyVxMTEXn46S",
+          "uiAmount": 2337803.98172
+        },
+        {
+          "owner": "5GA8swsrgawCSLXuVTWPGNzQDM4GNxNbSn3kekdGRuY1",
+          "uiAmount": 10527094.451443
+        },
+        {
+          "owner": "4sC3Cqvjz5FK95Xki636Wnudydmo3ZPJj9DNETrZUc3B",
+          "uiAmount": 22126806.744073
+        },
+        {
+          "owner": "2RvT5QiMv9FxeUKxZ64FxpLzCtQzBFaST9J3UA6w113s",
+          "uiAmount": 15341461.386752
+        },
+        {
+          "owner": "F1FmEFgz2S83ySWEYWedqP1NZoP9aRZRQwNijoeiRcEm",
+          "uiAmount": 3246759.026415
+        },
+        {
+          "owner": "2dTJwA7X3RbVJ6C9fJpVtU9uoB8gYh1x4XZF5qz5jw12",
+          "uiAmount": 4805635.683393
+        },
+        {
+          "owner": "AGAEc1HZaTxfS3dEcBnNztv9HPtZ7ScJfGD8P6jJnjxe",
+          "uiAmount": 23444798.702505
+        },
+        {
+          "owner": "FW2hXoAf6ABSZ7iTyXfCFtpiwHPxC3m2b2hG942yJxy4",
+          "uiAmount": 5000000
+        }
+      ],
+      "topEligibleSample": [
+        {
+          "owner": "FhVo3mqL8PW5pH5U2CN4XE33DokiyZnUwuGpH2hmHLuM",
+          "uiAmount": 494614172.032142
+        },
+        {
+          "owner": "AcsTKxJXcKzKjPnYm9Ccwj57UwJ71BXcY5MgykzXhbAy",
+          "uiAmount": 29344234.293581
+        },
+        {
+          "owner": "Gtg4qSMkxME783rNdwHYQ11DbQvoXgLodTBLAAa8G5C2",
+          "uiAmount": 25732259.826207
+        },
+        {
+          "owner": "AGAEc1HZaTxfS3dEcBnNztv9HPtZ7ScJfGD8P6jJnjxe",
+          "uiAmount": 23444798.702505
+        },
+        {
+          "owner": "4sC3Cqvjz5FK95Xki636Wnudydmo3ZPJj9DNETrZUc3B",
+          "uiAmount": 22126806.744073
+        },
+        {
+          "owner": "Auf3nsLDfF1C5Ew5c9zwLj1nBtyRSHPUc34m3dqnF5v2",
+          "uiAmount": 20112834.520256
+        },
+        {
+          "owner": "EaWaqtZB7P9ktGMEQj6c4MGJixFjWyRk2wMPmEecmkm8",
+          "uiAmount": 19795211.75881
+        },
+        {
+          "owner": "4g62Ptso7wb7dDJw6exd3iR8gvWnxS78RfPTzjDzfLWQ",
+          "uiAmount": 18746868.074718
+        },
+        {
+          "owner": "EM9BWsTNzoTfv68btcSP2A2baa2DWPPFVvBHtwnyzBQ5",
+          "uiAmount": 18017581.794577
+        },
+        {
+          "owner": "5jer4b9TbkWYqMtdCmGrzDsMMVjT9dsSAwbxC3vwAFBS",
+          "uiAmount": 16208271.951943
+        }
+      ]
+    }
+  },
+  {
+    "drawId": "rando-EZthQ6-2026-03-20T19-57-07-186Z-54",
+    "snapshotAt": "2026-03-20T19:57:07.186Z",
+    "tokenMint": "EZthQ6SUL51jJihQiFMDiZVmZiRMNjMQoTb7rNvTBAGS",
+    "winner": {
+      "owner": "CzZNVj5B4cCFJ5FmmR27qDn1oNo27UkmJjfhwCFYWKx9",
+      "uiAmount": 2860989.549082,
+      "winnerIndex": 47
+    },
+    "counts": {
+      "totalTokenAccounts": 77,
+      "totalHolders": 77,
+      "holderCountAfterExclusions": 75,
+      "eligibleCount": 54,
+      "excludedWalletCount": 2,
+      "pagesScanned": 1
+    },
+    "rules": {
+      "decimals": 9,
+      "minTokens": 1000000,
+      "excludedWallets": [
+        "4FMEhKstf4AnZi6bdnVb5wvcffWPCebsvthvkPYTzC99",
+        "BJz5RFx9ycWZ9dVbRtsZq7h3L6XPWVDuDtbgEeJVBJMG"
+      ]
+    },
+    "proof": {
+      "eligibleWalletSample": [
+        {
+          "owner": "EaWaqtZB7P9ktGMEQj6c4MGJixFjWyRk2wMPmEecmkm8",
+          "uiAmount": 19795211.75881
+        },
+        {
+          "owner": "ERpgpKo9aBxSDbnn3mSqUHRW6qnuKkRmsxWq6roGN6U3",
+          "uiAmount": 1011708.173767
+        },
+        {
+          "owner": "He1qAZzitL87JpNPkzKuRu2MuUSpjmKjoyVxMTEXn46S",
+          "uiAmount": 2337803.98172
+        },
+        {
+          "owner": "5GA8swsrgawCSLXuVTWPGNzQDM4GNxNbSn3kekdGRuY1",
+          "uiAmount": 10527094.451443
+        },
+        {
+          "owner": "4sC3Cqvjz5FK95Xki636Wnudydmo3ZPJj9DNETrZUc3B",
+          "uiAmount": 22126806.744073
+        },
+        {
+          "owner": "2RvT5QiMv9FxeUKxZ64FxpLzCtQzBFaST9J3UA6w113s",
+          "uiAmount": 15341461.386752
+        },
+        {
+          "owner": "F1FmEFgz2S83ySWEYWedqP1NZoP9aRZRQwNijoeiRcEm",
+          "uiAmount": 3246759.026415
+        },
+        {
+          "owner": "2dTJwA7X3RbVJ6C9fJpVtU9uoB8gYh1x4XZF5qz5jw12",
+          "uiAmount": 4805635.683393
+        },
+        {
+          "owner": "AGAEc1HZaTxfS3dEcBnNztv9HPtZ7ScJfGD8P6jJnjxe",
+          "uiAmount": 23444798.702505
+        },
+        {
+          "owner": "FW2hXoAf6ABSZ7iTyXfCFtpiwHPxC3m2b2hG942yJxy4",
+          "uiAmount": 5000000
+        }
+      ],
+      "topEligibleSample": [
+        {
+          "owner": "FhVo3mqL8PW5pH5U2CN4XE33DokiyZnUwuGpH2hmHLuM",
+          "uiAmount": 494614172.032142
+        },
+        {
+          "owner": "AcsTKxJXcKzKjPnYm9Ccwj57UwJ71BXcY5MgykzXhbAy",
+          "uiAmount": 29344234.293581
+        },
+        {
+          "owner": "Gtg4qSMkxME783rNdwHYQ11DbQvoXgLodTBLAAa8G5C2",
+          "uiAmount": 25732259.826207
+        },
+        {
+          "owner": "AGAEc1HZaTxfS3dEcBnNztv9HPtZ7ScJfGD8P6jJnjxe",
+          "uiAmount": 23444798.702505
+        },
+        {
+          "owner": "4sC3Cqvjz5FK95Xki636Wnudydmo3ZPJj9DNETrZUc3B",
+          "uiAmount": 22126806.744073
+        },
+        {
+          "owner": "Auf3nsLDfF1C5Ew5c9zwLj1nBtyRSHPUc34m3dqnF5v2",
+          "uiAmount": 20112834.520256
+        },
+        {
+          "owner": "EaWaqtZB7P9ktGMEQj6c4MGJixFjWyRk2wMPmEecmkm8",
+          "uiAmount": 19795211.75881
+        },
+        {
+          "owner": "4g62Ptso7wb7dDJw6exd3iR8gvWnxS78RfPTzjDzfLWQ",
+          "uiAmount": 18746868.074718
+        },
+        {
+          "owner": "EM9BWsTNzoTfv68btcSP2A2baa2DWPPFVvBHtwnyzBQ5",
+          "uiAmount": 18017581.794577
+        },
+        {
+          "owner": "5jer4b9TbkWYqMtdCmGrzDsMMVjT9dsSAwbxC3vwAFBS",
+          "uiAmount": 16208271.951943
+        }
+      ]
+    }
+  },
+  {
+    "drawId": "rando-EZthQ6-2026-03-20T19-52-51-496Z-54",
+    "snapshotAt": "2026-03-20T19:52:51.496Z",
+    "tokenMint": "EZthQ6SUL51jJihQiFMDiZVmZiRMNjMQoTb7rNvTBAGS",
+    "winner": {
+      "owner": "FW2hXoAf6ABSZ7iTyXfCFtpiwHPxC3m2b2hG942yJxy4",
+      "uiAmount": 5000000,
+      "winnerIndex": 9
+    },
+    "counts": {
+      "totalTokenAccounts": 77,
+      "totalHolders": 77,
+      "holderCountAfterExclusions": 75,
+      "eligibleCount": 54,
+      "excludedWalletCount": 2,
+      "pagesScanned": 1
+    },
+    "rules": {
+      "decimals": 9,
+      "minTokens": 1000000,
+      "excludedWallets": [
+        "4FMEhKstf4AnZi6bdnVb5wvcffWPCebsvthvkPYTzC99",
+        "BJz5RFx9ycWZ9dVbRtsZq7h3L6XPWVDuDtbgEeJVBJMG"
+      ]
+    },
+    "proof": {
+      "eligibleWalletSample": [
+        {
+          "owner": "EaWaqtZB7P9ktGMEQj6c4MGJixFjWyRk2wMPmEecmkm8",
+          "uiAmount": 19795211.75881
+        },
+        {
+          "owner": "ERpgpKo9aBxSDbnn3mSqUHRW6qnuKkRmsxWq6roGN6U3",
+          "uiAmount": 1011708.173767
+        },
+        {
+          "owner": "He1qAZzitL87JpNPkzKuRu2MuUSpjmKjoyVxMTEXn46S",
+          "uiAmount": 2337803.98172
+        },
+        {
+          "owner": "5GA8swsrgawCSLXuVTWPGNzQDM4GNxNbSn3kekdGRuY1",
+          "uiAmount": 10527094.451443
+        },
+        {
+          "owner": "4sC3Cqvjz5FK95Xki636Wnudydmo3ZPJj9DNETrZUc3B",
+          "uiAmount": 22126806.744073
+        },
+        {
+          "owner": "2RvT5QiMv9FxeUKxZ64FxpLzCtQzBFaST9J3UA6w113s",
+          "uiAmount": 15341461.386752
+        },
+        {
+          "owner": "F1FmEFgz2S83ySWEYWedqP1NZoP9aRZRQwNijoeiRcEm",
+          "uiAmount": 3246759.026415
+        },
+        {
+          "owner": "2dTJwA7X3RbVJ6C9fJpVtU9uoB8gYh1x4XZF5qz5jw12",
+          "uiAmount": 4805635.683393
+        },
+        {
+          "owner": "AGAEc1HZaTxfS3dEcBnNztv9HPtZ7ScJfGD8P6jJnjxe",
+          "uiAmount": 23444798.702505
+        },
+        {
+          "owner": "FW2hXoAf6ABSZ7iTyXfCFtpiwHPxC3m2b2hG942yJxy4",
+          "uiAmount": 5000000
+        }
+      ],
+      "topEligibleSample": [
+        {
+          "owner": "FhVo3mqL8PW5pH5U2CN4XE33DokiyZnUwuGpH2hmHLuM",
+          "uiAmount": 494614172.032142
+        },
+        {
+          "owner": "AcsTKxJXcKzKjPnYm9Ccwj57UwJ71BXcY5MgykzXhbAy",
+          "uiAmount": 29344234.293581
+        },
+        {
+          "owner": "Gtg4qSMkxME783rNdwHYQ11DbQvoXgLodTBLAAa8G5C2",
+          "uiAmount": 25732259.826207
+        },
+        {
+          "owner": "AGAEc1HZaTxfS3dEcBnNztv9HPtZ7ScJfGD8P6jJnjxe",
+          "uiAmount": 23444798.702505
+        },
+        {
+          "owner": "4sC3Cqvjz5FK95Xki636Wnudydmo3ZPJj9DNETrZUc3B",
+          "uiAmount": 22126806.744073
+        },
+        {
+          "owner": "Auf3nsLDfF1C5Ew5c9zwLj1nBtyRSHPUc34m3dqnF5v2",
+          "uiAmount": 20112834.520256
+        },
+        {
+          "owner": "EaWaqtZB7P9ktGMEQj6c4MGJixFjWyRk2wMPmEecmkm8",
+          "uiAmount": 19795211.75881
+        },
+        {
+          "owner": "4g62Ptso7wb7dDJw6exd3iR8gvWnxS78RfPTzjDzfLWQ",
+          "uiAmount": 18746868.074718
+        },
+        {
+          "owner": "EM9BWsTNzoTfv68btcSP2A2baa2DWPPFVvBHtwnyzBQ5",
+          "uiAmount": 18017581.794577
+        },
+        {
+          "owner": "5jer4b9TbkWYqMtdCmGrzDsMMVjT9dsSAwbxC3vwAFBS",
+          "uiAmount": 16208271.951943
+        }
+      ]
+    }
+  }
+]

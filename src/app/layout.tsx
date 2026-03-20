@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { Space_Mono, Playfair_Display } from 'next/font/google';
 import './globals.css';
-import { WalletProvider } from '@/components/WalletProvider';
+import { SolanaWalletProvider } from '@/components/SolanaWalletProvider';
 
 const spaceMono = Space_Mono({
   subsets: ['latin'],
@@ -39,9 +39,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${spaceMono.variable} ${playfairDisplay.variable}`}>
+    <html
+      lang="en"
+      className={`${spaceMono.variable} ${playfairDisplay.variable}`}
+    >
       <body>
-        <WalletProvider>{children}</WalletProvider>
+        <SolanaWalletProvider>{children}</SolanaWalletProvider>
       </body>
     </html>
   );

@@ -11,11 +11,12 @@
   "dependencies": {
     "@bagsfm/bags-sdk": "^1.0.8",
     "@neondatabase/serverless": "^1.0.2",
-    "@solana/spl-token": "^0.1.8",
+    "@prisma/client": "^6.0.0",
+    "@solana/spl-token": "^0.3.11",
     "@solana/wallet-adapter-base": "^0.9.23",
-    "@solana/wallet-adapter-react": "^0.15.35",
-    "@solana/wallet-adapter-react-ui": "^0.9.35",
-    "@solana/wallet-adapter-wallets": "^0.16.1",
+    "@solana/wallet-adapter-react": "^0.15.39",
+    "@solana/wallet-adapter-react-ui": "^0.9.39",
+    "@solana/wallet-adapter-wallets": "^0.16.10",
     "@solana/web3.js": "^1.98.4",
     "@types/bs58": "^4.0.4",
     "bs58": "^6.0.0",
@@ -29,8 +30,7 @@
     "react-dom": "19.2.3",
     "shadcn-ui": "^0.9.5",
     "tailwind-merge": "^3.5.0",
-    "tweetnacl": "^1.0.3",
-    "@prisma/client": "^6.0.0"
+    "tweetnacl": "^1.0.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -39,8 +39,8 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
+    "prisma": "^6.0.0",
     "tailwindcss": "^4",
-    "typescript": "^5",
-    "prisma": "^6.0.0"
+    "typescript": "^5"
   }
 }
