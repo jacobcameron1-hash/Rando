@@ -1,8 +1,10 @@
 # Rando
 
-Rando is a Solana-based holder lottery app that selects a random winner from token holders at scheduled intervals.
+A provably fair, on-chain holder lottery for Solana tokens.
 
 ## 🚀 Phase 1 Complete
+
+Rando is a Solana-based holder lottery app that selects a random winner from token holders at scheduled intervals.
 
 Core features implemented:
 
@@ -42,3 +44,11 @@ Core features implemented:
 ```bash
 npm install
 npm run dev
+🌐 Live Demo
+
+https://rando-mu.vercel.app
+
+
+---
+
+# Step (only one)
