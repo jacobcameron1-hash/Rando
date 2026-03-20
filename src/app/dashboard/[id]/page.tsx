@@ -142,7 +142,7 @@ export default function DashboardPage({
 
         <div className="grid gap-4 md:grid-cols-3 mb-8">
           <StatCard
-            label="Prize pool"
+            label="Rewards pool"
             value={formatSol(simulatedPrizePool)}
             highlight
           />
@@ -151,7 +151,7 @@ export default function DashboardPage({
             value={String(eligibleHolderCount)}
           />
           <StatCard
-            label="Completed draws"
+            label="Completed selections"
             value={String(rounds.length)}
           />
         </div>
@@ -178,7 +178,7 @@ export default function DashboardPage({
               value={new Date(project.createdAt).toLocaleString()}
             />
             <ConfigRow
-              label="Simulated prize pool"
+              label="Simulated rewards pool"
               value={formatSol(project.simulatedPrizePool)}
             />
           </div>
@@ -191,11 +191,11 @@ export default function DashboardPage({
             border: '1px solid var(--border)',
           }}
         >
-          <h2 className="text-2xl font-bold mb-5">Draw History</h2>
+          <h2 className="text-2xl font-bold mb-5">Selection History</h2>
 
           {rounds.length === 0 ? (
             <p style={{ color: 'var(--muted)' }}>
-              No draws yet.
+              No selections yet.
             </p>
           ) : (
             <div className="space-y-3">
@@ -209,9 +209,9 @@ export default function DashboardPage({
                   }}
                 >
                   <div>
-                    <div className="font-medium">Draw #{index + 1}</div>
+                    <div className="font-medium">Selection #{index + 1}</div>
                     <div className="text-sm" style={{ color: 'var(--muted)' }}>
-                      Winner: {shortenAddress(round.winner)}
+                      Selected holder: {shortenAddress(round.winner)}
                     </div>
                   </div>
 

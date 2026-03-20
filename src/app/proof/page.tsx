@@ -850,6 +850,8 @@ export default function ProofPage() {
     }
   };
 
+  const winnerWallet = data?.winner?.owner ?? '';
+
   return (
     <main
       style={{
@@ -1099,7 +1101,7 @@ export default function ProofPage() {
                 >
                   <button
                     onClick={() =>
-                      copyToClipboard(data.winner.owner, 'Winner wallet copied')
+                      copyToClipboard(winnerWallet, 'Winner wallet copied')
                     }
                     style={{
                       border: '1px solid rgba(255,255,255,0.2)',
@@ -1116,7 +1118,7 @@ export default function ProofPage() {
                   </button>
 
                   <a
-                    href={getSolscanAddressUrl(data.winner.owner)}
+                    href={getSolscanAddressUrl(winnerWallet)}
                     target="_blank"
                     rel="noreferrer"
                     style={{
@@ -1470,7 +1472,7 @@ export default function ProofPage() {
                   <WalletList
                     items={data.proof?.eligibleWalletSample}
                     emptyText="No eligible wallet sample returned."
-                    winnerWallet={data.winner.owner}
+                    winnerWallet={winnerWallet}
                     onCopy={copyToClipboard}
                   />
                 </div>
@@ -1489,7 +1491,7 @@ export default function ProofPage() {
                   <WalletList
                     items={data.proof?.topEligibleSample}
                     emptyText="No top holder sample returned."
-                    winnerWallet={data.winner.owner}
+                    winnerWallet={winnerWallet}
                     onCopy={copyToClipboard}
                   />
                 </div>
