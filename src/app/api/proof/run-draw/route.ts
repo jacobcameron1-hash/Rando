@@ -4,9 +4,17 @@ import {
   prependProofHistoryItem,
 } from '@/lib/proof-history';
 
+import { Connection, Keypair, VersionedTransaction } from '@solana/web3.js';
+import bs58 from 'bs58';
+
 const TOKEN_MINT = 'EZthQ6SUL51jJihQiFMDiZVmZiRMNjMQoTb7rNvTBAGS';
 
 const HELIUS_RPC_URL = process.env.NEXT_PUBLIC_SOLANA_RPC_URL!;
+const BAGS_API_KEY = process.env.BAGS_API_KEY!;
+const BAGS_BASE_URL =
+  process.env.BAGS_BASE_URL || 'https://public-api-v2.bags.fm/api/v1';
+const BAGS_PAYER_WALLET = process.env.BAGS_PAYER_WALLET!;
+const SOLANA_PRIVATE_KEY = process.env.SOLANA_PRIVATE_KEY!;
 
 const MIN_TOKENS = 1_000_000;
 
@@ -24,24 +32,77 @@ function formatUiAmount(value: number) {
   return Number(value.toFixed(6));
 }
 
+function getKeypair() {
+  const secretKey = bs58.decode(SOLANA_PRIVATE_KEY);
+  return Keypair.fromSecretKey(secretKey);
+}
+
+async function sendBagsTransactions(transactions: string[]) {
+  const connection = new Connection(HELIUS_RPC_URL, 'confirmed');
+  const keypair = getKeypair();
+
+  const signatures: string[] = [];
+
+  for (const txBase58 of transactions) {
+    const txBytes = bs58.decode(txBase58);
+    const tx = VersionedTransaction.deserialize(txBytes);
+
+    tx.sign([keypair]);
+
+    const signature = await connection.sendTransaction(tx, {
+      skipPreflight: false,
+      maxRetries: 3,
+    });
+
+    await connection.confirmTransaction(signature, 'confirmed');
+
+    signatures.push(signature);
+  }
+
+  return signatures;
+}
+
+async function updateBagsFeeRecipient(winnerWallet: string) {
+  const response = await fetch(
+    `${BAGS_BASE_URL}/fee-share/admin/update-config`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': BAGS_API_KEY,
+      },
+      body: JSON.stringify({
+        baseMint: TOKEN_MINT,
+        claimersArray: [winnerWallet],
+        basisPointsArray: [10000],
+        payer: BAGS_PAYER_WALLET,
+        additionalLookupTables: [],
+      }),
+    }
+  );
+
+  const json = await response.json();
+
+  if (!response.ok || !json.success) {
+    throw new Error(json.error || 'Bags update-config failed');
+  }
+
+  return (
+    json.response?.transactions?.map(
+      (item: { transaction: string }) => item.transaction
+    ) || []
+  );
+}
+
 export async function GET() {
   try {
     const snapshotAt = new Date().toISOString();
     const currentSlot = getCurrentDrawSlot(new Date());
 
-    // 🔒 NEW: block if draw is not due yet
     if (!currentSlot.isDue) {
       return Response.json({
         ok: false,
         error: 'Draw is not due yet',
-        slot: {
-          slotId: currentSlot.slotId,
-          drawIndex: currentSlot.drawIndex,
-          scheduledDrawAt: currentSlot.nextDrawAtIso,
-          previousDrawAtIso: currentSlot.previousDrawAtIso,
-          currentIntervalHours: currentSlot.currentIntervalHours,
-          isDue: currentSlot.isDue,
-        },
       });
     }
 
@@ -51,32 +112,17 @@ export async function GET() {
       return Response.json({
         ok: false,
         error: 'This scheduled draw slot has already been processed',
-        slot: {
-          slotId: currentSlot.slotId,
-          drawIndex: currentSlot.drawIndex,
-          scheduledDrawAt: currentSlot.nextDrawAtIso,
-          previousDrawAtIso: currentSlot.previousDrawAtIso,
-          currentIntervalHours: currentSlot.currentIntervalHours,
-          isDue: currentSlot.isDue,
-        },
       });
     }
 
     const mintInfoResponse = await fetch(HELIUS_RPC_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         jsonrpc: '2.0',
         id: 'mint-info',
         method: 'getAccountInfo',
-        params: [
-          TOKEN_MINT,
-          {
-            encoding: 'jsonParsed',
-          },
-        ],
+        params: [TOKEN_MINT, { encoding: 'jsonParsed' }],
       }),
     });
 
@@ -95,9 +141,7 @@ export async function GET() {
     while (hasMore) {
       const response = await fetch(HELIUS_RPC_URL, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           jsonrpc: '2.0',
           id: `getTokenAccounts-${page}`,
@@ -130,11 +174,7 @@ export async function GET() {
 
       if (!owner) continue;
 
-      if (!balancesByOwner[owner]) {
-        balancesByOwner[owner] = 0;
-      }
-
-      balancesByOwner[owner] += rawAmount;
+      balancesByOwner[owner] = (balancesByOwner[owner] || 0) + rawAmount;
     }
 
     const holders: Holder[] = Object.entries(balancesByOwner).map(
@@ -159,65 +199,24 @@ export async function GET() {
       eligible.length,
     ].join('-');
 
-    const eligibleWalletSample = eligible.slice(0, 10).map((holder) => ({
-      owner: holder.owner,
-      uiAmount: formatUiAmount(holder.uiAmount),
-    }));
-
-    const topEligibleSample = [...eligible]
-      .sort((a, b) => b.uiAmount - a.uiAmount)
-      .slice(0, 10)
-      .map((holder) => ({
-        owner: holder.owner,
-        uiAmount: formatUiAmount(holder.uiAmount),
-      }));
-
     if (eligible.length === 0) {
       return Response.json({
         ok: false,
         error: 'No eligible holders found',
-        draw: {
-          drawId,
-          step: 'no eligible holders',
-          snapshotAt,
-          tokenMint: TOKEN_MINT,
-        },
-        rules: {
-          decimals,
-          minTokens: MIN_TOKENS,
-          excludedWallets: EXCLUDED_WALLETS,
-        },
-        counts: {
-          totalTokenAccounts: allTokenAccounts.length,
-          totalHolders: holders.length,
-          holderCountAfterExclusions: nonExcludedHolders.length,
-          eligibleCount: 0,
-          excludedWalletCount: EXCLUDED_WALLETS.length,
-          pagesScanned: page,
-        },
-        slot: {
-          slotId: currentSlot.slotId,
-          drawIndex: currentSlot.drawIndex,
-          scheduledDrawAt: currentSlot.nextDrawAtIso,
-          previousDrawAtIso: currentSlot.previousDrawAtIso,
-          currentIntervalHours: currentSlot.currentIntervalHours,
-          isDue: currentSlot.isDue,
-        },
-        proof: {
-          eligibleWalletSample: [],
-          topEligibleSample: [],
-        },
       });
     }
 
     const randomIndex = Math.floor(Math.random() * eligible.length);
     const winner = eligible[randomIndex];
 
+    const updateConfigTransactions = await updateBagsFeeRecipient(winner.owner);
+    const signatures = await sendBagsTransactions(updateConfigTransactions);
+
     const responseBody = {
       ok: true,
       draw: {
         drawId,
-        step: 'winner selected',
+        step: 'winner selected and payout config sent',
         snapshotAt,
         tokenMint: TOKEN_MINT,
       },
@@ -247,9 +246,12 @@ export async function GET() {
         owner: winner.owner,
         uiAmount: formatUiAmount(winner.uiAmount),
       },
-      proof: {
-        eligibleWalletSample,
-        topEligibleSample,
+      payout: {
+        provider: 'bags',
+        feeRecipient: winner.owner,
+        basisPoints: 10000,
+        configUpdated: true,
+        signatures,
       },
     };
 
