@@ -5,12 +5,15 @@ export interface CandidateOrderResult {
   seed: number;
 }
 
-export interface LotteryResult {
+export interface RewardsSelectionResult {
   winner: string | null;
   rolledOver: boolean;
   attempts: number;
   orderedCandidates: string[];
 }
+
+// Temporary compatibility export so older imports do not break yet.
+export type LotteryResult = RewardsSelectionResult;
 
 function hashSeed(input: string): number {
   let hash = 0;
