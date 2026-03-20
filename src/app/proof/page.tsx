@@ -850,7 +850,11 @@ export default function ProofPage() {
     }
   };
 
-  const winnerWallet = data?.winner?.owner ?? '';
+  const drawData = data?.draw;
+  const rulesData = data?.rules;
+  const countsData = data?.counts;
+  const winnerData = data?.winner;
+  const winnerWallet = winnerData?.owner ?? '';
 
   return (
     <main
@@ -1041,10 +1045,10 @@ export default function ProofPage() {
 
         {data &&
           data.ok &&
-          data.draw &&
-          data.rules &&
-          data.counts &&
-          data.winner && (
+          drawData &&
+          rulesData &&
+          countsData &&
+          winnerData && (
             <div
               style={{
                 display: 'grid',
@@ -1079,7 +1083,7 @@ export default function ProofPage() {
                     wordBreak: 'break-all',
                   }}
                 >
-                  {data.winner.owner}
+                  {winnerData.owner}
                 </div>
 
                 <div
@@ -1089,7 +1093,7 @@ export default function ProofPage() {
                     marginBottom: 14,
                   }}
                 >
-                  Balance: {formatNumber(data.winner.uiAmount)}
+                  Balance: {formatNumber(winnerData.uiAmount)}
                 </div>
 
                 <div
@@ -1158,19 +1162,19 @@ export default function ProofPage() {
                 >
                   <StatCard
                     label="Total Token Accounts"
-                    value={formatNumber(data.counts.totalTokenAccounts)}
+                    value={formatNumber(countsData.totalTokenAccounts)}
                   />
                   <StatCard
                     label="Total Holders"
-                    value={formatNumber(data.counts.totalHolders)}
+                    value={formatNumber(countsData.totalHolders)}
                   />
                   <StatCard
                     label="After Exclusions"
-                    value={formatNumber(data.counts.holderCountAfterExclusions)}
+                    value={formatNumber(countsData.holderCountAfterExclusions)}
                   />
                   <StatCard
                     label="Eligible Wallets"
-                    value={formatNumber(data.counts.eligibleCount)}
+                    value={formatNumber(countsData.eligibleCount)}
                   />
                 </div>
               </section>
@@ -1213,7 +1217,7 @@ export default function ProofPage() {
                         Draw ID
                       </div>
                       <div style={{ fontWeight: 600, wordBreak: 'break-all' }}>
-                        {data.draw.drawId}
+                        {drawData.drawId}
                       </div>
                     </div>
 
@@ -1228,7 +1232,7 @@ export default function ProofPage() {
                         Snapshot
                       </div>
                       <div style={{ fontWeight: 600 }}>
-                        {formatDate(data.draw.snapshotAt)}
+                        {formatDate(drawData.snapshotAt)}
                       </div>
                     </div>
 
@@ -1243,7 +1247,7 @@ export default function ProofPage() {
                         Token Mint
                       </div>
                       <div style={{ fontWeight: 600, wordBreak: 'break-all' }}>
-                        {data.draw.tokenMint}
+                        {drawData.tokenMint}
                       </div>
 
                       <div
@@ -1258,13 +1262,13 @@ export default function ProofPage() {
                           label="Copy Mint"
                           onClick={() =>
                             copyToClipboard(
-                              data.draw.tokenMint,
+                              drawData.tokenMint,
                               'Token mint copied'
                             )
                           }
                         />
                         <a
-                          href={getSolscanTokenUrl(data.draw.tokenMint)}
+                          href={getSolscanTokenUrl(drawData.tokenMint)}
                           target="_blank"
                           rel="noreferrer"
                           style={{
@@ -1294,7 +1298,7 @@ export default function ProofPage() {
                         Step
                       </div>
                       <div style={{ fontWeight: 600 }}>
-                        {data.draw.step || '-'}
+                        {drawData.step || '-'}
                       </div>
                     </div>
                   </div>
@@ -1331,7 +1335,7 @@ export default function ProofPage() {
                         Min Tokens
                       </div>
                       <div style={{ fontWeight: 600 }}>
-                        {formatNumber(data.rules.minTokens)}
+                        {formatNumber(rulesData.minTokens)}
                       </div>
                     </div>
 
@@ -1346,7 +1350,7 @@ export default function ProofPage() {
                         Decimals
                       </div>
                       <div style={{ fontWeight: 600 }}>
-                        {data.rules.decimals}
+                        {rulesData.decimals}
                       </div>
                     </div>
 
@@ -1361,7 +1365,7 @@ export default function ProofPage() {
                         Excluded Wallets
                       </div>
                       <div style={{ fontWeight: 600 }}>
-                        {data.rules.excludedWallets.length}
+                        {rulesData.excludedWallets.length}
                       </div>
                     </div>
 
@@ -1377,8 +1381,8 @@ export default function ProofPage() {
                       </div>
 
                       <div style={{ display: 'grid', gap: 8 }}>
-                        {data.rules.excludedWallets.length > 0 ? (
-                          data.rules.excludedWallets.map((wallet) => (
+                        {rulesData.excludedWallets.length > 0 ? (
+                          rulesData.excludedWallets.map((wallet) => (
                             <div
                               key={wallet}
                               style={{
