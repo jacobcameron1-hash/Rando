@@ -3,7 +3,6 @@ import Link from 'next/link';
 export default function Home() {
   return (
     <main className="min-h-screen flex flex-col">
-
       {/* Nav */}
       <nav className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)]">
         <a
@@ -34,14 +33,13 @@ export default function Home() {
             className="px-4 py-2 rounded-lg text-white text-sm font-medium hover:opacity-90 transition-opacity"
             style={{ background: 'var(--accent)' }}
           >
-            Launch a Lottery
+            Launch Rewards System
           </Link>
         </div>
       </nav>
 
       {/* Hero */}
       <section className="flex-1 grid md:grid-cols-2 items-center gap-0 px-0 overflow-hidden">
-
         {/* Left — copy */}
         <div className="flex flex-col justify-center px-8 md:px-16 py-20 md:py-24 order-2 md:order-1">
           <div
@@ -52,12 +50,12 @@ export default function Home() {
           </div>
           <h1 className="text-5xl md:text-6xl font-bold tracking-tight mb-6 leading-tight">
             Turn your trading fees into{' '}
-            <span style={{ color: 'var(--accent)' }}>prize draws</span>
+            <span style={{ color: 'var(--accent)' }}>randomized rewards</span>
           </h1>
           <p className="text-lg mb-4 leading-relaxed" style={{ color: 'var(--muted)' }}>
             Rando automatically pools trading fees from your bags.fm token and
-            rewards a randomly selected eligible holder — on a configurable timer,
-            fully verifiable on-chain.
+            rewards a randomly selected eligible holder on a configurable timer,
+            with a fully verifiable selection process.
           </p>
           <p className="text-sm mb-10" style={{ color: 'var(--muted)' }}>
             Powered by{' '}
@@ -70,7 +68,7 @@ export default function Home() {
             >
               $RANDO
             </a>{' '}
-            · the original holder lottery coin
+            · the original randomized rewards coin
           </p>
           <div className="flex flex-col sm:flex-row gap-4">
             <Link
@@ -115,7 +113,6 @@ export default function Home() {
       {/* $RANDO lore section */}
       <section className="px-6 py-20 border-t border-[var(--border)]" style={{ background: 'var(--card)' }}>
         <div className="max-w-5xl mx-auto grid md:grid-cols-2 gap-12 items-center">
-
           <div>
             <div className="text-xs font-mono tracking-widest mb-4" style={{ color: 'var(--accent-gold)' }}>
               THE COIN BEHIND THE PLATFORM
@@ -178,7 +175,6 @@ export default function Home() {
               </div>
             </div>
           </div>
-
         </div>
       </section>
 
@@ -190,7 +186,7 @@ export default function Home() {
             {
               step: '01',
               title: 'Fees accumulate',
-              body: 'Every trade on your bags.fm token generates a 1% fee. Rando captures a share of those fees into a dedicated prize vault — no manual top-ups needed.',
+              body: 'Every trade on your bags.fm token generates a 1% fee. Rando captures a share of those fees into a dedicated rewards vault — no manual top-ups needed.',
             },
             {
               step: '02',
@@ -199,8 +195,8 @@ export default function Home() {
             },
             {
               step: '03',
-              title: 'Winner gets paid',
-              body: 'A random eligible holder is selected, weighted by balance. The full prize pool lands in their wallet automatically. Paper hands miss out. Diamond hands get paid.',
+              title: 'Reward is sent',
+              body: 'A random eligible holder is selected, weighted by balance. The full rewards pool lands in their wallet automatically. Paper hands miss out. Diamond hands get paid.',
             },
           ].map((item) => (
             <div
@@ -227,22 +223,22 @@ export default function Home() {
               {
                 icon: '⏱',
                 title: 'Progressive timers',
-                body: 'Start with quick draws to build early hype, then slow down automatically as the community matures. Configure base interval, increment, and cap.',
+                body: 'Start with quick reward cycles to build early hype, then slow down automatically as the community matures. Configure base interval, increment, and cap.',
               },
               {
                 icon: '🔒',
                 title: 'Trustless lock mode',
-                body: 'Permanently transfer fee share admin to the system program. On-chain verifiable — no one can ever rug the prize split again.',
+                body: 'Permanently transfer fee share admin to the system program. On-chain verifiable — no one can ever rug the reward split again.',
               },
               {
                 icon: '🎯',
                 title: 'Flexible eligibility',
-                body: 'Set the minimum hold requirement as a % of total supply or a raw token amount. Holders who sold before the draw end are automatically excluded.',
+                body: 'Set the minimum hold requirement as a % of total supply or a raw token amount. Holders who sold before the reward cycle ends are automatically excluded.',
               },
               {
                 icon: '📊',
                 title: 'Full transparency',
-                body: 'Every draw is recorded with the winner wallet, prize amount, and transaction signature. Anyone can verify the results on-chain, anytime.',
+                body: 'Every selection is recorded with the winner wallet, reward amount, and transaction signature. Anyone can verify the results on-chain, anytime.',
               },
             ].map((f) => (
               <div
@@ -294,7 +290,6 @@ export default function Home() {
         </a>{' '}
         · <span className="font-mono text-xs tracking-widest" style={{ color: 'var(--muted)' }}>R.A.N.D.O.</span>
       </footer>
-
     </main>
   );
 }
