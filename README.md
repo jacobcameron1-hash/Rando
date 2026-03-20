@@ -1,19 +1,44 @@
 # Rando
 
-Automated holder lotteries for bags.fm tokens. Trading fees accumulate into a prize pool and a randomly selected eligible holder wins on a configurable progressive timer.
+Rando is a Solana-based holder lottery app that selects a random winner from token holders at scheduled intervals.
 
-## Features
+## 🚀 Phase 1 Complete
 
-- Self-serve setup wizard
-- Configurable eligibility thresholds
-- Progressive draw intervals
-- Fully automated fee claiming and prize distribution
-- Admin lock (irreversible)
+Core features implemented:
 
-## Stack
+- Deterministic draw scheduling (slot system)
+- Countdown UI to next draw
+- Holder snapshot + filtering
+- Duplicate draw protection
+- Due-time enforcement
+- Random winner selection
+- Proof logging system
 
-- Next.js 14 App Router
-- Drizzle ORM + Neon Postgres
-- Solana wallet adapter (Phantom, Solflare, Backpack)
-- bags.fm Fee Share V2 SDK
-- Vercel Cron Jobs
+## 🔧 How it works
+
+1. Fetch token holders from Solana
+2. Filter:
+   - Minimum token requirement
+   - Excluded wallets (dev / fee wallets)
+3. Store a snapshot
+4. Randomly select a winner
+5. Save proof of the draw
+
+## 🧪 API Routes
+
+- `/api/proof/run-draw` → executes a draw
+- `/api/proof/next-draw` → returns next scheduled draw
+- `/api/proof/history` → returns past draws
+- `/api/proof/create-payout-tx` → prepares payout transaction
+
+## ⚠️ Notes
+
+- This is a proof-of-concept for hackathon use
+- Payout system is not fully implemented yet
+- Focus is on fairness + verifiable selection
+
+## 🖥 Run locally
+
+```bash
+npm install
+npm run dev
