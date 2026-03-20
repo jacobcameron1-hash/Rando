@@ -1,5 +1,65 @@
 [
   {
+    "drawId": "rando-EZthQ6-2026-03-20T23-08-13-672Z-52",
+    "snapshotAt": "2026-03-20T23:08:13.672Z",
+    "tokenMint": "EZthQ6SUL51jJihQiFMDiZVmZiRMNjMQoTb7rNvTBAGS",
+    "slotId": "draw-test-0-2026-03-20T23-08-13-672Z",
+    "scheduledDrawAt": "2026-03-22T00:00:00.000Z",
+    "winner": {
+      "owner": "3Rd3WGmnpUrPiC9AtejBHPQhCvp8bis1c8h9NJ6qZ1rs",
+      "uiAmount": 12018068.039878,
+      "winnerIndex": 15
+    },
+    "counts": {
+      "totalTokenAccounts": 74,
+      "totalHolders": 74,
+      "holderCountAfterExclusions": 72,
+      "eligibleCount": 52,
+      "excludedWalletCount": 2,
+      "pagesScanned": 1
+    }
+  },
+  {
+    "drawId": "rando-EZthQ6-2026-03-20T22-06-46-039Z-52",
+    "snapshotAt": "2026-03-20T22:06:46.039Z",
+    "tokenMint": "EZthQ6SUL51jJihQiFMDiZVmZiRMNjMQoTb7rNvTBAGS",
+    "slotId": "draw-test-0-2026-03-20T22-06-46-039Z",
+    "scheduledDrawAt": "2026-03-22T00:00:00.000Z",
+    "winner": {
+      "owner": "FwDk9eL4HgXMWpkfJdLrUdNqMA4oJPDxq95jiooK8AxB",
+      "uiAmount": 3685462.784851,
+      "winnerIndex": 50
+    },
+    "counts": {
+      "totalTokenAccounts": 75,
+      "totalHolders": 75,
+      "holderCountAfterExclusions": 73,
+      "eligibleCount": 52,
+      "excludedWalletCount": 2,
+      "pagesScanned": 1
+    }
+  },
+  {
+    "drawId": "rando-EZthQ6-2026-03-20T21-54-14-029Z-54",
+    "snapshotAt": "2026-03-20T21:54:14.029Z",
+    "tokenMint": "EZthQ6SUL51jJihQiFMDiZVmZiRMNjMQoTb7rNvTBAGS",
+    "slotId": "draw-test-0-2026-03-20T21-54-14-029Z",
+    "scheduledDrawAt": "2026-03-22T00:00:00.000Z",
+    "winner": {
+      "owner": "He1qAZzitL87JpNPkzKuRu2MuUSpjmKjoyVxMTEXn46S",
+      "uiAmount": 7700050.187921,
+      "winnerIndex": 2
+    },
+    "counts": {
+      "totalTokenAccounts": 77,
+      "totalHolders": 77,
+      "holderCountAfterExclusions": 75,
+      "eligibleCount": 54,
+      "excludedWalletCount": 2,
+      "pagesScanned": 1
+    }
+  },
+  {
     "drawId": "rando-EZthQ6-2026-03-20T20-35-14-508Z-54",
     "snapshotAt": "2026-03-20T20:35:14.508Z",
     "tokenMint": "EZthQ6SUL51jJihQiFMDiZVmZiRMNjMQoTb7rNvTBAGS",

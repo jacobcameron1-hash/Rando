@@ -3,6 +3,7 @@ import {
   hasProofHistorySlot,
   prependProofHistoryItem,
 } from '@/lib/proof-history';
+import { claimFeesForVault, sendPrize } from '@/lib/bags';
 
 import { Connection, Keypair, VersionedTransaction } from '@solana/web3.js';
 import bs58 from 'bs58';
@@ -15,6 +16,7 @@ const BAGS_BASE_URL =
   process.env.BAGS_BASE_URL || 'https://public-api-v2.bags.fm/api/v1';
 const BAGS_PAYER_WALLET = process.env.BAGS_PAYER_WALLET!;
 const SOLANA_PRIVATE_KEY = process.env.SOLANA_PRIVATE_KEY!;
+const VAULT_PRIVATE_KEY = process.env.VAULT_PRIVATE_KEY!;
 
 const MIN_TOKENS = 1_000_000;
 
@@ -32,14 +34,19 @@ function formatUiAmount(value: number) {
   return Number(value.toFixed(6));
 }
 
-function getKeypair() {
+function getAdminKeypair() {
   const secretKey = bs58.decode(SOLANA_PRIVATE_KEY);
+  return Keypair.fromSecretKey(secretKey);
+}
+
+function getVaultKeypair() {
+  const secretKey = bs58.decode(VAULT_PRIVATE_KEY);
   return Keypair.fromSecretKey(secretKey);
 }
 
 async function sendBagsTransactions(transactions: string[]) {
   const connection = new Connection(HELIUS_RPC_URL, 'confirmed');
-  const keypair = getKeypair();
+  const keypair = getAdminKeypair();
 
   const signatures: string[] = [];
 
@@ -55,14 +62,13 @@ async function sendBagsTransactions(transactions: string[]) {
     });
 
     await connection.confirmTransaction(signature, 'confirmed');
-
     signatures.push(signature);
   }
 
   return signatures;
 }
 
-async function updateBagsFeeRecipient(winnerWallet: string) {
+async function updateBagsFeeRecipient(vaultWallet: string) {
   const response = await fetch(
     `${BAGS_BASE_URL}/fee-share/admin/update-config`,
     {
@@ -73,7 +79,7 @@ async function updateBagsFeeRecipient(winnerWallet: string) {
       },
       body: JSON.stringify({
         baseMint: TOKEN_MINT,
-        claimersArray: [winnerWallet],
+        claimersArray: [vaultWallet],
         basisPointsArray: [10000],
         payer: BAGS_PAYER_WALLET,
         additionalLookupTables: [],
@@ -209,14 +215,31 @@ export async function GET() {
     const randomIndex = Math.floor(Math.random() * eligible.length);
     const winner = eligible[randomIndex];
 
-    const updateConfigTransactions = await updateBagsFeeRecipient(winner.owner);
-    const signatures = await sendBagsTransactions(updateConfigTransactions);
+    const vaultKeypair = getVaultKeypair();
+
+    const updateConfigTransactions = await updateBagsFeeRecipient(
+      vaultKeypair.publicKey.toBase58()
+    );
+    const configSignatures = await sendBagsTransactions(updateConfigTransactions);
+
+    const claimedLamports = await claimFeesForVault(vaultKeypair, TOKEN_MINT);
+    const prizeLamports = claimedLamports;
+
+    let payoutSignature: string | null = null;
+
+    if (prizeLamports > 0) {
+      payoutSignature = await sendPrize(
+        vaultKeypair,
+        winner.owner,
+        prizeLamports
+      );
+    }
 
     const responseBody = {
       ok: true,
       draw: {
         drawId,
-        step: 'winner selected and payout config sent',
+        step: 'winner selected, vault configured, and prize paid',
         snapshotAt,
         tokenMint: TOKEN_MINT,
       },
@@ -248,10 +271,15 @@ export async function GET() {
       },
       payout: {
         provider: 'bags',
-        feeRecipient: winner.owner,
+        feeRecipient: vaultKeypair.publicKey.toBase58(),
         basisPoints: 10000,
         configUpdated: true,
-        signatures,
+        configSignatures,
+      },
+      payoutExecution: {
+        claimedLamports,
+        prizeLamports,
+        signature: payoutSignature,
       },
     };
 

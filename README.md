@@ -44,3 +44,13 @@ Core features implemented:
 ```bash
 npm install
 npm run dev
+
+## Phase 2 Complete ✅
+
+Rando now supports:
+- On-chain holder snapshot + fair winner selection
+- Automated Bags fee configuration
+- Vault-based fee collection
+- Fee claiming + payout execution (SOL transfers)
+
+This marks the first fully automated end-to-end draw + payout system.
