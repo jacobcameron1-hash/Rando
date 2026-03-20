@@ -59,21 +59,21 @@ export default function SetupPage() {
         ? `${form.eligibilityValue}% of supply`
         : `${form.eligibilityValue} tokens`;
 
-    const timerLine = `Base ${form.baseInterval}, +${form.incrementInterval} per draw, cap ${form.capInterval}`;
-    const prizeWallet = form.feeRecipientWallet
+    const timerLine = `Base ${form.baseInterval}, +${form.incrementInterval} per selection, cap ${form.capInterval}`;
+    const rewardsWallet = form.feeRecipientWallet
       ? `${form.feeRecipientWallet.slice(0, 6)}...${form.feeRecipientWallet.slice(-6)}`
       : '(not set)';
 
     const dashboardUrl = `https://rando-mu.vercel.app/dashboard/${pid}`;
 
     return [
-      `🎲 Rando Lottery — ${mintShort}`,
+      `🎲 Rando Randomized Rewards — ${mintShort}`,
       ``,
       `✅ Now live on bags.fm`,
       ``,
       `Eligibility: Hold ≥ ${eligLine} for the full interval`,
-      `Draw timer: ${timerLine}`,
-      `Prize pool wallet: ${prizeWallet}`,
+      `Selection timer: ${timerLine}`,
+      `Rewards wallet: ${rewardsWallet}`,
       ``,
       `Dashboard: ${dashboardUrl}`,
       ``,
@@ -173,7 +173,7 @@ export default function SetupPage() {
     setError('');
 
     try {
-      setLoadingMsg('Creating lottery...');
+      setLoadingMsg('Creating rewards system...');
 
       const payload = {
         tokenMint: form.tokenMint.trim(),
@@ -187,7 +187,7 @@ export default function SetupPage() {
 
         // compatibility fields for older demo/createProject code paths
         tokenAddress: form.tokenMint.trim(),
-        tokenName: 'Rando Lottery',
+        tokenName: 'Rando Randomized Rewards',
         minPercent:
           form.eligibilityType === 'percent'
             ? parseFloat(form.eligibilityValue)
@@ -250,7 +250,7 @@ export default function SetupPage() {
             Set up Rando
           </h1>
           <p className="text-lg" style={{ color: 'var(--muted)' }}>
-            Automated holder lotteries for your bags.fm token
+            Automated randomized rewards for your bags.fm token
           </p>
         </div>
 
@@ -301,7 +301,7 @@ export default function SetupPage() {
 
               <p className="text-xl leading-relaxed mb-8" style={{ color: 'var(--muted)' }}>
                 Connect the wallet that manages your token on bags.fm. This wallet
-                is used to sign in to Rando and manage your lottery.
+                is used to sign in to Rando and manage your rewards system.
               </p>
 
               <div className="space-y-6">
@@ -338,7 +338,7 @@ export default function SetupPage() {
                   placeholder="Paste wallet from Bags fee sharing"
                   value={form.feeRecipientWallet}
                   onChange={(v) => update('feeRecipientWallet', v)}
-                  hint="Go to Bags → Share Earnings and copy the wallet that receives the lottery funds."
+                  hint="Go to Bags → Share Earnings and copy the wallet that receives the rewards funds."
                 />
               </div>
             </>
@@ -355,7 +355,7 @@ export default function SetupPage() {
 
               <p className="text-xl leading-relaxed mb-8" style={{ color: 'var(--muted)' }}>
                 Set the minimum holding requirement. Holders must meet this
-                threshold for the entire draw interval to be eligible.
+                threshold for the entire selection interval to be eligible.
               </p>
 
               <div className="space-y-6">
@@ -411,7 +411,7 @@ export default function SetupPage() {
 
                   <p className="text-sm mt-2" style={{ color: 'var(--muted)' }}>
                     {form.eligibilityType === 'percent'
-                      ? 'Holders must hold this % of total supply for the entire draw interval'
+                      ? 'Holders must hold this % of total supply for the entire selection interval'
                       : 'Raw token amount. Default starting point is 1,000,000.'}
                   </p>
                 </div>
@@ -425,11 +425,11 @@ export default function SetupPage() {
                 className="text-4xl font-bold mb-4"
                 style={{ color: 'var(--foreground)' }}
               >
-                Draw timer
+                Selection timer
               </h2>
 
               <p className="text-xl leading-relaxed mb-8" style={{ color: 'var(--muted)' }}>
-                Configure the interval between draws. Use progressive timing to
+                Configure the interval between selections. Use progressive timing to
                 start fast and slow down automatically.
               </p>
 
@@ -441,7 +441,7 @@ export default function SetupPage() {
                   border: '1px solid var(--border)',
                 }}
               >
-                next_interval = min(base + (draws × increment), cap)
+                next_interval = min(base + (selections × increment), cap)
               </div>
 
               <div className="space-y-8">
@@ -449,16 +449,16 @@ export default function SetupPage() {
                   label="Base interval"
                   value={form.baseInterval}
                   onChange={(v) => update('baseInterval', v)}
-                  hint="Starting draw frequency. e.g. 1m, 30m, 6h"
+                  hint="Starting selection frequency. e.g. 1m, 30m, 6h"
                   minMs={60_000}
                   maxMs={86_400_000}
                 />
 
                 <IntervalInput
-                  label="Increment (per draw)"
+                  label="Increment (per selection)"
                   value={form.incrementInterval}
                   onChange={(v) => update('incrementInterval', v)}
-                  hint="How much to add after each draw. Use 1m to 1d."
+                  hint="How much to add after each selection. Use 1m to 1d."
                   minMs={60_000}
                   maxMs={86_400_000}
                 />
@@ -485,8 +485,8 @@ export default function SetupPage() {
               </h2>
 
               <p className="text-xl leading-relaxed mb-8" style={{ color: 'var(--muted)' }}>
-                Your lottery is set up and running. The first draw fires
-                automatically once fees accumulate.
+                Your randomized rewards system is set up and running. The first
+                selection fires automatically once fees accumulate.
               </p>
 
               <div
@@ -523,7 +523,7 @@ export default function SetupPage() {
               <div className="space-y-4">
                 <div>
                   <p className="text-sm mb-2" style={{ color: 'var(--muted)' }}>
-                    Share your lottery — copy and paste this anywhere:
+                    Share your rewards system — copy and paste this anywhere:
                   </p>
 
                   <button
@@ -595,7 +595,7 @@ export default function SetupPage() {
                 {loading
                   ? loadingMsg || 'Working...'
                   : step === 3
-                  ? 'Create Lottery'
+                  ? 'Create Rewards System'
                   : 'Continue →'}
               </button>
             </div>
