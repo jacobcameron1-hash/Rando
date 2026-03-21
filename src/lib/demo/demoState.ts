@@ -36,8 +36,8 @@ function parsePositiveNumber(value: unknown, fallback = 0): number {
     typeof value === "number"
       ? value
       : typeof value === "string"
-      ? Number(value)
-      : NaN;
+        ? Number(value)
+        : NaN;
 
   return Number.isFinite(num) && num > 0 ? num : fallback;
 }
@@ -53,8 +53,8 @@ export function createProject(input: any) {
     typeof input.tokenMint === "string" && input.tokenMint.trim()
       ? input.tokenMint.trim()
       : typeof input.tokenAddress === "string"
-      ? input.tokenAddress.trim()
-      : "";
+        ? input.tokenAddress.trim()
+        : "";
 
   const tokenAddress =
     typeof input.tokenAddress === "string" && input.tokenAddress.trim()
@@ -65,7 +65,10 @@ export function createProject(input: any) {
 
   const eligibilityValue =
     eligibilityType === "percent"
-      ? parsePositiveNumber(input.eligibilityValue, parsePositiveNumber(input.minPercent, 0.1))
+      ? parsePositiveNumber(
+          input.eligibilityValue,
+          parsePositiveNumber(input.minPercent, 0.1)
+        )
       : parsePositiveNumber(input.eligibilityValue, 1_000_000);
 
   const minPercent =
@@ -95,7 +98,8 @@ export function createProject(input: any) {
         ? input.baseInterval.trim()
         : "1m",
     incrementInterval:
-      typeof input.incrementInterval === "string" && input.incrementInterval.trim()
+      typeof input.incrementInterval === "string" &&
+      input.incrementInterval.trim()
         ? input.incrementInterval.trim()
         : "1m",
     capInterval:
@@ -125,9 +129,7 @@ export function runDraw(id: string) {
 
   const eligible =
     project.eligibilityType === "amount"
-      ? mockHolders.filter(
-          (holder) => holder.tokenAmount >= project.eligibilityValue
-        )
+      ? []
       : mockHolders.filter(
           (holder) => holder.percentOwned >= project.minPercent
         );
