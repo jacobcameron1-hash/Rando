@@ -1,5 +1,5 @@
-import { promises as fs } from 'fs';
-import path from 'path';
+import { db } from '@/db';
+import { sql } from 'drizzle-orm';
 
 export type ProofHistoryItem = {
   drawId: string;
@@ -22,32 +22,71 @@ export type ProofHistoryItem = {
   };
 };
 
-const HISTORY_FILE_PATH = path.join(process.cwd(), 'data', 'proof-history.json');
+let tableReady = false;
 
-async function ensureHistoryFileExists() {
-  const dirPath = path.dirname(HISTORY_FILE_PATH);
+async function ensureHistoryTableExists() {
+  if (tableReady) return;
 
-  await fs.mkdir(dirPath, { recursive: true });
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS proof_history (
+      draw_id text PRIMARY KEY,
+      snapshot_at timestamptz NOT NULL,
+      token_mint text NOT NULL,
+      slot_id text,
+      scheduled_draw_at timestamptz,
+      winner jsonb NOT NULL,
+      counts jsonb NOT NULL
+    )
+  `);
 
-  try {
-    await fs.access(HISTORY_FILE_PATH);
-  } catch {
-    await fs.writeFile(HISTORY_FILE_PATH, '[]\n', 'utf8');
-  }
+  await db.execute(
+    sql`CREATE INDEX IF NOT EXISTS proof_history_snapshot_at_idx ON proof_history (snapshot_at DESC)`
+  );
+
+  await db.execute(
+    sql`CREATE INDEX IF NOT EXISTS proof_history_slot_id_idx ON proof_history (slot_id)`
+  );
+
+  tableReady = true;
+}
+
+function mapRowToItem(row: any): ProofHistoryItem {
+  return {
+    drawId: row.draw_id,
+    snapshotAt:
+      row.snapshot_at instanceof Date
+        ? row.snapshot_at.toISOString()
+        : new Date(row.snapshot_at).toISOString(),
+    tokenMint: row.token_mint,
+    slotId: row.slot_id || undefined,
+    scheduledDrawAt: row.scheduled_draw_at
+      ? row.scheduled_draw_at instanceof Date
+        ? row.scheduled_draw_at.toISOString()
+        : new Date(row.scheduled_draw_at).toISOString()
+      : undefined,
+    winner: row.winner,
+    counts: row.counts,
+  };
 }
 
 export async function readProofHistory(): Promise<ProofHistoryItem[]> {
-  await ensureHistoryFileExists();
+  await ensureHistoryTableExists();
 
   try {
-    const raw = await fs.readFile(HISTORY_FILE_PATH, 'utf8');
-    const parsed = JSON.parse(raw);
+    const result = await db.execute(sql`
+      SELECT
+        draw_id,
+        snapshot_at,
+        token_mint,
+        slot_id,
+        scheduled_draw_at,
+        winner,
+        counts
+      FROM proof_history
+      ORDER BY snapshot_at DESC
+    `);
 
-    if (!Array.isArray(parsed)) {
-      return [];
-    }
-
-    return parsed as ProofHistoryItem[];
+    return result.rows.map(mapRowToItem);
   } catch (error) {
     console.error('readProofHistory error', error);
     return [];
@@ -57,30 +96,86 @@ export async function readProofHistory(): Promise<ProofHistoryItem[]> {
 export async function writeProofHistory(
   items: ProofHistoryItem[]
 ): Promise<void> {
-  await ensureHistoryFileExists();
+  await ensureHistoryTableExists();
 
-  await fs.writeFile(HISTORY_FILE_PATH, JSON.stringify(items, null, 2), 'utf8');
+  await db.execute(sql`DELETE FROM proof_history`);
+
+  for (const item of items) {
+    await db.execute(sql`
+      INSERT INTO proof_history (
+        draw_id,
+        snapshot_at,
+        token_mint,
+        slot_id,
+        scheduled_draw_at,
+        winner,
+        counts
+      )
+      VALUES (
+        ${item.drawId},
+        ${item.snapshotAt},
+        ${item.tokenMint},
+        ${item.slotId ?? null},
+        ${item.scheduledDrawAt ?? null},
+        ${JSON.stringify(item.winner)}::jsonb,
+        ${JSON.stringify(item.counts)}::jsonb
+      )
+    `);
+  }
 }
 
 export async function prependProofHistoryItem(
   item: ProofHistoryItem
 ): Promise<ProofHistoryItem[]> {
-  const existing = await readProofHistory();
-  const next = [item, ...existing];
+  await ensureHistoryTableExists();
 
-  await writeProofHistory(next);
+  await db.execute(sql`
+    INSERT INTO proof_history (
+      draw_id,
+      snapshot_at,
+      token_mint,
+      slot_id,
+      scheduled_draw_at,
+      winner,
+      counts
+    )
+    VALUES (
+      ${item.drawId},
+      ${item.snapshotAt},
+      ${item.tokenMint},
+      ${item.slotId ?? null},
+      ${item.scheduledDrawAt ?? null},
+      ${JSON.stringify(item.winner)}::jsonb,
+      ${JSON.stringify(item.counts)}::jsonb
+    )
+    ON CONFLICT (draw_id) DO NOTHING
+  `);
 
-  return next;
+  return readProofHistory();
 }
 
 export async function findProofHistoryBySlotId(
   slotId: string
 ): Promise<ProofHistoryItem | null> {
-  const history = await readProofHistory();
+  await ensureHistoryTableExists();
 
-  const match = history.find((item) => item.slotId === slotId);
+  const result = await db.execute(sql`
+    SELECT
+      draw_id,
+      snapshot_at,
+      token_mint,
+      slot_id,
+      scheduled_draw_at,
+      winner,
+      counts
+    FROM proof_history
+    WHERE slot_id = ${slotId}
+    ORDER BY snapshot_at DESC
+    LIMIT 1
+  `);
 
-  return match || null;
+  const row = result.rows[0];
+  return row ? mapRowToItem(row) : null;
 }
 
 export async function hasProofHistorySlot(slotId: string): Promise<boolean> {
