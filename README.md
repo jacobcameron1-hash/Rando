@@ -32,6 +32,20 @@ No custody. No manual payouts. Fully transparent.
 
 ---
 
+## ⚙️ Current Live Behavior
+
+- **50% → Dev wallet**
+- **50% → Current winner**
+
+Each draw:
+
+* selects a new eligible holder
+* replaces the previous winner
+* updates Bags fee configuration on-chain
+* routes all future fees to the new winner automatically
+
+---
+
 ## How It Works
 
 1. Fetch all token holders from Solana
@@ -41,10 +55,12 @@ No custody. No manual payouts. Fully transparent.
    * Excluded wallets (dev / fee wallets)
 3. Generate a snapshot of eligible wallets
 4. Randomly select a winner
-5. Update Bags fee configuration:
+5. Validate winner still meets requirements (anti-dump protection)
+6. Update Bags fee configuration:
 
-   * Winner becomes the fee recipient
-6. Bags distributes rewards automatically through its fee system
+   * Dev (50%)
+   * Winner (50%)
+7. Bags distributes rewards automatically through its fee system
 
 ---
 
@@ -54,6 +70,7 @@ No custody. No manual payouts. Fully transparent.
 * Provably fair random selection
 * On-chain holder snapshot + filtering
 * Duplicate draw protection
+* Winner validation (anti-dump)
 * Transparent proof + history tracking
 * Bags fee routing integration
 * No manual payout logic (Bags-managed distribution)
@@ -65,6 +82,20 @@ No custody. No manual payouts. Fully transparent.
 * `/api/proof/run-draw` → executes a draw and updates fee routing
 * `/api/proof/next-draw` → returns next scheduled draw
 * `/api/proof/history` → returns past draws
+
+---
+
+## 🔐 Environment Variables
+
+
+NEXT_PUBLIC_SOLANA_RPC_URL=
+BAGS_API_KEY=
+SOLANA_PRIVATE_KEY=
+BAGS_PAYER_WALLET=
+BAGS_BASE_URL=https://public-api-v2.bags.fm/api/v1
+
+RANDO_DEV_WALLET=
+
 
 ---
 
@@ -108,17 +139,33 @@ Rando removes all of that.
 
 ---
 
+## 🛣️ Next Steps
+
+* ⏱️ Automated scheduled draws (cron)
+* 💰 Claimable fee tracking (dashboard)
+* 🎯 Minimum payout threshold logic
+* 🎉 Live UI updates + animations
+* 🌐 Multi-token support
+
+---
+
 ## Run Locally
 
 ```bash
 npm install
 npm run dev
-```
-
----
-
-## Status
+Status
 
 Hackathon proof-of-concept — built and shipped in one week.
 
+
 ---
+
+## 🚀 Next step — push to GitHub
+
+Run this:
+
+```bash
+git add .
+git commit -m "Rando: working 50/50 Bags winner rotation + updated README"
+git push

@@ -21,6 +21,7 @@ const BAGS_BASE_URL =
   process.env.BAGS_BASE_URL || 'https://public-api-v2.bags.fm/api/v1';
 const BAGS_PAYER_WALLET = process.env.BAGS_PAYER_WALLET!;
 const SOLANA_PRIVATE_KEY = process.env.SOLANA_PRIVATE_KEY!;
+const DEV_WALLET = process.env.RANDO_DEV_WALLET!;
 
 const MIN_TOKENS = 1_000_000;
 
@@ -68,6 +69,10 @@ function buildSlotId(slotId: string, force: boolean, testId: string | null) {
 }
 
 async function sendBagsTransactions(transactions: string[]) {
+  if (!transactions.length) {
+    throw new Error('Bags returned no transactions to sign');
+  }
+
   const connection = new Connection(HELIUS_RPC_URL, 'confirmed');
   const keypair = getAdminKeypair();
 
@@ -91,7 +96,10 @@ async function sendBagsTransactions(transactions: string[]) {
   return signatures;
 }
 
-async function updateBagsFeeRecipient(recipientWallet: string) {
+async function updateBagsFeeRecipients(winnerWallet: string) {
+  const claimersArray = [DEV_WALLET, winnerWallet];
+  const basisPointsArray = [5000, 5000];
+
   const response = await fetch(
     `${BAGS_BASE_URL}/fee-share/admin/update-config`,
     {
@@ -102,8 +110,8 @@ async function updateBagsFeeRecipient(recipientWallet: string) {
       },
       body: JSON.stringify({
         baseMint: TOKEN_MINT,
-        claimersArray: [recipientWallet],
-        basisPointsArray: [10000],
+        claimersArray,
+        basisPointsArray,
         payer: BAGS_PAYER_WALLET,
         additionalLookupTables: [],
       }),
@@ -113,7 +121,9 @@ async function updateBagsFeeRecipient(recipientWallet: string) {
   const json = await response.json();
 
   if (!response.ok || !json.success) {
-    throw new Error(json.error || 'Bags update-config failed');
+    throw new Error(
+      json.error || JSON.stringify(json) || 'Bags update-config failed'
+    );
   }
 
   return (
@@ -348,14 +358,14 @@ async function runDraw(request: Request) {
   const validation = await pickValidatedWinner(eligible, decimals);
   const winner = validation.winner;
 
-  const updateConfigTransactions = await updateBagsFeeRecipient(winner.owner);
+  const updateConfigTransactions = await updateBagsFeeRecipients(winner.owner);
   const configSignatures = await sendBagsTransactions(updateConfigTransactions);
 
   const responseBody = {
     ok: true,
     draw: {
       drawId,
-      step: 'winner selected, validated, and Bags fee recipient updated',
+      step: 'winner selected, validated, and Bags fee split updated',
       snapshotAt,
       tokenMint: TOKEN_MINT,
       forced: effectiveForce,
@@ -413,12 +423,23 @@ async function runDraw(request: Request) {
     payout: {
       provider: 'bags',
       distributionModel: 'bags-managed',
-      feeRecipient: winner.owner,
-      basisPoints: 10000,
       configUpdated: true,
-      configSignatures,
-      manualPayoutPerformed: false,
       claimTriggeredByApp: false,
+      manualPayoutPerformed: false,
+      rotatingRole: 'winner',
+      recipients: [
+        {
+          role: 'dev',
+          wallet: DEV_WALLET,
+          basisPoints: 5000,
+        },
+        {
+          role: 'winner',
+          wallet: winner.owner,
+          basisPoints: 5000,
+        },
+      ],
+      configSignatures,
     },
   };
 
