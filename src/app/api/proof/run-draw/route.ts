@@ -241,12 +241,27 @@ async function runDraw(request: Request) {
   const currentSlot = getCurrentDrawSlot(new Date());
   const { force, testId } = getRequestOptions(request);
 
-  const allowManualDraw = true;
-  const effectiveForce = force || allowManualDraw;
+  const effectiveForce = force;
   const effectiveTestId =
     effectiveForce && !currentSlot.isDue
       ? testId || buildUniqueManualTestId()
       : testId;
+
+  if (!effectiveForce && !currentSlot.isDue) {
+    return Response.json({
+      ok: true,
+      skipped: true,
+      reason: 'Current draw slot is not due yet',
+      slot: {
+        slotId: currentSlot.slotId,
+        drawIndex: currentSlot.drawIndex,
+        scheduledDrawAt: currentSlot.nextDrawAtIso,
+        previousDrawAtIso: currentSlot.previousDrawAtIso,
+        currentIntervalHours: currentSlot.currentIntervalHours,
+        isDue: currentSlot.isDue,
+      },
+    });
+  }
 
   const slotIdToCheck = buildSlotId(
     currentSlot.slotId,
