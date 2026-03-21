@@ -24,9 +24,7 @@ export async function GET(_req: Request, context: RouteContext) {
 
     const eligible =
       project.eligibilityType === "amount"
-        ? mockHolders.filter(
-            (holder) => holder.tokenAmount >= project.eligibilityValue
-          )
+        ? []
         : mockHolders.filter(
             (holder) => holder.percentOwned >= project.minPercent
           );
