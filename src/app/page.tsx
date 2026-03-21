@@ -1,295 +1,306 @@
-import Link from 'next/link';
+'use client';
 
-export default function Home() {
-  return (
-    <main className="min-h-screen flex flex-col">
-      {/* Nav */}
-      <nav className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)]">
+import { useEffect, useMemo, useState } from 'react';
+
+type HistoryItem = {
+  drawId: string;
+  snapshotAt: string;
+  winner?: {
+    owner: string;
+    uiAmount: number;
+  };
+  counts?: {
+    eligibleCount?: number;
+    holderCountAfterExclusions?: number;
+  };
+};
+
+type NextDrawSchedule = {
+  nextDrawAtIso: string | null;
+  countdownMs: number;
+};
+
+function formatNumber(value: number) {
+  return new Intl.NumberFormat('en-US', {
+    maximumFractionDigits: 2,
+  }).format(value);
+}
+
+function formatDate(value: string) {
+  return new Date(value).toLocaleString();
+}
+
+function shortenAddress(address: string) {
+  if (!address) return '—';
+  return `${address.slice(0, 4)}...${address.slice(-4)}`;
+}
+
+function formatCountdown(countdownMs: number) {
+  const totalSeconds = Math.max(0, Math.floor(countdownMs / 1000));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (hours > 0) {
+    return `${hours}h ${minutes}m ${seconds}s`;
+  }
+
+  return `${minutes}m ${seconds}s`;
+}
+
+function getExplorerUrl(address: string) {
+  return `https://solscan.io/account/${address}`;
+}
+
+export default function PublicPage() {
+  const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [nextDraw, setNextDraw] = useState<NextDrawSchedule | null>(null);
+  const [countdownMs, setCountdownMs] = useState(0);
+  const [copied, setCopied] = useState<string | null>(null);
+
+  async function load() {
+    const historyResponse = await fetch('/api/proof/history', {
+      cache: 'no-store',
+    });
+    const historyData = await historyResponse.json();
+
+    const nextDrawResponse = await fetch('/api/proof/next-draw', {
+      cache: 'no-store',
+    });
+    const nextDrawData = await nextDrawResponse.json();
+
+    const nextSchedule = nextDrawData.schedule || null;
+
+    setHistory(historyData.history || []);
+    setNextDraw(nextSchedule);
+    setCountdownMs(nextSchedule?.countdownMs ?? 0);
+  }
+
+  useEffect(() => {
+    load();
+
+    const refreshInterval = setInterval(() => {
+      load();
+    }, 15000);
+
+    return () => clearInterval(refreshInterval);
+  }, []);
+
+  useEffect(() => {
+    const countdownInterval = setInterval(() => {
+      setCountdownMs((current) => Math.max(0, current - 1000));
+    }, 1000);
+
+    return () => clearInterval(countdownInterval);
+  }, []);
+
+  const latest = history[0];
+
+  const formattedCountdown = useMemo(() => {
+    return formatCountdown(countdownMs);
+  }, [countdownMs]);
+
+  const eligibleCount = latest?.counts?.eligibleCount ?? 0;
+  const holderCount = latest?.counts?.holderCountAfterExclusions ?? 0;
+  const eligiblePercent =
+    holderCount > 0 ? ((eligibleCount / holderCount) * 100).toFixed(2) : '0.00';
+
+  async function handleCopy(address: string) {
+    try {
+      await navigator.clipboard.writeText(address);
+      setCopied(address);
+      setTimeout(() => setCopied(null), 1500);
+    } catch (err) {
+      console.error('Copy failed', err);
+    }
+  }
+
+  function WalletRow({ address }: { address: string }) {
+    if (!address) {
+      return <span className="font-semibold text-white">—</span>;
+    }
+
+    return (
+      <div className="flex flex-wrap items-center gap-3">
         <a
-          href="https://randocoin.netlify.app"
+          href={getExplorerUrl(address)}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+          className="font-mono text-lg font-semibold text-white hover:text-[#f2c9a5] hover:underline"
         >
-          <img
-            src="/logo.svg"
-            alt="Rando"
-            className="w-8 h-8"
-          />
-          <span className="text-xl font-bold tracking-tight">Rando</span>
+          {shortenAddress(address)}
         </a>
-        <div className="flex items-center gap-3">
-          <a
-            href="https://randocoin.netlify.app"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="px-4 py-2 rounded-lg text-sm font-medium hover:opacity-80 transition-opacity hidden sm:block"
-            style={{ color: 'var(--accent-gold)', border: '1px solid var(--accent-gold)' }}
-          >
-            $RANDO
-          </a>
-          <Link
-            href="/setup"
-            className="px-4 py-2 rounded-lg text-white text-sm font-medium hover:opacity-90 transition-opacity"
-            style={{ background: 'var(--accent)' }}
-          >
-            Launch Rewards System
-          </Link>
-        </div>
-      </nav>
 
-      {/* Hero */}
-      <section className="flex-1 grid md:grid-cols-2 items-center gap-0 px-0 overflow-hidden">
-        {/* Left — copy */}
-        <div className="flex flex-col justify-center px-8 md:px-16 py-20 md:py-24 order-2 md:order-1">
-          <div
-            className="inline-block text-xs font-mono tracking-widest px-3 py-1 rounded mb-6 self-start"
-            style={{ background: 'var(--accent-glow)', color: 'var(--accent)', border: '1px solid var(--accent)' }}
-          >
-            R.A.N.D.O.
-          </div>
-          <h1 className="text-5xl md:text-6xl font-bold tracking-tight mb-6 leading-tight">
-            Turn your trading fees into{' '}
-            <span style={{ color: 'var(--accent)' }}>randomized rewards</span>
-          </h1>
-          <p className="text-lg mb-4 leading-relaxed" style={{ color: 'var(--muted)' }}>
-            Rando automatically pools trading fees from your bags.fm token and
-            rewards a randomly selected eligible holder on a configurable timer,
-            with a fully verifiable selection process.
-          </p>
-          <p className="text-sm mb-10" style={{ color: 'var(--muted)' }}>
-            Powered by{' '}
-            <a
-              href="https://randocoin.netlify.app"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:opacity-80 transition-opacity"
-              style={{ color: 'var(--accent-gold)' }}
-            >
-              $RANDO
-            </a>{' '}
-            · the original randomized rewards coin
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4">
-            <Link
-              href="/setup"
-              className="px-8 py-3 rounded-xl text-white font-semibold text-lg transition-all hover:opacity-90"
-              style={{ background: 'var(--accent)' }}
-            >
-              Set up Rando →
-            </Link>
-            <a
-              href="#how-it-works"
-              className="px-8 py-3 rounded-xl font-semibold text-lg transition-all hover:opacity-70"
-              style={{ border: '1px solid var(--border)', color: 'var(--muted)' }}
-            >
-              How it works
-            </a>
-          </div>
-        </div>
+        <button
+          onClick={() => handleCopy(address)}
+          className="rounded-full border border-white/10 px-3 py-1 text-xs text-[#b89b7d] transition hover:border-white/20 hover:text-white"
+        >
+          {copied === address ? 'Copied' : 'Copy'}
+        </button>
+      </div>
+    );
+  }
 
-        {/* Right — mascot */}
-        <div className="relative order-1 md:order-2 flex items-center justify-center md:min-h-screen overflow-hidden">
-          {/* Mobile: centered circle */}
-          <img
-            src="/mascot_hero.jpg"
-            alt="R.A.N.D.O."
-            className="md:hidden w-56 h-56 rounded-full object-cover object-top mt-12"
-            style={{ border: '2px solid var(--border)' }}
-          />
-          {/* Desktop: full-bleed with left fade */}
-          <img
-            src="/mascot_hero.jpg"
-            alt="R.A.N.D.O."
-            className="hidden md:block absolute inset-0 w-full h-full object-cover object-top"
-            style={{
-              maskImage: 'linear-gradient(to left, black 50%, transparent 100%)',
-              WebkitMaskImage: 'linear-gradient(to left, black 50%, transparent 100%)',
-            }}
-          />
-        </div>
-      </section>
+  return (
+    <main className="min-h-screen bg-[#090605] text-white">
+      <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-12">
+        <div className="mb-12 text-center">
+          <div className="mb-6 flex justify-center">
+            <div className="relative rounded-[32px] border border-[#3a2417] bg-[#120b08] px-10 py-8 shadow-2xl">
+              <div className="pointer-events-none absolute inset-0 rounded-[32px] bg-gradient-to-br from-[#ff3b2e]/20 via-transparent to-transparent blur-2xl" />
 
-      {/* $RANDO lore section */}
-      <section className="px-6 py-20 border-t border-[var(--border)]" style={{ background: 'var(--card)' }}>
-        <div className="max-w-5xl mx-auto grid md:grid-cols-2 gap-12 items-center">
-          <div>
-            <div className="text-xs font-mono tracking-widest mb-4" style={{ color: 'var(--accent-gold)' }}>
-              THE COIN BEHIND THE PLATFORM
-            </div>
-            <h2 className="text-4xl font-bold mb-2">Meet $RANDO</h2>
-            <p
-              className="text-lg font-mono mb-6"
-              style={{ color: 'var(--accent-gold)' }}
-            >
-              Random Ai Nonsense Dopamine Overload
-            </p>
-            <p className="leading-relaxed mb-4" style={{ color: 'var(--muted)' }}>
-              Before AI learned to behave, it generated fever dreams. Impossible creatures.
-              Surreal chimeras. Objects that had no right existing. It was chaotic, beautiful,
-              and completely unhinged — and then it got fixed.
-            </p>
-            <p className="leading-relaxed mb-8" style={{ color: 'var(--muted)' }}>
-              $RANDO is a memorial to that era. A celebration of the beautiful noise before
-              the guardrails went up. Hold without selling. Win randomly. Embrace the chaos.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-3">
-              <a
-                href="REPLACE_WITH_BAGS_BUY_URL"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-6 py-3 rounded-xl font-semibold text-center transition-all hover:opacity-90"
-                style={{ background: 'var(--accent-gold)', color: '#000' }}
-              >
-                Buy $RANDO
-              </a>
-              <a
-                href="https://randocoin.netlify.app"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-6 py-3 rounded-xl font-semibold text-center transition-all hover:opacity-70"
-                style={{ border: '1px solid var(--border)', color: 'var(--muted)' }}
-              >
-                Coin site →
-              </a>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-center">
-            <div className="relative">
-              <div
-                className="absolute -inset-4 rounded-3xl blur-2xl opacity-30"
-                style={{ background: 'var(--accent-gold)' }}
-              />
               <img
-                src="/mascot_hero.jpg"
-                alt="$RANDO mascot"
-                className="relative rounded-2xl w-full max-w-sm object-cover"
-                style={{ border: '1px solid var(--border)' }}
+                src="/dice.png"
+                alt="Rando dice logo"
+                className="dice-float relative h-48 w-48 object-contain drop-shadow-[0_20px_40px_rgba(0,0,0,0.6)] sm:h-64 sm:w-64"
               />
-              <div
-                className="absolute bottom-4 left-4 right-4 text-center text-xs font-mono tracking-widest py-2 rounded-lg"
-                style={{ background: 'rgba(0,0,0,0.6)', color: 'var(--accent-gold)' }}
-              >
-                R · A · N · D · O
-              </div>
+            </div>
+          </div>
+
+          <h1 className="text-6xl font-black tracking-tight text-white sm:text-8xl">
+            Rando
+          </h1>
+
+          <p className="mx-auto mt-5 max-w-3xl font-mono text-lg leading-8 text-[#b89b7d] sm:text-2xl">
+            Automated randomized rewards for your bags.fm token
+          </p>
+
+          <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
+            <a
+              href="/dashboard"
+              className="inline-flex items-center justify-center rounded-2xl bg-[#e23b28] px-6 py-4 font-mono text-lg font-semibold text-white transition hover:bg-[#f04a36]"
+            >
+              Open Dashboard →
+            </a>
+
+            <div className="inline-flex items-center justify-center rounded-2xl border border-[#3a2417] bg-[#120b08] px-6 py-4 font-mono text-sm text-[#b89b7d]">
+              Live proof and recent winners
             </div>
           </div>
         </div>
-      </section>
 
-      {/* How it works */}
-      <section id="how-it-works" className="px-6 py-20 max-w-5xl mx-auto w-full">
-        <h2 className="text-3xl font-bold text-center mb-14">How it works</h2>
-        <div className="grid md:grid-cols-3 gap-8">
-          {[
-            {
-              step: '01',
-              title: 'Fees accumulate',
-              body: 'Every trade on your bags.fm token generates a 1% fee. Rando captures a share of those fees into a dedicated rewards vault — no manual top-ups needed.',
-            },
-            {
-              step: '02',
-              title: 'Timer fires',
-              body: 'On your configurable schedule — flat or progressive — Rando checks the holder list. Only wallets that held the minimum amount for the entire interval are eligible.',
-            },
-            {
-              step: '03',
-              title: 'Reward is sent',
-              body: 'A random eligible holder is selected, weighted by balance. The full rewards pool lands in their wallet automatically. Paper hands miss out. Diamond hands get paid.',
-            },
-          ].map((item) => (
-            <div
-              key={item.step}
-              className="rounded-2xl p-6"
-              style={{ background: 'var(--card)', border: '1px solid var(--border)' }}
-            >
-              <div className="text-sm font-mono mb-3" style={{ color: 'var(--accent)' }}>
-                {item.step}
+        <div className="rounded-[32px] border border-[#3a2417] bg-[#18100c] p-5 shadow-2xl sm:p-8">
+          <div className="mb-8 grid gap-4 md:grid-cols-3">
+            <div className="rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5">
+              <div className="font-mono text-sm text-[#b89b7d]">Next Draw</div>
+              <div className="mt-3 text-2xl font-black text-white">
+                {nextDraw?.nextDrawAtIso ? formatDate(nextDraw.nextDrawAtIso) : '—'}
               </div>
-              <h3 className="text-xl font-semibold mb-3">{item.title}</h3>
-              <p className="text-sm leading-relaxed" style={{ color: 'var(--muted)' }}>{item.body}</p>
+              <div className="mt-2 font-mono text-sm text-[#f2c9a5]">
+                {formattedCountdown}
+              </div>
             </div>
-          ))}
-        </div>
-      </section>
 
-      {/* Features */}
-      <section className="px-6 py-20 border-t border-[var(--border)]">
-        <div className="max-w-5xl mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-14">Built for launchers</h2>
-          <div className="grid md:grid-cols-2 gap-6">
-            {[
-              {
-                icon: '⏱',
-                title: 'Progressive timers',
-                body: 'Start with quick reward cycles to build early hype, then slow down automatically as the community matures. Configure base interval, increment, and cap.',
-              },
-              {
-                icon: '🔒',
-                title: 'Trustless lock mode',
-                body: 'Permanently transfer fee share admin to the system program. On-chain verifiable — no one can ever rug the reward split again.',
-              },
-              {
-                icon: '🎯',
-                title: 'Flexible eligibility',
-                body: 'Set the minimum hold requirement as a % of total supply or a raw token amount. Holders who sold before the reward cycle ends are automatically excluded.',
-              },
-              {
-                icon: '📊',
-                title: 'Full transparency',
-                body: 'Every selection is recorded with the winner wallet, reward amount, and transaction signature. Anyone can verify the results on-chain, anytime.',
-              },
-            ].map((f) => (
-              <div
-                key={f.title}
-                className="flex gap-4 rounded-2xl p-6"
-                style={{ background: 'var(--card)', border: '1px solid var(--border)' }}
-              >
-                <span className="text-2xl">{f.icon}</span>
+            <div className="rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5">
+              <div className="font-mono text-sm text-[#b89b7d]">Eligible Wallets</div>
+              <div className="mt-3 text-4xl font-black text-white">
+                {formatNumber(eligibleCount)}
+              </div>
+              <div className="mt-2 font-mono text-sm text-[#b89b7d]">
+                Current eligible holders
+              </div>
+            </div>
+
+            <div className="rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5">
+              <div className="font-mono text-sm text-[#b89b7d]">Eligibility Rate</div>
+              <div className="mt-3 text-4xl font-black text-white">
+                {eligiblePercent}%
+              </div>
+              <div className="mt-2 font-mono text-sm text-[#b89b7d]">
+                {formatNumber(holderCount)} tracked holders
+              </div>
+            </div>
+          </div>
+
+          <div className="mb-8 rounded-[28px] border border-[#3a2417] bg-[#120b08] p-6 sm:p-8">
+            <div className="mb-2 font-mono text-sm text-[#b89b7d]">Latest Winner</div>
+
+            {latest ? (
+              <div className="grid gap-6 md:grid-cols-[1fr_auto] md:items-end">
                 <div>
-                  <h3 className="font-semibold mb-1">{f.title}</h3>
-                  <p className="text-sm leading-relaxed" style={{ color: 'var(--muted)' }}>{f.body}</p>
+                  <WalletRow address={latest.winner?.owner || ''} />
+                  <div className="mt-4 text-4xl font-black text-white sm:text-5xl">
+                    {formatNumber(latest.winner?.uiAmount || 0)}
+                  </div>
+                  <div className="mt-2 font-mono text-base text-[#f2c9a5]">
+                    tokens won
+                  </div>
+                  <div className="mt-4 font-mono text-sm text-[#8f755d]">
+                    {formatDate(latest.snapshotAt)}
+                  </div>
+                </div>
+
+                <div className="rounded-full bg-[#e23b28] px-5 py-3 text-center font-mono text-sm font-semibold text-white shadow-lg">
+                  Most recent winner
                 </div>
               </div>
-            ))}
+            ) : (
+              <div className="mt-2 font-mono text-[#b89b7d]">No draws yet</div>
+            )}
+          </div>
+
+          <div className="rounded-[28px] border border-[#3a2417] bg-[#120b08] p-6 sm:p-8">
+            <div className="mb-1 text-3xl font-black text-white sm:text-4xl">
+              Recent Draws
+            </div>
+            <div className="mb-6 font-mono text-sm text-[#b89b7d]">
+              Latest 5 winners with live wallet links
+            </div>
+
+            <div className="space-y-4">
+              {history.slice(0, 5).map((item) => (
+                <div
+                  key={item.drawId}
+                  className="rounded-[22px] border border-[#3a2417] bg-[#0f0907] p-5"
+                >
+                  <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                    <div>
+                      <WalletRow address={item.winner?.owner || ''} />
+                      <div className="mt-2 font-mono text-sm text-[#8f755d]">
+                        {formatDate(item.snapshotAt)}
+                      </div>
+                    </div>
+
+                    <div className="text-left md:text-right">
+                      <div className="text-2xl font-black text-white">
+                        {formatNumber(item.winner?.uiAmount || 0)}
+                      </div>
+                      <div className="mt-1 font-mono text-sm text-[#b89b7d]">
+                        winner balance
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              {history.length === 0 && (
+                <div className="rounded-[22px] border border-[#3a2417] bg-[#0f0907] p-5 font-mono text-[#b89b7d]">
+                  No draws yet
+                </div>
+              )}
+            </div>
           </div>
         </div>
-      </section>
+      </div>
 
-      {/* CTA */}
-      <section className="px-6 py-20 text-center border-t border-[var(--border)]">
-        <h2 className="text-3xl font-bold mb-4">Ready to reward your holders?</h2>
-        <p className="mb-8" style={{ color: 'var(--muted)' }}>
-          Two minutes to set up. Automatic forever after.
-        </p>
-        <Link
-          href="/setup"
-          className="inline-block px-10 py-4 rounded-xl text-white font-semibold text-lg hover:opacity-90 transition-opacity"
-          style={{ background: 'var(--accent)' }}
-        >
-          Set up Rando →
-        </Link>
-      </section>
+      <style jsx>{`
+        .dice-float {
+          animation: diceFloat 4.5s ease-in-out infinite;
+          transform-origin: center;
+        }
 
-      {/* Footer */}
-      <footer className="px-6 py-6 border-t border-[var(--border)] text-center text-sm" style={{ color: 'var(--muted)' }}>
-        Built on{' '}
-        <a href="https://bags.fm" className="underline hover:opacity-80" target="_blank" rel="noopener noreferrer">
-          bags.fm
-        </a>{' '}
-        · Powered by{' '}
-        <a
-          href="https://randocoin.netlify.app"
-          className="underline hover:opacity-80"
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{ color: 'var(--accent-gold)' }}
-        >
-          $RANDO
-        </a>{' '}
-        · <span className="font-mono text-xs tracking-widest" style={{ color: 'var(--muted)' }}>R.A.N.D.O.</span>
-      </footer>
+        @keyframes diceFloat {
+          0% {
+            transform: translateY(0px) rotate(-3deg);
+          }
+          50% {
+            transform: translateY(-10px) rotate(3deg);
+          }
+          100% {
+            transform: translateY(0px) rotate(-3deg);
+          }
+        }
+      `}</style>
     </main>
   );
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
@@ -36,6 +36,7 @@ export default function SetupPage() {
   const { publicKey, sendTransaction, connected } = useWallet();
   const { connection } = useConnection();
 
+  const [mounted, setMounted] = useState(false);
   const [step, setStep] = useState<Step>(1);
   const [form, setForm] = useState<FormState>(DEFAULT_FORM);
   const [loading, setLoading] = useState(false);
@@ -43,6 +44,10 @@ export default function SetupPage() {
   const [error, setError] = useState('');
   const [projectId, setProjectId] = useState('');
   const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -184,8 +189,6 @@ export default function SetupPage() {
         baseInterval: form.baseInterval,
         incrementInterval: form.incrementInterval,
         capInterval: form.capInterval,
-
-        // compatibility fields for older demo/createProject code paths
         tokenAddress: form.tokenMint.trim(),
         tokenName: 'Rando Randomized Rewards',
         minPercent:
@@ -311,7 +314,21 @@ export default function SetupPage() {
                   </label>
 
                   <div className="flex flex-col items-start gap-3">
-                    <WalletMultiButton />
+                    {mounted ? (
+                      <WalletMultiButton />
+                    ) : (
+                      <div
+                        className="px-4 py-3 rounded-xl text-sm"
+                        style={{
+                          background: 'var(--background)',
+                          border: '1px solid var(--border)',
+                          color: 'var(--muted)',
+                        }}
+                      >
+                        Loading wallet...
+                      </div>
+                    )}
+
                     {connected && publicKey && (
                       <p className="text-sm" style={{ color: 'var(--muted)' }}>
                         Connected: {publicKey.toBase58().slice(0, 8)}...

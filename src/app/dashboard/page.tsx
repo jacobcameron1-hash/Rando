@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 type WalletEntry = {
   owner: string;
@@ -69,15 +69,6 @@ type FeeRecipientResponse = {
   status?: number;
 };
 
-type RunCycleResponse = {
-  ok: boolean;
-  error?: string;
-  step?: string;
-  message?: string;
-  drawResponse?: DrawResponse;
-  feeRecipientResponse?: FeeRecipientResponse;
-};
-
 function formatNumber(value: number) {
   return new Intl.NumberFormat('en-US', {
     maximumFractionDigits: 2,
@@ -95,17 +86,10 @@ function shortenAddress(address: string) {
 export default function DashboardPage() {
   const [running, setRunning] = useState(false);
   const [settingRecipient, setSettingRecipient] = useState(false);
-  const [runningCycle, setRunningCycle] = useState(false);
-  const [autoRunEnabled, setAutoRunEnabled] = useState(false);
-  const [autoRunMinutes, setAutoRunMinutes] = useState(5);
-  const [lastAutoRunAt, setLastAutoRunAt] = useState<string | null>(null);
   const [drawResult, setDrawResult] = useState<DrawResponse | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [feeRecipientResult, setFeeRecipientResult] =
     useState<FeeRecipientResponse | null>(null);
-  const [cycleResult, setCycleResult] = useState<RunCycleResponse | null>(null);
-
-  const autoRunIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const loadHistory = useCallback(async () => {
     const res = await fetch('/api/proof/history', { cache: 'no-store' });
@@ -123,7 +107,6 @@ export default function DashboardPage() {
   async function runDraw() {
     setRunning(true);
     setFeeRecipientResult(null);
-    setCycleResult(null);
 
     try {
       const res = await fetch('/api/proof/run-draw', { method: 'POST' });
@@ -143,7 +126,6 @@ export default function DashboardPage() {
   async function setWinnerAsFeeRecipient() {
     setSettingRecipient(true);
     setFeeRecipientResult(null);
-    setCycleResult(null);
 
     try {
       const res = await fetch('/api/proof/set-winner-fee-recipient', {
@@ -152,65 +134,10 @@ export default function DashboardPage() {
 
       const data: FeeRecipientResponse = await res.json();
       setFeeRecipientResult(data);
-      await loadHistory();
     } finally {
       setSettingRecipient(false);
     }
   }
-
-  const runCycle = useCallback(async () => {
-    setRunningCycle(true);
-    setFeeRecipientResult(null);
-    setCycleResult(null);
-
-    try {
-      const res = await fetch('/api/proof/run-cycle', {
-        method: 'POST',
-      });
-
-      const data: RunCycleResponse = await res.json();
-      setCycleResult(data);
-
-      if (data.drawResponse) {
-        setDrawResult(data.drawResponse);
-      }
-
-      if (data.feeRecipientResponse) {
-        setFeeRecipientResult(data.feeRecipientResponse);
-      }
-
-      setLastAutoRunAt(new Date().toISOString());
-      await loadHistory();
-    } finally {
-      setRunningCycle(false);
-    }
-  }, [loadHistory]);
-
-  useEffect(() => {
-    if (autoRunIntervalRef.current) {
-      clearInterval(autoRunIntervalRef.current);
-      autoRunIntervalRef.current = null;
-    }
-
-    if (!autoRunEnabled) {
-      return;
-    }
-
-    const intervalMs = autoRunMinutes * 60 * 1000;
-
-    autoRunIntervalRef.current = setInterval(() => {
-      if (!running && !settingRecipient && !runningCycle) {
-        runCycle();
-      }
-    }, intervalMs);
-
-    return () => {
-      if (autoRunIntervalRef.current) {
-        clearInterval(autoRunIntervalRef.current);
-        autoRunIntervalRef.current = null;
-      }
-    };
-  }, [autoRunEnabled, autoRunMinutes, running, settingRecipient, runningCycle, runCycle]);
 
   const activeWinner = useMemo(() => {
     if (drawResult?.winner) return drawResult.winner;
@@ -219,23 +146,13 @@ export default function DashboardPage() {
   }, [drawResult, history]);
 
   const feeRecipientStatusText = useMemo(() => {
-    if (runningCycle) return 'Running full draw + fee recipient cycle...';
     if (settingRecipient) return 'Updating Bags fee recipient...';
     if (!feeRecipientResult) return 'No fee recipient update sent yet.';
     if (feeRecipientResult.ok) {
       return 'Winner was successfully set as fee recipient.';
     }
     return feeRecipientResult.error || 'Fee recipient update failed.';
-  }, [runningCycle, settingRecipient, feeRecipientResult]);
-
-  const cycleStatusText = useMemo(() => {
-    if (runningCycle) return 'Full cycle is running...';
-    if (!cycleResult) return 'No cycle run yet.';
-    if (cycleResult.ok) {
-      return cycleResult.message || 'Cycle completed successfully.';
-    }
-    return cycleResult.error || 'Cycle failed.';
-  }, [runningCycle, cycleResult]);
+  }, [settingRecipient, feeRecipientResult]);
 
   return (
     <main className="min-h-screen bg-[#090605] text-white">
@@ -250,61 +167,53 @@ export default function DashboardPage() {
         </div>
 
         <div className="mb-8 rounded-3xl border border-[#3a2417] bg-[#18100c] p-8">
-          <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+          <div className="mb-6 flex justify-between items-center">
             <div>
               <div className="text-sm text-[#8f755d] font-mono uppercase">
                 Active Recipient
               </div>
-              <h2 className="mt-2 text-3xl font-black">Current Winner</h2>
+              <h2 className="text-3xl font-black mt-2">Current Winner</h2>
             </div>
 
-            <div className="flex flex-wrap gap-3">
+            <div className="flex gap-3">
               <button
                 onClick={runDraw}
-                disabled={running || runningCycle}
-                className="rounded-xl bg-[#e23b28] px-6 py-3 font-mono disabled:opacity-50"
+                disabled={running}
+                className="bg-[#e23b28] px-6 py-3 rounded-xl font-mono disabled:opacity-50"
               >
                 {running ? 'Running…' : 'Run Draw'}
               </button>
 
               <button
                 onClick={setWinnerAsFeeRecipient}
-                disabled={settingRecipient || runningCycle}
-                className="rounded-xl bg-blue-600 px-6 py-3 font-mono disabled:opacity-50"
+                disabled={settingRecipient}
+                className="bg-blue-600 px-6 py-3 rounded-xl font-mono disabled:opacity-50"
               >
                 {settingRecipient
                   ? 'Setting Recipient…'
                   : 'Set Winner as Fee Recipient'}
               </button>
-
-              <button
-                onClick={runCycle}
-                disabled={runningCycle || running || settingRecipient}
-                className="rounded-xl bg-green-600 px-6 py-3 font-mono disabled:opacity-50"
-              >
-                {runningCycle ? 'Running Cycle…' : 'Run Full Cycle'}
-              </button>
             </div>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-3">
-            <div className="rounded-xl bg-[#120b08] p-5">
+          <div className="grid md:grid-cols-3 gap-4">
+            <div className="bg-[#120b08] p-5 rounded-xl">
               <div className="text-sm text-[#b89b7d]">Wallet</div>
-              <div className="mt-2 text-xl">
+              <div className="text-xl mt-2">
                 {activeWinner ? shortenAddress(activeWinner.owner) : '—'}
               </div>
             </div>
 
-            <div className="rounded-xl bg-[#120b08] p-5">
+            <div className="bg-[#120b08] p-5 rounded-xl">
               <div className="text-sm text-[#b89b7d]">Balance</div>
-              <div className="mt-2 text-xl">
+              <div className="text-xl mt-2">
                 {activeWinner ? formatNumber(activeWinner.uiAmount) : '—'}
               </div>
             </div>
 
-            <div className="rounded-xl bg-[#120b08] p-5">
+            <div className="bg-[#120b08] p-5 rounded-xl">
               <div className="text-sm text-[#b89b7d]">Status</div>
-              <div className="mt-2 text-xl">
+              <div className="text-xl mt-2">
                 {drawResult?.proof?.winnerValidation?.passed
                   ? 'Validated'
                   : activeWinner
@@ -312,84 +221,6 @@ export default function DashboardPage() {
                     : 'Waiting'}
               </div>
             </div>
-          </div>
-        </div>
-
-        <div className="mb-8 rounded-3xl border border-[#3a2417] bg-[#18100c] p-6">
-          <h2 className="mb-4 text-2xl font-black">Simple Automation</h2>
-
-          <div className="rounded-xl bg-[#120b08] p-5">
-            <div className="grid gap-4 md:grid-cols-[1fr_auto_auto] md:items-end">
-              <div>
-                <div className="mb-2 text-sm text-[#b89b7d]">Interval Minutes</div>
-                <input
-                  type="number"
-                  min={1}
-                  value={autoRunMinutes}
-                  onChange={(e) => setAutoRunMinutes(Number(e.target.value) || 1)}
-                  className="w-full rounded-xl border border-[#3a2417] bg-[#090605] px-4 py-3 font-mono text-white outline-none"
-                />
-              </div>
-
-              <button
-                onClick={() => setAutoRunEnabled(true)}
-                disabled={autoRunEnabled}
-                className="rounded-xl bg-purple-600 px-6 py-3 font-mono disabled:opacity-50"
-              >
-                Start Auto Run
-              </button>
-
-              <button
-                onClick={() => setAutoRunEnabled(false)}
-                disabled={!autoRunEnabled}
-                className="rounded-xl bg-gray-700 px-6 py-3 font-mono disabled:opacity-50"
-              >
-                Stop Auto Run
-              </button>
-            </div>
-
-            <div className="mt-4 grid gap-2 font-mono text-sm">
-              <div>
-                Auto Run Status:{' '}
-                <span className="text-[#b89b7d]">
-                  {autoRunEnabled ? 'Enabled' : 'Disabled'}
-                </span>
-              </div>
-              <div>
-                Interval:{' '}
-                <span className="text-[#b89b7d]">{autoRunMinutes} minute(s)</span>
-              </div>
-              <div>
-                Last Auto Run:{' '}
-                <span className="text-[#b89b7d]">
-                  {lastAutoRunAt ? formatDate(lastAutoRunAt) : 'Not yet'}
-                </span>
-              </div>
-              <div className="text-[#8f755d]">
-                This simple mode only runs while this dashboard page stays open.
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="mb-8 rounded-3xl border border-[#3a2417] bg-[#18100c] p-6">
-          <h2 className="mb-4 text-2xl font-black">Automation Cycle</h2>
-
-          <div className="rounded-xl bg-[#120b08] p-5">
-            <div className="mb-3 text-sm text-[#b89b7d]">Result</div>
-            <div className="font-mono text-sm">{cycleStatusText}</div>
-
-            {cycleResult?.ok ? (
-              <div className="mt-4 rounded-xl border border-green-500/30 bg-green-500/10 p-4 font-mono text-sm text-green-200">
-                Full cycle completed successfully.
-              </div>
-            ) : null}
-
-            {!cycleResult?.ok && cycleResult?.error ? (
-              <div className="mt-4 rounded-xl border border-yellow-500/30 bg-yellow-500/10 p-4 font-mono text-sm text-yellow-200">
-                {cycleResult.error}
-              </div>
-            ) : null}
           </div>
         </div>
 
@@ -444,10 +275,10 @@ export default function DashboardPage() {
         </div>
 
         <div className="mb-8 rounded-3xl border border-[#3a2417] bg-[#18100c] p-6">
-          <h2 className="mb-4 text-2xl font-black">Last Draw</h2>
+          <h2 className="text-2xl font-black mb-4">Last Draw</h2>
 
           {drawResult ? (
-            <div className="space-y-2 font-mono text-sm">
+            <div className="font-mono text-sm space-y-2">
               <div>Draw ID: {drawResult.draw?.drawId}</div>
               <div>
                 Snapshot:{' '}
@@ -471,21 +302,25 @@ export default function DashboardPage() {
               </div>
             </div>
           ) : (
-            <div className="font-mono text-[#8f755d]">No draw yet</div>
+            <div className="text-[#8f755d] font-mono">
+              No draw yet
+            </div>
           )}
         </div>
 
         <div className="rounded-3xl border border-[#3a2417] bg-[#18100c] p-6">
-          <h2 className="mb-4 text-2xl font-black">History</h2>
+          <h2 className="text-2xl font-black mb-4">History</h2>
 
           {history.length === 0 ? (
-            <div className="font-mono text-[#8f755d]">No history yet</div>
+            <div className="text-[#8f755d] font-mono">
+              No history yet
+            </div>
           ) : (
             <div className="space-y-3">
               {history.map((item) => (
                 <div
                   key={item.drawId}
-                  className="rounded-xl bg-[#120b08] p-4"
+                  className="bg-[#120b08] p-4 rounded-xl"
                 >
                   <div className="flex justify-between text-sm font-mono">
                     <div>{item.drawId}</div>

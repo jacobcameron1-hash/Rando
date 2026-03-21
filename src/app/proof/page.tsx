@@ -510,6 +510,9 @@ function HistoryList({
                 ? formatNumber(item.eligibleCount)
                 : '-'}
             </div>
+            <div>
+              <strong>Status:</strong> Reward routing updated
+            </div>
           </div>
 
           <div
@@ -844,7 +847,7 @@ export default function ProofPage() {
       await loadNextDraw();
     } catch (error) {
       console.error(error);
-      setErrorMessage('Failed to run draw.');
+      setErrorMessage('Failed to select winner and update reward routing.');
     } finally {
       setLoading(false);
     }
@@ -908,7 +911,8 @@ export default function ProofPage() {
                   fontSize: 16,
                 }}
               >
-                Run a holder draw and review the proof output in one place.
+                Select a winner, update Bags reward routing, and review the proof
+                output in one place.
               </p>
             </div>
 
@@ -924,10 +928,10 @@ export default function ProofPage() {
                 cursor: loading ? 'not-allowed' : 'pointer',
                 background: loading ? '#9ca3af' : '#111827',
                 color: '#ffffff',
-                minWidth: 160,
+                minWidth: 220,
               }}
             >
-              {loading ? 'Running draw...' : 'Run Draw'}
+              {loading ? 'Selecting winner...' : 'Run Draw & Update Rewards'}
             </button>
           </div>
 
@@ -947,6 +951,22 @@ export default function ProofPage() {
               {copyMessage}
             </div>
           )}
+
+          <div
+            style={{
+              marginTop: 16,
+              padding: 14,
+              borderRadius: 12,
+              background: '#f9fafb',
+              border: '1px solid #e5e7eb',
+              color: '#374151',
+              fontSize: 14,
+              lineHeight: 1.5,
+            }}
+          >
+            Rando does not hold or manually send funds. Rewards are distributed
+            automatically by Bags after reward routing is updated.
+          </div>
         </div>
 
         {loading && (
@@ -960,7 +980,7 @@ export default function ProofPage() {
               marginBottom: 24,
             }}
           >
-            Running draw and loading proof data...
+            Selecting winner and updating reward routing...
           </div>
         )}
 
@@ -1000,8 +1020,8 @@ export default function ProofPage() {
                   color: '#6b7280',
                 }}
               >
-                Click <strong>Run Draw</strong> to generate a winner and proof
-                report.
+                Click <strong>Run Draw &amp; Update Rewards</strong> to select a
+                winner and update Bags reward routing.
               </div>
 
               <section
@@ -1090,10 +1110,22 @@ export default function ProofPage() {
                   style={{
                     fontSize: 18,
                     opacity: 0.95,
-                    marginBottom: 14,
+                    marginBottom: 10,
                   }}
                 >
                   Balance: {formatNumber(winnerData.uiAmount)}
+                </div>
+
+                <div
+                  style={{
+                    fontSize: 15,
+                    opacity: 0.95,
+                    marginBottom: 14,
+                    lineHeight: 1.5,
+                  }}
+                >
+                  This wallet is now set to receive protocol rewards through
+                  Bags.
                 </div>
 
                 <div
@@ -1295,7 +1327,7 @@ export default function ProofPage() {
                           marginBottom: 4,
                         }}
                       >
-                        Step
+                        Status
                       </div>
                       <div style={{ fontWeight: 600 }}>
                         {drawData.step || '-'}

@@ -1,24 +1,73 @@
 @import "tailwindcss";
 
 :root {
-  --background: #0f0d0a;
-  --foreground: #f0ece4;
-  --accent: #D93A28;
-  --accent-glow: rgba(217, 58, 40, 0.22);
-  --accent-gold: #C89800;
-  --accent-gold-glow: rgba(200, 152, 0, 0.2);
-  --card: #1a1510;
-  --border: #2e2418;
-  --muted: #8a7a6a;
+  --background: #090605;
+  --foreground: #f7f1eb;
+  --panel: #18100c;
+  --panel-2: #120b08;
+  --panel-3: #0f0907;
+  --border: #3a2417;
+  --muted: #b89b7d;
+  --muted-2: #8f755d;
+  --accent: #e23b28;
+  --accent-hover: #f04a36;
+  --accent-soft: #f2c9a5;
+}
+
+html {
+  background:
+    radial-gradient(circle at top, rgba(130, 44, 24, 0.35), transparent 38%),
+    radial-gradient(circle at center, rgba(94, 28, 18, 0.22), transparent 45%),
+    linear-gradient(180deg, #090605 0%, #0b0605 100%);
+  min-height: 100%;
 }
 
 body {
-  background: var(--background);
+  background:
+    radial-gradient(circle at top, rgba(130, 44, 24, 0.35), transparent 38%),
+    radial-gradient(circle at center, rgba(94, 28, 18, 0.22), transparent 45%),
+    linear-gradient(180deg, #090605 0%, #0b0605 100%);
   color: var(--foreground);
-  font-family: var(--font-space-mono), 'Courier New', monospace;
   min-height: 100vh;
+  font-family: Arial, Helvetica, sans-serif;
 }
 
-h1, h2, h3 {
-  font-family: var(--font-playfair), Georgia, serif;
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: Georgia, "Times New Roman", serif;
+  letter-spacing: -0.02em;
+}
+
+button,
+input,
+textarea,
+select,
+a,
+p,
+span,
+div,
+label {
+  -webkit-tap-highlight-color: transparent;
+}
+
+input,
+textarea,
+select {
+  background: #0f0907;
+  border: 1px solid var(--border);
+  color: var(--foreground);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--muted-2);
+}
+
+::selection {
+  background: rgba(226, 59, 40, 0.35);
+  color: white;
 }

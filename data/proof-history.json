@@ -1,5 +1,205 @@
 [
   {
+    "drawId": "rando-EZthQ6-2026-03-21T06-29-03-672Z-44",
+    "snapshotAt": "2026-03-21T06:29:03.672Z",
+    "tokenMint": "EZthQ6SUL51jJihQiFMDiZVmZiRMNjMQoTb7rNvTBAGS",
+    "slotId": "draw-0-2026-03-22T00-00-00-000Z-forced-manual-1774074543672",
+    "scheduledDrawAt": "2026-03-22T00:00:00.000Z",
+    "winner": {
+      "owner": "Gtg4qSMkxME783rNdwHYQ11DbQvoXgLodTBLAAa8G5C2",
+      "uiAmount": 25732259.826207,
+      "winnerIndex": 13
+    },
+    "counts": {
+      "totalTokenAccounts": 73,
+      "totalHolders": 73,
+      "holderCountAfterExclusions": 71,
+      "eligibleCount": 44,
+      "excludedWalletCount": 2,
+      "pagesScanned": 1
+    }
+  },
+  {
+    "drawId": "rando-EZthQ6-2026-03-21T06-18-55-630Z-44",
+    "snapshotAt": "2026-03-21T06:18:55.630Z",
+    "tokenMint": "EZthQ6SUL51jJihQiFMDiZVmZiRMNjMQoTb7rNvTBAGS",
+    "slotId": "draw-0-2026-03-22T00-00-00-000Z-forced-manual-1774073935630",
+    "scheduledDrawAt": "2026-03-22T00:00:00.000Z",
+    "winner": {
+      "owner": "5NaxrQ8i1gy5KQgCVq1ZLk9cTLnE8j1DVWbWsRXUSXPz",
+      "uiAmount": 6283561.211285,
+      "winnerIndex": 35
+    },
+    "counts": {
+      "totalTokenAccounts": 73,
+      "totalHolders": 73,
+      "holderCountAfterExclusions": 71,
+      "eligibleCount": 44,
+      "excludedWalletCount": 2,
+      "pagesScanned": 1
+    }
+  },
+  {
+    "drawId": "rando-EZthQ6-2026-03-21T03-56-25-957Z-45",
+    "snapshotAt": "2026-03-21T03:56:25.957Z",
+    "tokenMint": "EZthQ6SUL51jJihQiFMDiZVmZiRMNjMQoTb7rNvTBAGS",
+    "slotId": "draw-0-2026-03-22T00-00-00-000Z-forced-manual-1774065385958",
+    "scheduledDrawAt": "2026-03-22T00:00:00.000Z",
+    "winner": {
+      "owner": "H5P4v7gPe7BnfTJtRdUzEgUjCyE4dSF4ofyxknGjTZ5J",
+      "uiAmount": 11463996.928879,
+      "winnerIndex": 32
+    },
+    "counts": {
+      "totalTokenAccounts": 74,
+      "totalHolders": 74,
+      "holderCountAfterExclusions": 72,
+      "eligibleCount": 45,
+      "excludedWalletCount": 2,
+      "pagesScanned": 1
+    }
+  },
+  {
+    "drawId": "rando-EZthQ6-2026-03-21T03-53-15-704Z-46",
+    "snapshotAt": "2026-03-21T03:53:15.704Z",
+    "tokenMint": "EZthQ6SUL51jJihQiFMDiZVmZiRMNjMQoTb7rNvTBAGS",
+    "slotId": "draw-0-2026-03-22T00-00-00-000Z-forced-manual-1774065195704",
+    "scheduledDrawAt": "2026-03-22T00:00:00.000Z",
+    "winner": {
+      "owner": "AcsTKxJXcKzKjPnYm9Ccwj57UwJ71BXcY5MgykzXhbAy",
+      "uiAmount": 29344234.293581,
+      "winnerIndex": 23
+    },
+    "counts": {
+      "totalTokenAccounts": 75,
+      "totalHolders": 75,
+      "holderCountAfterExclusions": 73,
+      "eligibleCount": 46,
+      "excludedWalletCount": 2,
+      "pagesScanned": 1
+    }
+  },
+  {
+    "drawId": "rando-EZthQ6-2026-03-21T03-46-56-671Z-46",
+    "snapshotAt": "2026-03-21T03:46:56.671Z",
+    "tokenMint": "EZthQ6SUL51jJihQiFMDiZVmZiRMNjMQoTb7rNvTBAGS",
+    "slotId": "draw-0-2026-03-22T00-00-00-000Z-forced-manual-1774064816671",
+    "scheduledDrawAt": "2026-03-22T00:00:00.000Z",
+    "winner": {
+      "owner": "He1qAZzitL87JpNPkzKuRu2MuUSpjmKjoyVxMTEXn46S",
+      "uiAmount": 2372520.728991,
+      "winnerIndex": 2
+    },
+    "counts": {
+      "totalTokenAccounts": 75,
+      "totalHolders": 75,
+      "holderCountAfterExclusions": 73,
+      "eligibleCount": 46,
+      "excludedWalletCount": 2,
+      "pagesScanned": 1
+    }
+  },
+  {
+    "drawId": "rando-EZthQ6-2026-03-21T03-34-11-081Z-46",
+    "snapshotAt": "2026-03-21T03:34:11.081Z",
+    "tokenMint": "EZthQ6SUL51jJihQiFMDiZVmZiRMNjMQoTb7rNvTBAGS",
+    "slotId": "draw-0-2026-03-22T00-00-00-000Z-forced-manual-1774064051082",
+    "scheduledDrawAt": "2026-03-22T00:00:00.000Z",
+    "winner": {
+      "owner": "ERpgpKo9aBxSDbnn3mSqUHRW6qnuKkRmsxWq6roGN6U3",
+      "uiAmount": 1011708.173767,
+      "winnerIndex": 1
+    },
+    "counts": {
+      "totalTokenAccounts": 75,
+      "totalHolders": 75,
+      "holderCountAfterExclusions": 73,
+      "eligibleCount": 46,
+      "excludedWalletCount": 2,
+      "pagesScanned": 1
+    }
+  },
+  {
+    "drawId": "rando-EZthQ6-2026-03-21T02-58-23-162Z-54",
+    "snapshotAt": "2026-03-21T02:58:23.162Z",
+    "tokenMint": "EZthQ6SUL51jJihQiFMDiZVmZiRMNjMQoTb7rNvTBAGS",
+    "slotId": "draw-0-2026-03-22T00-00-00-000Z-forced-dashboard-1774061890836-1774061903062",
+    "scheduledDrawAt": "2026-03-22T00:00:00.000Z",
+    "winner": {
+      "owner": "7bPTktQZP8iqjXhYvp2uRDRQE4JAnoaLFJc8GwmpLNZj",
+      "uiAmount": 16050527.954479,
+      "winnerIndex": 22
+    },
+    "counts": {
+      "totalTokenAccounts": 75,
+      "totalHolders": 75,
+      "holderCountAfterExclusions": 73,
+      "eligibleCount": 54,
+      "excludedWalletCount": 2,
+      "pagesScanned": 1
+    }
+  },
+  {
+    "drawId": "rando-EZthQ6-2026-03-21T00-27-31-213Z-53",
+    "snapshotAt": "2026-03-21T00:27:31.213Z",
+    "tokenMint": "EZthQ6SUL51jJihQiFMDiZVmZiRMNjMQoTb7rNvTBAGS",
+    "slotId": "draw-0-2026-03-22T00-00-00-000Z-forced-phase3c",
+    "scheduledDrawAt": "2026-03-22T00:00:00.000Z",
+    "winner": {
+      "owner": "DHMfj2uGQWSkRM5UqWuGPoQ98NQ1K2MyvnLZs7ErmTAa",
+      "uiAmount": 11140259.393501,
+      "winnerIndex": 23
+    },
+    "counts": {
+      "totalTokenAccounts": 75,
+      "totalHolders": 75,
+      "holderCountAfterExclusions": 73,
+      "eligibleCount": 53,
+      "excludedWalletCount": 2,
+      "pagesScanned": 1
+    }
+  },
+  {
+    "drawId": "rando-EZthQ6-2026-03-21T00-20-59-818Z-53",
+    "snapshotAt": "2026-03-21T00:20:59.818Z",
+    "tokenMint": "EZthQ6SUL51jJihQiFMDiZVmZiRMNjMQoTb7rNvTBAGS",
+    "slotId": "draw-0-2026-03-22T00-00-00-000Z-forced-phase3b",
+    "scheduledDrawAt": "2026-03-22T00:00:00.000Z",
+    "winner": {
+      "owner": "rWZaju2cGkcTQLGT79Vg3TyfsSZSGkRKTrqAu5szmTs",
+      "uiAmount": 2216447.705558,
+      "winnerIndex": 25
+    },
+    "counts": {
+      "totalTokenAccounts": 75,
+      "totalHolders": 75,
+      "holderCountAfterExclusions": 73,
+      "eligibleCount": 53,
+      "excludedWalletCount": 2,
+      "pagesScanned": 1
+    }
+  },
+  {
+    "drawId": "rando-EZthQ6-2026-03-21T00-16-04-942Z-53",
+    "snapshotAt": "2026-03-21T00:16:04.942Z",
+    "tokenMint": "EZthQ6SUL51jJihQiFMDiZVmZiRMNjMQoTb7rNvTBAGS",
+    "slotId": "draw-0-2026-03-22T00-00-00-000Z-forced",
+    "scheduledDrawAt": "2026-03-22T00:00:00.000Z",
+    "winner": {
+      "owner": "EpSJpGNAXsVQ9WVZTEdHxvsTdUkfBtfRAzmWQnezRFwt",
+      "uiAmount": 2000000,
+      "winnerIndex": 50
+    },
+    "counts": {
+      "totalTokenAccounts": 75,
+      "totalHolders": 75,
+      "holderCountAfterExclusions": 73,
+      "eligibleCount": 53,
+      "excludedWalletCount": 2,
+      "pagesScanned": 1
+    }
+  },
+  {
     "drawId": "rando-EZthQ6-2026-03-20T23-08-13-672Z-52",
     "snapshotAt": "2026-03-20T23:08:13.672Z",
     "tokenMint": "EZthQ6SUL51jJihQiFMDiZVmZiRMNjMQoTb7rNvTBAGS",

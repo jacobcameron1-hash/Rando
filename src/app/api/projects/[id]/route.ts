@@ -1,19 +1,52 @@
-
 import { getProject, getRounds } from "@/lib/demo/demoState";
 import { mockHolders } from "@/lib/demo/mockHolders";
 
-export async function GET(req: Request, { params }: any) {
-  const project = getProject(params.id);
-  if (!project) return Response.json({ error: "Not found" }, { status: 404 });
+type RouteContext = {
+  params: Promise<{
+    id: string;
+  }>;
+};
 
-  const eligible = mockHolders.filter(
-    (h) => h.percentOwned >= project.minPercent
-  );
+export async function GET(_req: Request, context: RouteContext) {
+  try {
+    const { id } = await context.params;
+    const project = getProject(id);
 
-  return Response.json({
-    project,
-    rounds: getRounds(params.id),
-    eligibleHolderCount: eligible.length,
-    simulatedPrizePool: project.simulatedPrizePool
-  });
+    if (!project) {
+      return Response.json(
+        {
+          ok: false,
+          error: "Not found",
+        },
+        { status: 404 }
+      );
+    }
+
+    const eligible =
+      project.eligibilityType === "amount"
+        ? mockHolders.filter(
+            (holder) => holder.tokenAmount >= project.eligibilityValue
+          )
+        : mockHolders.filter(
+            (holder) => holder.percentOwned >= project.minPercent
+          );
+
+    return Response.json({
+      ok: true,
+      project,
+      rounds: getRounds(id),
+      eligibleHolderCount: eligible.length,
+      simulatedPrizePool: project.simulatedPrizePool,
+    });
+  } catch (error) {
+    console.error("Failed to load project:", error);
+
+    return Response.json(
+      {
+        ok: false,
+        error: "Failed to load project",
+      },
+      { status: 500 }
+    );
+  }
 }

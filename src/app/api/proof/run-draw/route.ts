@@ -3,9 +3,14 @@ import {
   hasProofHistorySlot,
   prependProofHistoryItem,
 } from '@/lib/proof-history';
-import { claimFeesForVault, sendPrize } from '@/lib/bags';
 
-import { Connection, Keypair, VersionedTransaction } from '@solana/web3.js';
+import {
+  Connection,
+  Keypair,
+  PublicKey,
+  SystemProgram,
+  VersionedTransaction,
+} from '@solana/web3.js';
 import bs58 from 'bs58';
 
 const TOKEN_MINT = 'EZthQ6SUL51jJihQiFMDiZVmZiRMNjMQoTb7rNvTBAGS';
@@ -16,7 +21,6 @@ const BAGS_BASE_URL =
   process.env.BAGS_BASE_URL || 'https://public-api-v2.bags.fm/api/v1';
 const BAGS_PAYER_WALLET = process.env.BAGS_PAYER_WALLET!;
 const SOLANA_PRIVATE_KEY = process.env.SOLANA_PRIVATE_KEY!;
-const VAULT_PRIVATE_KEY = process.env.VAULT_PRIVATE_KEY!;
 
 const MIN_TOKENS = 1_000_000;
 
@@ -39,9 +43,28 @@ function getAdminKeypair() {
   return Keypair.fromSecretKey(secretKey);
 }
 
-function getVaultKeypair() {
-  const secretKey = bs58.decode(VAULT_PRIVATE_KEY);
-  return Keypair.fromSecretKey(secretKey);
+function getRequestOptions(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const force = searchParams.get('force') === '1';
+  const testId = searchParams.get('testId')?.trim() || null;
+
+  return { force, testId };
+}
+
+function buildUniqueManualTestId() {
+  return `manual-${Date.now()}`;
+}
+
+function buildSlotId(slotId: string, force: boolean, testId: string | null) {
+  if (!force) {
+    return slotId;
+  }
+
+  if (testId) {
+    return `${slotId}-forced-${testId}`;
+  }
+
+  return `${slotId}-forced`;
 }
 
 async function sendBagsTransactions(transactions: string[]) {
@@ -68,7 +91,7 @@ async function sendBagsTransactions(transactions: string[]) {
   return signatures;
 }
 
-async function updateBagsFeeRecipient(vaultWallet: string) {
+async function updateBagsFeeRecipient(recipientWallet: string) {
   const response = await fetch(
     `${BAGS_BASE_URL}/fee-share/admin/update-config`,
     {
@@ -79,7 +102,7 @@ async function updateBagsFeeRecipient(vaultWallet: string) {
       },
       body: JSON.stringify({
         baseMint: TOKEN_MINT,
-        claimersArray: [vaultWallet],
+        claimersArray: [recipientWallet],
         basisPointsArray: [10000],
         payer: BAGS_PAYER_WALLET,
         additionalLookupTables: [],
@@ -100,211 +123,332 @@ async function updateBagsFeeRecipient(vaultWallet: string) {
   );
 }
 
-export async function GET() {
-  try {
-    const snapshotAt = new Date().toISOString();
-    const currentSlot = getCurrentDrawSlot(new Date());
+async function filterSystemOwnedWallets(holders: Holder[]) {
+  const connection = new Connection(HELIUS_RPC_URL, 'confirmed');
+  const valid: Holder[] = [];
 
-    if (!currentSlot.isDue) {
-      return Response.json({
-        ok: false,
-        error: 'Draw is not due yet',
-      });
+  for (let i = 0; i < holders.length; i += 100) {
+    const chunk = holders.slice(i, i + 100);
+
+    const pubkeys = chunk.map((holder) => new PublicKey(holder.owner));
+    const accounts = await connection.getMultipleAccountsInfo(pubkeys);
+
+    for (let j = 0; j < chunk.length; j++) {
+      const holder = chunk[j];
+      const accountInfo = accounts[j];
+
+      if (!accountInfo) {
+        continue;
+      }
+
+      if (accountInfo.owner.equals(SystemProgram.programId)) {
+        valid.push(holder);
+      }
+    }
+  }
+
+  return valid;
+}
+
+async function getCurrentUiAmountForOwner(
+  owner: string,
+  decimals: number
+): Promise<number> {
+  const response = await fetch(HELIUS_RPC_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      id: `owner-balances-${owner}`,
+      method: 'getTokenAccountsByOwner',
+      params: [
+        owner,
+        { mint: TOKEN_MINT },
+        {
+          encoding: 'jsonParsed',
+        },
+      ],
+    }),
+  });
+
+  const data = await response.json();
+  const accounts = data?.result?.value ?? [];
+
+  let totalRaw = 0;
+
+  for (const account of accounts) {
+    const rawAmount = Number(
+      account?.account?.data?.parsed?.info?.tokenAmount?.amount || 0
+    );
+    totalRaw += rawAmount;
+  }
+
+  return totalRaw / Math.pow(10, decimals);
+}
+
+async function pickValidatedWinner(
+  eligible: Holder[],
+  decimals: number
+): Promise<{
+  winner: Holder;
+  winnerIndex: number;
+  validatedUiAmount: number;
+  rerolls: number;
+}> {
+  const remaining = [...eligible];
+  let rerolls = 0;
+
+  while (remaining.length > 0) {
+    const randomIndex = Math.floor(Math.random() * remaining.length);
+    const candidate = remaining[randomIndex];
+
+    const validatedUiAmount = await getCurrentUiAmountForOwner(
+      candidate.owner,
+      decimals
+    );
+
+    if (validatedUiAmount >= MIN_TOKENS) {
+      return {
+        winner: {
+          owner: candidate.owner,
+          uiAmount: validatedUiAmount,
+        },
+        winnerIndex: randomIndex,
+        validatedUiAmount,
+        rerolls,
+      };
     }
 
-    const existingSlot = await hasProofHistorySlot(currentSlot.slotId);
+    remaining.splice(randomIndex, 1);
+    rerolls++;
+  }
 
-    if (existingSlot) {
-      return Response.json({
-        ok: false,
-        error: 'This scheduled draw slot has already been processed',
-      });
-    }
+  throw new Error('No eligible holders remained above threshold during validation');
+}
 
-    const mintInfoResponse = await fetch(HELIUS_RPC_URL, {
+async function runDraw(request: Request) {
+  const snapshotAt = new Date().toISOString();
+  const currentSlot = getCurrentDrawSlot(new Date());
+  const { force, testId } = getRequestOptions(request);
+
+  const allowManualDraw = true;
+  const effectiveForce = force || allowManualDraw;
+  const effectiveTestId =
+    effectiveForce && !currentSlot.isDue
+      ? testId || buildUniqueManualTestId()
+      : testId;
+
+  const slotIdToCheck = buildSlotId(
+    currentSlot.slotId,
+    effectiveForce,
+    effectiveTestId
+  );
+
+  const existingSlot = await hasProofHistorySlot(slotIdToCheck);
+
+  if (existingSlot) {
+    return Response.json({
+      ok: false,
+      error: 'This scheduled draw slot has already been processed',
+    });
+  }
+
+  const mintInfoResponse = await fetch(HELIUS_RPC_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      id: 'mint-info',
+      method: 'getAccountInfo',
+      params: [TOKEN_MINT, { encoding: 'jsonParsed' }],
+    }),
+  });
+
+  const mintInfoData = await mintInfoResponse.json();
+  const decimals = mintInfoData?.result?.value?.data?.parsed?.info?.decimals;
+
+  if (decimals === undefined) {
+    throw new Error('Failed to fetch token decimals');
+  }
+
+  let allTokenAccounts: any[] = [];
+  let page = 1;
+  let hasMore = true;
+
+  while (hasMore) {
+    const response = await fetch(HELIUS_RPC_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         jsonrpc: '2.0',
-        id: 'mint-info',
-        method: 'getAccountInfo',
-        params: [TOKEN_MINT, { encoding: 'jsonParsed' }],
+        id: `getTokenAccounts-${page}`,
+        method: 'getTokenAccounts',
+        params: {
+          mint: TOKEN_MINT,
+          page,
+          limit: 1000,
+        },
       }),
     });
 
-    const mintInfoData = await mintInfoResponse.json();
-    const decimals =
-      mintInfoData?.result?.value?.data?.parsed?.info?.decimals;
+    const data = await response.json();
+    const items = data?.result?.token_accounts ?? [];
 
-    if (decimals === undefined) {
-      throw new Error('Failed to fetch token decimals');
+    allTokenAccounts.push(...items);
+
+    if (items.length < 1000) {
+      hasMore = false;
+    } else {
+      page++;
     }
+  }
 
-    let allTokenAccounts: any[] = [];
-    let page = 1;
-    let hasMore = true;
+  const balancesByOwner: Record<string, number> = {};
 
-    while (hasMore) {
-      const response = await fetch(HELIUS_RPC_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          id: `getTokenAccounts-${page}`,
-          method: 'getTokenAccounts',
-          params: {
-            mint: TOKEN_MINT,
-            page,
-            limit: 1000,
-          },
-        }),
-      });
+  for (const acc of allTokenAccounts) {
+    const owner = acc.owner;
+    const rawAmount = Number(acc.amount || 0);
 
-      const data = await response.json();
-      const items = data?.result?.token_accounts ?? [];
+    if (!owner) continue;
 
-      allTokenAccounts.push(...items);
+    balancesByOwner[owner] = (balancesByOwner[owner] || 0) + rawAmount;
+  }
 
-      if (items.length < 1000) {
-        hasMore = false;
-      } else {
-        page++;
-      }
-    }
+  const holders: Holder[] = Object.entries(balancesByOwner).map(
+    ([owner, totalRaw]) => ({
+      owner,
+      uiAmount: totalRaw / Math.pow(10, decimals),
+    })
+  );
 
-    const balancesByOwner: Record<string, number> = {};
+  const nonExcludedHolders = holders.filter(
+    (holder) => !EXCLUDED_WALLETS.includes(holder.owner)
+  );
 
-    for (const acc of allTokenAccounts) {
-      const owner = acc.owner;
-      const rawAmount = Number(acc.amount || 0);
+  const thresholdEligible = nonExcludedHolders.filter(
+    (holder) => holder.uiAmount >= MIN_TOKENS
+  );
 
-      if (!owner) continue;
+  const eligible = await filterSystemOwnedWallets(thresholdEligible);
 
-      balancesByOwner[owner] = (balancesByOwner[owner] || 0) + rawAmount;
-    }
+  const drawId = [
+    'rando',
+    TOKEN_MINT.slice(0, 6),
+    snapshotAt.replace(/[:.]/g, '-'),
+    eligible.length,
+  ].join('-');
 
-    const holders: Holder[] = Object.entries(balancesByOwner).map(
-      ([owner, totalRaw]) => ({
-        owner,
-        uiAmount: totalRaw / Math.pow(10, decimals),
-      })
-    );
+  if (eligible.length === 0) {
+    return Response.json({
+      ok: false,
+      error: 'No eligible system-owned holders found',
+    });
+  }
 
-    const nonExcludedHolders = holders.filter(
-      (holder) => !EXCLUDED_WALLETS.includes(holder.owner)
-    );
+  const validation = await pickValidatedWinner(eligible, decimals);
+  const winner = validation.winner;
 
-    const eligible = nonExcludedHolders.filter(
-      (holder) => holder.uiAmount >= MIN_TOKENS
-    );
+  const updateConfigTransactions = await updateBagsFeeRecipient(winner.owner);
+  const configSignatures = await sendBagsTransactions(updateConfigTransactions);
 
-    const drawId = [
-      'rando',
-      TOKEN_MINT.slice(0, 6),
-      snapshotAt.replace(/[:.]/g, '-'),
-      eligible.length,
-    ].join('-');
-
-    if (eligible.length === 0) {
-      return Response.json({
-        ok: false,
-        error: 'No eligible holders found',
-      });
-    }
-
-    const randomIndex = Math.floor(Math.random() * eligible.length);
-    const winner = eligible[randomIndex];
-
-    const vaultKeypair = getVaultKeypair();
-
-    const updateConfigTransactions = await updateBagsFeeRecipient(
-      vaultKeypair.publicKey.toBase58()
-    );
-    const configSignatures = await sendBagsTransactions(updateConfigTransactions);
-
-    const claimedLamports = await claimFeesForVault(vaultKeypair, TOKEN_MINT);
-    const prizeLamports = claimedLamports;
-
-    let payoutSignature: string | null = null;
-
-    if (prizeLamports > 0) {
-      payoutSignature = await sendPrize(
-        vaultKeypair,
-        winner.owner,
-        prizeLamports
-      );
-    }
-
-    const responseBody = {
-      ok: true,
-      draw: {
-        drawId,
-        step: 'winner selected, vault configured, and prize paid',
-        snapshotAt,
-        tokenMint: TOKEN_MINT,
-      },
-      rules: {
-        decimals,
-        minTokens: MIN_TOKENS,
-        excludedWallets: EXCLUDED_WALLETS,
-      },
-      counts: {
-        totalTokenAccounts: allTokenAccounts.length,
-        totalHolders: holders.length,
-        holderCountAfterExclusions: nonExcludedHolders.length,
-        eligibleCount: eligible.length,
-        excludedWalletCount: EXCLUDED_WALLETS.length,
-        pagesScanned: page,
-      },
-      slot: {
-        slotId: currentSlot.slotId,
-        drawIndex: currentSlot.drawIndex,
-        scheduledDrawAt: currentSlot.nextDrawAtIso,
-        previousDrawAtIso: currentSlot.previousDrawAtIso,
-        currentIntervalHours: currentSlot.currentIntervalHours,
-        isDue: currentSlot.isDue,
-      },
-      winner: {
-        winnerIndex: randomIndex,
-        owner: winner.owner,
-        uiAmount: formatUiAmount(winner.uiAmount),
-      },
-      payout: {
-        provider: 'bags',
-        feeRecipient: vaultKeypair.publicKey.toBase58(),
-        basisPoints: 10000,
-        configUpdated: true,
-        configSignatures,
-      },
-      payoutExecution: {
-        claimedLamports,
-        prizeLamports,
-        signature: payoutSignature,
-      },
-    };
-
-    await prependProofHistoryItem({
+  const responseBody = {
+    ok: true,
+    draw: {
       drawId,
+      step: 'winner selected, validated, and Bags fee recipient updated',
       snapshotAt,
       tokenMint: TOKEN_MINT,
-      slotId: currentSlot.slotId,
+      forced: effectiveForce,
+      testId: effectiveTestId,
+    },
+    rules: {
+      decimals,
+      minTokens: MIN_TOKENS,
+      excludedWallets: EXCLUDED_WALLETS,
+    },
+    counts: {
+      totalTokenAccounts: allTokenAccounts.length,
+      totalHolders: holders.length,
+      holderCountAfterExclusions: nonExcludedHolders.length,
+      thresholdEligibleCount: thresholdEligible.length,
+      eligibleCount: eligible.length,
+      excludedWalletCount: EXCLUDED_WALLETS.length,
+      pagesScanned: page,
+      rerollsDuringValidation: validation.rerolls,
+    },
+    proof: {
+      eligibleWalletSample: eligible.slice(0, 5).map((holder) => ({
+        owner: holder.owner,
+        uiAmount: formatUiAmount(holder.uiAmount),
+      })),
+      topEligibleSample: [...eligible]
+        .sort((a, b) => b.uiAmount - a.uiAmount)
+        .slice(0, 5)
+        .map((holder) => ({
+          owner: holder.owner,
+          uiAmount: formatUiAmount(holder.uiAmount),
+        })),
+      winnerValidation: {
+        checkedOwner: winner.owner,
+        validatedUiAmount: formatUiAmount(validation.validatedUiAmount),
+        minimumRequired: MIN_TOKENS,
+        passed: true,
+      },
+    },
+    slot: {
+      slotId: slotIdToCheck,
+      drawIndex: currentSlot.drawIndex,
       scheduledDrawAt: currentSlot.nextDrawAtIso,
-      winner: {
-        owner: winner.owner,
-        uiAmount: formatUiAmount(winner.uiAmount),
-        winnerIndex: randomIndex,
-      },
-      counts: {
-        totalTokenAccounts: allTokenAccounts.length,
-        totalHolders: holders.length,
-        holderCountAfterExclusions: nonExcludedHolders.length,
-        eligibleCount: eligible.length,
-        excludedWalletCount: EXCLUDED_WALLETS.length,
-        pagesScanned: page,
-      },
-    });
+      previousDrawAtIso: currentSlot.previousDrawAtIso,
+      currentIntervalHours: currentSlot.currentIntervalHours,
+      isDue: currentSlot.isDue,
+      forced: effectiveForce,
+      testId: effectiveTestId,
+    },
+    winner: {
+      winnerIndex: validation.winnerIndex,
+      owner: winner.owner,
+      uiAmount: formatUiAmount(winner.uiAmount),
+    },
+    payout: {
+      provider: 'bags',
+      distributionModel: 'bags-managed',
+      feeRecipient: winner.owner,
+      basisPoints: 10000,
+      configUpdated: true,
+      configSignatures,
+      manualPayoutPerformed: false,
+      claimTriggeredByApp: false,
+    },
+  };
 
-    return Response.json(responseBody);
+  await prependProofHistoryItem({
+    drawId,
+    snapshotAt,
+    tokenMint: TOKEN_MINT,
+    slotId: slotIdToCheck,
+    scheduledDrawAt: currentSlot.nextDrawAtIso,
+    winner: {
+      owner: winner.owner,
+      uiAmount: formatUiAmount(winner.uiAmount),
+      winnerIndex: validation.winnerIndex,
+    },
+    counts: {
+      totalTokenAccounts: allTokenAccounts.length,
+      totalHolders: holders.length,
+      holderCountAfterExclusions: nonExcludedHolders.length,
+      eligibleCount: eligible.length,
+      excludedWalletCount: EXCLUDED_WALLETS.length,
+      pagesScanned: page,
+    },
+  });
+
+  return Response.json(responseBody);
+}
+
+export async function GET(request: Request) {
+  try {
+    return await runDraw(request);
   } catch (err: any) {
     return Response.json({
       ok: false,
@@ -313,9 +457,13 @@ export async function GET() {
   }
 }
 
-export async function POST() {
-  return Response.json({
-    ok: true,
-    step: 'POST run-draw reached',
-  });
+export async function POST(request: Request) {
+  try {
+    return await runDraw(request);
+  } catch (err: any) {
+    return Response.json({
+      ok: false,
+      error: err.message,
+    });
+  }
 }
