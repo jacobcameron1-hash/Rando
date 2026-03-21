@@ -1,18 +1,11 @@
+import { POST as runDraw } from '@/app/api/proof/run-draw/route';
+
 async function runCycle(request: Request) {
   try {
-    const origin = new URL(request.url).origin;
+    const response = await runDraw(request);
+    const drawData = await response.json();
 
-    const drawRes = await fetch(`${origin}/api/proof/run-draw`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      cache: 'no-store',
-    });
-
-    const drawData = await drawRes.json();
-
-    if (!drawRes.ok || !drawData?.ok) {
+    if (!drawData?.ok) {
       return Response.json(
         {
           ok: false,
