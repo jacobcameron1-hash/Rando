@@ -33,8 +33,21 @@ type Holder = {
   uiAmount: number;
 };
 
+type BagsClaimablePosition = {
+  baseMint?: string;
+  totalClaimableLamportsUserShare?: number;
+};
+
 function formatUiAmount(value: number) {
   return Number(value.toFixed(6));
+}
+
+function formatSolAmount(value: number) {
+  return Number(value.toFixed(9));
+}
+
+function lamportsToSol(value: number) {
+  return value / 1_000_000_000;
 }
 
 function getAdminKeypair() {
@@ -131,6 +144,38 @@ async function updateBagsFeeRecipients(winnerWallet: string) {
       (item: { transaction: string }) => item.transaction
     ) || []
   );
+}
+
+async function getBagsClaimableSol(wallet: string): Promise<number> {
+  const url = new URL(`${BAGS_BASE_URL}/token-launch/claimable-positions`);
+  url.searchParams.set('wallet', wallet);
+
+  const response = await fetch(url.toString(), {
+    method: 'GET',
+    headers: {
+      'x-api-key': BAGS_API_KEY,
+    },
+  });
+
+  const json = await response.json();
+
+  if (!response.ok || !json.success) {
+    throw new Error(
+      json.error || JSON.stringify(json) || 'Bags claimable-positions failed'
+    );
+  }
+
+  const positions: BagsClaimablePosition[] = Array.isArray(json.response)
+    ? json.response
+    : [];
+
+  const totalLamports = positions
+    .filter((position) => position.baseMint === TOKEN_MINT)
+    .reduce((sum, position) => {
+      return sum + Number(position.totalClaimableLamportsUserShare || 0);
+    }, 0);
+
+  return lamportsToSol(totalLamports);
 }
 
 async function filterSystemOwnedWallets(holders: Holder[]) {
@@ -415,6 +460,8 @@ async function runDraw(request: Request) {
   let validatedUiAmount = 0;
   let rerollsDuringValidation = 0;
   let cycleAction = 'kept-existing-winner';
+  let activeWinnerClaimableSol = existingCycle.lastKnownClaimableSol;
+  let activeWinnerClaimCheckAt = existingCycle.lastClaimCheckAt;
   let disqualifiedPreviousWinner:
     | {
         owner: string;
@@ -422,6 +469,7 @@ async function runDraw(request: Request) {
         minimumRequired: number;
         reason: string;
         disqualifiedAt: string;
+        claimableSolAtCheck: number;
       }
     | null = null;
 
@@ -433,6 +481,10 @@ async function runDraw(request: Request) {
 
   if (currentCycleCanBeKept) {
     const activeWinnerWallet = existingCycle.activeWinnerWallet!;
+
+    activeWinnerClaimableSol = await getBagsClaimableSol(activeWinnerWallet);
+    activeWinnerClaimCheckAt = snapshotAt;
+
     const activeWinnerValidation = await validateActiveWinner(
       activeWinnerWallet,
       decimals,
@@ -459,6 +511,7 @@ async function runDraw(request: Request) {
           ? 'Safe test mode simulated disqualification'
           : 'Active winner dropped below minimum token threshold',
         disqualifiedAt: snapshotAt,
+        claimableSolAtCheck: activeWinnerClaimableSol,
       };
 
       const validation = await pickValidatedWinner(
@@ -483,6 +536,8 @@ async function runDraw(request: Request) {
     validatedUiAmount = validation.validatedUiAmount;
     rerollsDuringValidation = validation.rerolls;
     cycleAction = 'started-new-winner-cycle';
+    activeWinnerClaimableSol = 0;
+    activeWinnerClaimCheckAt = snapshotAt;
   }
 
   let configSignatures: string[] = [];
@@ -532,6 +587,9 @@ async function runDraw(request: Request) {
     lastDisqualificationReason:
       disqualifiedPreviousWinner?.reason ??
       existingCycle.lastDisqualificationReason,
+    lastKnownClaimableSol: shouldResetAccumulation ? 0 : activeWinnerClaimableSol,
+    totalClaimedSol: existingCycle.totalClaimedSol,
+    lastClaimCheckAt: activeWinnerClaimCheckAt,
   });
 
   const responseBody = {
@@ -591,6 +649,9 @@ async function runDraw(request: Request) {
             minimumRequired: disqualifiedPreviousWinner.minimumRequired,
             reason: disqualifiedPreviousWinner.reason,
             disqualifiedAt: disqualifiedPreviousWinner.disqualifiedAt,
+            claimableSolAtCheck: formatSolAmount(
+              disqualifiedPreviousWinner.claimableSolAtCheck
+            ),
           }
         : null,
       winnerCycle: {
@@ -601,6 +662,9 @@ async function runDraw(request: Request) {
         minPayoutSol: nextCycle.minPayoutSol,
         accumulatedSol: nextCycle.accumulatedSol,
         targetReached: nextCycle.targetReached,
+        lastKnownClaimableSol: formatSolAmount(nextCycle.lastKnownClaimableSol),
+        totalClaimedSol: formatSolAmount(nextCycle.totalClaimedSol),
+        lastClaimCheckAt: nextCycle.lastClaimCheckAt,
         explanation:
           'Winner remains active until accumulated rewards reach at least the minimum payout threshold unless they fall below the minimum token requirement first.',
       },
@@ -630,6 +694,9 @@ async function runDraw(request: Request) {
       minimumPayoutSol: minPayoutSol,
       winnerKeepsAccumulatingUntilMinimumMet: true,
       simulated: simulateDisqualification,
+      currentClaimableSolForActiveWinner: formatSolAmount(
+        activeWinnerClaimableSol
+      ),
       recipients: [
         {
           role: 'dev',
