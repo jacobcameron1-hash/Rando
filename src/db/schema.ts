@@ -9,23 +9,19 @@ import {
 } from 'drizzle-orm/pg-core';
 
 export const projects = pgTable('projects', {
-  id: text('id').primaryKey(), // nanoid
+  id: text('id').primaryKey(),
   tokenMint: text('token_mint').notNull(),
   vaultPublicKey: text('vault_public_key').notNull(),
-  vaultKeypairEncrypted: text('vault_keypair_encrypted').notNull(), // AES-256 encrypted JSON
-  // Eligibility
-  eligibilityType: text('eligibility_type').notNull(), // 'percent' | 'amount'
-  eligibilityValue: text('eligibility_value').notNull(), // decimal string (e.g. "1.5" for 1.5% or "1000000" for raw amount)
-  // Interval config
+  vaultKeypairEncrypted: text('vault_keypair_encrypted').notNull(),
+  eligibilityType: text('eligibility_type').notNull(),
+  eligibilityValue: text('eligibility_value').notNull(),
   baseIntervalMs: bigint('base_interval_ms', { mode: 'number' }).notNull(),
-  incrementMs: bigint('increment_ms', { mode: 'number' }).notNull(), // 0 for flat
+  incrementMs: bigint('increment_ms', { mode: 'number' }).notNull(),
   capMs: bigint('cap_ms', { mode: 'number' }).notNull(),
-  // State
   drawCount: integer('draw_count').notNull().default(0),
   nextDrawAt: timestamp('next_draw_at').notNull(),
   isLocked: boolean('is_locked').notNull().default(false),
   isActive: boolean('is_active').notNull().default(true),
-  // Metadata
   creatorWallet: text('creator_wallet').notNull(),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
@@ -37,7 +33,7 @@ export const draws = pgTable('draws', {
     .notNull()
     .references(() => projects.id),
   drawNumber: integer('draw_number').notNull(),
-  winnerWallet: text('winner_wallet'), // null if rollover (no eligible winner)
+  winnerWallet: text('winner_wallet'),
   prizeAmountLamports: bigint('prize_amount_lamports', { mode: 'number' }),
   prizeTxSignature: text('prize_tx_signature'),
   attempts: integer('attempts').notNull().default(0),
@@ -50,9 +46,19 @@ export const snapshots = pgTable('snapshots', {
   projectId: text('project_id')
     .notNull()
     .references(() => projects.id),
-  drawNumber: integer('draw_number').notNull(), // snapshot taken at START of this draw period
+  drawNumber: integer('draw_number').notNull(),
   takenAt: timestamp('taken_at').notNull().defaultNow(),
-  holders: jsonb('holders').notNull(), // Array<{ wallet: string, balance: string }>
+  holders: jsonb('holders').notNull(),
+});
+
+export const proofHistory = pgTable('proof_history', {
+  drawId: text('draw_id').primaryKey(),
+  snapshotAt: timestamp('snapshot_at', { withTimezone: true }).notNull(),
+  tokenMint: text('token_mint').notNull(),
+  slotId: text('slot_id'),
+  scheduledDrawAt: timestamp('scheduled_draw_at', { withTimezone: true }),
+  winner: jsonb('winner').notNull(),
+  counts: jsonb('counts').notNull(),
 });
 
 export const drawAdminConfig = pgTable('draw_admin_config', {
@@ -75,6 +81,7 @@ export type Project = typeof projects.$inferSelect;
 export type NewProject = typeof projects.$inferInsert;
 export type Draw = typeof draws.$inferSelect;
 export type Snapshot = typeof snapshots.$inferSelect;
-
+export type ProofHistory = typeof proofHistory.$inferSelect;
+export type NewProofHistory = typeof proofHistory.$inferInsert;
 export type DrawAdminConfig = typeof drawAdminConfig.$inferSelect;
 export type NewDrawAdminConfig = typeof drawAdminConfig.$inferInsert;
