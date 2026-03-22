@@ -44,3 +44,6 @@ next-env.d.ts
 Coin files/
 .claude/
 *.credentials.json
+
+.vercel
+.env*.local

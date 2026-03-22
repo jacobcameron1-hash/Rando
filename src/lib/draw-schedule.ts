@@ -12,7 +12,10 @@ export type DrawScheduleConfig = {
 export const drawScheduleConfig: DrawScheduleConfig = {
   enabled: true,
   timezone: 'America/Detroit',
-  firstDrawAt: '2026-03-21T20:00:00-04:00',
+
+  // 🔥 TEMP: set to past so draw is immediately due
+  firstDrawAt: '2026-03-20T20:00:00-04:00',
+
   initialIntervalHours: 24,
   increaseEnabled: false,
   increaseHoursPerDraw: 0,

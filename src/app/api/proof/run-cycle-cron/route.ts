@@ -1,3 +1,5 @@
+import { POST as runCycle } from '@/app/api/proof/run-cycle/route';
+
 export async function GET(req: Request) {
   try {
     const authHeader = req.headers.get('authorization');
@@ -23,16 +25,10 @@ export async function GET(req: Request) {
       );
     }
 
-    const origin = new URL(req.url).origin;
+    const cycleResponse = await runCycle(req);
+    const cycleData = await cycleResponse.json();
 
-    const cycleRes = await fetch(`${origin}/api/proof/run-cycle`, {
-      method: 'POST',
-      cache: 'no-store',
-    });
-
-    const cycleData = await cycleRes.json();
-
-    if (!cycleRes.ok || !cycleData?.ok) {
+    if (!cycleResponse.ok || !cycleData?.ok) {
       return Response.json(
         {
           ok: false,

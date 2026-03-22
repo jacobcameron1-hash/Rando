@@ -13,6 +13,9 @@ function toSafeSlotPart(value: string) {
   return value.replace(/[:.]/g, '-');
 }
 
+// Allow small timing drift (in milliseconds)
+const DRAW_DUE_GRACE_MS = 60 * 1000; // 60 seconds
+
 export function getCurrentDrawSlot(now = new Date()): DrawSlotState {
   const schedule = getDrawScheduleState(now);
   const nextDrawAt = new Date(schedule.nextDrawAtIso);
@@ -31,6 +34,8 @@ export function getCurrentDrawSlot(now = new Date()): DrawSlotState {
     nextDrawAtIso: schedule.nextDrawAtIso,
     previousDrawAtIso: schedule.previousDrawAtIso,
     currentIntervalHours: schedule.currentIntervalHours,
-    isDue: nowMs >= nextDrawAtMs,
+
+    // Key fix: allow small buffer so cron timing doesn't miss the draw
+    isDue: nowMs >= nextDrawAtMs - DRAW_DUE_GRACE_MS,
   };
 }
