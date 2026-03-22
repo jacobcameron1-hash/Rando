@@ -34,6 +34,7 @@ export type ProofWinnerDisqualificationRecord = {
 
 const DEFAULT_ID = 'global';
 const DEFAULT_TOKEN_MINT = 'EZthQ6SUL51jJihQiFMDiZVmZiRMNjMQoTb7rNvTBAGS';
+const DRAW_EXECUTION_LOCK_ID = 88442211;
 
 let tableReady = false;
 
@@ -189,6 +190,32 @@ function mapDisqualificationRow(
     claimableSolAtCheck: asNumber(row.claimable_sol_at_check, 0),
     createdAt: asIsoString(row.created_at),
   };
+}
+
+export async function withProofWinnerCycleLock<T>(
+  callback: () => Promise<T>
+): Promise<T> {
+  await ensureProofWinnerCycleTableExists();
+
+  const lockResult = await db.execute(sql`
+    SELECT pg_try_advisory_lock(${DRAW_EXECUTION_LOCK_ID}) AS locked
+  `);
+
+  const locked = Boolean(lockResult.rows[0]?.locked);
+
+  if (!locked) {
+    throw new Error(
+      'Another draw is already running. Please wait a few seconds and try again.'
+    );
+  }
+
+  try {
+    return await callback();
+  } finally {
+    await db.execute(sql`
+      SELECT pg_advisory_unlock(${DRAW_EXECUTION_LOCK_ID})
+    `);
+  }
 }
 
 export async function getProofWinnerCycle(): Promise<ProofWinnerCycleRecord> {
