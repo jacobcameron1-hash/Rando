@@ -1,4 +1,5 @@
 import { drawScheduleConfig } from './draw-schedule';
+import { getDrawAdminConfig } from './draw-admin-config';
 
 export type DrawScheduleState = {
   enabled: boolean;
@@ -12,13 +13,27 @@ export type DrawScheduleState = {
   countdownMs: number;
 };
 
+export type DrawScheduleConfigShape = {
+  enabled: boolean;
+  timezone: string;
+  firstDrawAt: string;
+  initialIntervalHours: number;
+  increaseEnabled: boolean;
+  increaseHoursPerDraw: number;
+  maxIntervalHours: number;
+  minTokens: number;
+};
+
 function hoursToMs(hours: number): number {
   return hours * 60 * 60 * 1000;
 }
 
-function clampIntervalHours(hours: number): number {
-  const minHours = drawScheduleConfig.initialIntervalHours;
-  const maxHours = drawScheduleConfig.maxIntervalHours;
+function clampIntervalHours(
+  hours: number,
+  config: DrawScheduleConfigShape
+): number {
+  const minHours = config.initialIntervalHours;
+  const maxHours = config.maxIntervalHours;
 
   if (hours < minHours) return minHours;
   if (hours > maxHours) return maxHours;
@@ -26,38 +41,44 @@ function clampIntervalHours(hours: number): number {
   return hours;
 }
 
-function getIntervalHoursForDraw(drawIndex: number): number {
-  const baseHours = drawScheduleConfig.initialIntervalHours;
+function getIntervalHoursForDraw(
+  drawIndex: number,
+  config: DrawScheduleConfigShape
+): number {
+  const baseHours = config.initialIntervalHours;
 
-  if (!drawScheduleConfig.increaseEnabled) {
-    return clampIntervalHours(baseHours);
+  if (!config.increaseEnabled) {
+    return clampIntervalHours(baseHours, config);
   }
 
-  const increasedHours =
-    baseHours + drawScheduleConfig.increaseHoursPerDraw * drawIndex;
+  const increasedHours = baseHours + config.increaseHoursPerDraw * drawIndex;
 
-  return clampIntervalHours(increasedHours);
+  return clampIntervalHours(increasedHours, config);
 }
 
-function getNextDrawAtFromAnchor(nowMs: number, firstDrawAtMs: number) {
+function getNextDrawAtFromAnchor(
+  nowMs: number,
+  firstDrawAtMs: number,
+  config: DrawScheduleConfigShape
+) {
   if (nowMs < firstDrawAtMs) {
     return {
       drawIndex: 0,
       previousDrawAtMs: null,
       nextDrawAtMs: firstDrawAtMs,
-      currentIntervalHours: getIntervalHoursForDraw(0),
+      currentIntervalHours: getIntervalHoursForDraw(0, config),
     };
   }
 
   let drawIndex = 0;
   let previousDrawAtMs = firstDrawAtMs;
-  let currentIntervalHours = getIntervalHoursForDraw(drawIndex);
+  let currentIntervalHours = getIntervalHoursForDraw(drawIndex, config);
   let nextDrawAtMs = firstDrawAtMs + hoursToMs(currentIntervalHours);
 
   while (nowMs >= nextDrawAtMs) {
     drawIndex += 1;
     previousDrawAtMs = nextDrawAtMs;
-    currentIntervalHours = getIntervalHoursForDraw(drawIndex);
+    currentIntervalHours = getIntervalHoursForDraw(drawIndex, config);
     nextDrawAtMs = previousDrawAtMs + hoursToMs(currentIntervalHours);
   }
 
@@ -69,36 +90,37 @@ function getNextDrawAtFromAnchor(nowMs: number, firstDrawAtMs: number) {
   };
 }
 
-export function getDrawScheduleState(
+function buildDrawScheduleState(
+  config: DrawScheduleConfigShape,
   now = new Date()
 ): DrawScheduleState {
   const nowMs = now.getTime();
-  const firstDrawAt = new Date(drawScheduleConfig.firstDrawAt);
+  const firstDrawAt = new Date(config.firstDrawAt);
   const firstDrawAtMs = firstDrawAt.getTime();
 
   if (Number.isNaN(firstDrawAtMs)) {
-    throw new Error('Invalid drawScheduleConfig.firstDrawAt');
+    throw new Error('Invalid draw schedule firstDrawAt');
   }
 
-  if (!drawScheduleConfig.enabled) {
+  if (!config.enabled) {
     return {
       enabled: false,
-      timezone: drawScheduleConfig.timezone,
+      timezone: config.timezone,
       nowIso: now.toISOString(),
       firstDrawAtIso: firstDrawAt.toISOString(),
       drawIndex: 0,
-      currentIntervalHours: drawScheduleConfig.initialIntervalHours,
+      currentIntervalHours: config.initialIntervalHours,
       previousDrawAtIso: null,
       nextDrawAtIso: firstDrawAt.toISOString(),
       countdownMs: Math.max(firstDrawAtMs - nowMs, 0),
     };
   }
 
-  const schedule = getNextDrawAtFromAnchor(nowMs, firstDrawAtMs);
+  const schedule = getNextDrawAtFromAnchor(nowMs, firstDrawAtMs, config);
 
   return {
     enabled: true,
-    timezone: drawScheduleConfig.timezone,
+    timezone: config.timezone,
     nowIso: now.toISOString(),
     firstDrawAtIso: firstDrawAt.toISOString(),
     drawIndex: schedule.drawIndex,
@@ -110,4 +132,16 @@ export function getDrawScheduleState(
     nextDrawAtIso: new Date(schedule.nextDrawAtMs).toISOString(),
     countdownMs: Math.max(schedule.nextDrawAtMs - nowMs, 0),
   };
+}
+
+export function getDrawScheduleState(now = new Date()): DrawScheduleState {
+  return buildDrawScheduleState(drawScheduleConfig, now);
+}
+
+export async function getDrawScheduleStateFromAdminConfig(
+  now = new Date()
+): Promise<DrawScheduleState> {
+  const config = await getDrawAdminConfig();
+
+  return buildDrawScheduleState(config, now);
 }
