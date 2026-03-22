@@ -671,6 +671,13 @@ async function runDraw(request: Request) {
     cycleAction === 'completed-payout-and-rotated-new-winner' ||
     cycleAction === 'simulated-payout-ready-rotated-new-winner';
 
+  const nextAccumulatedSol = shouldResetCycleProgress ? 0 : accumulatedSol;
+  const nextLastKnownClaimableSol = shouldResetCycleProgress
+    ? 0
+    : activeWinnerClaimableSol;
+  const nextTotalClaimedSol = shouldResetCycleProgress ? 0 : totalClaimedSol;
+  const nextTargetReached = shouldResetCycleProgress ? false : targetReached;
+
   const nextCycleStatus =
     cycleAction === 'kept-existing-winner'
       ? 'active'
@@ -694,8 +701,8 @@ async function runDraw(request: Request) {
         : null,
     status: nextCycleStatus,
     minPayoutSol,
-    accumulatedSol: shouldResetCycleProgress ? 0 : accumulatedSol,
-    targetReached: false,
+    accumulatedSol: nextAccumulatedSol,
+    targetReached: nextTargetReached,
     lastDrawId: drawId,
     lastDisqualifiedWinnerWallet:
       disqualifiedPreviousWinner?.owner ??
@@ -709,8 +716,8 @@ async function runDraw(request: Request) {
     lastDisqualificationReason:
       disqualifiedPreviousWinner?.reason ??
       existingCycle.lastDisqualificationReason,
-    lastKnownClaimableSol: shouldResetCycleProgress ? 0 : activeWinnerClaimableSol,
-    totalClaimedSol: shouldResetCycleProgress ? 0 : totalClaimedSol,
+    lastKnownClaimableSol: nextLastKnownClaimableSol,
+    totalClaimedSol: nextTotalClaimedSol,
     lastClaimCheckAt: activeWinnerClaimCheckAt,
   });
 
@@ -787,8 +794,8 @@ async function runDraw(request: Request) {
         cycleCompletedAt: nextCycle.cycleCompletedAt,
         status: nextCycle.status,
         minPayoutSol: nextCycle.minPayoutSol,
-        accumulatedSol: formatSolAmount(shouldResetCycleProgress ? 0 : accumulatedSol),
-        targetReached,
+        accumulatedSol: formatSolAmount(nextCycle.accumulatedSol),
+        targetReached: nextCycle.targetReached,
         lastKnownClaimableSol: formatSolAmount(nextCycle.lastKnownClaimableSol),
         totalClaimedSol: formatSolAmount(nextCycle.totalClaimedSol),
         lastClaimCheckAt: nextCycle.lastClaimCheckAt,
