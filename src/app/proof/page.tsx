@@ -75,6 +75,7 @@ type AdminConfigResponse = {
   config?: {
     initialIntervalHours?: number;
     minPayoutSol?: number;
+    minTokens?: number;
   };
   winnerCycle?: {
     activeWinnerWallet?: string | null;
@@ -282,6 +283,7 @@ export default function PublicPage() {
     adminConfig?.winnerCycle?.minPayoutSol ??
     0.05;
 
+  const minTokens = adminConfig?.config?.minTokens ?? 1000000;
   const drawFrequencyHours = adminConfig?.config?.initialIntervalHours ?? 1;
 
   const winnerCycle =
@@ -336,17 +338,17 @@ export default function PublicPage() {
             How The Proof Works
           </div>
           <div className="mb-6 font-mono text-sm text-[#b78f73]">
-            Clear rules for how winners stay active and when rewards rotate
+            Clear rules for eligibility, disqualification, and winner rotation
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 md:grid-cols-3">
             <div className="rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5">
               <div className="font-mono text-sm text-[#b78f73]">Draw Frequency</div>
               <div className="mt-3 text-3xl font-black text-white">
                 Every {drawFrequencyHours} hour{drawFrequencyHours === 1 ? '' : 's'}
               </div>
               <div className="mt-2 font-mono text-sm text-[#d5b190]">
-                A draw runs on this schedule and decides the active winner cycle.
+                The active winner is checked again on each draw cycle.
               </div>
             </div>
 
@@ -362,10 +364,22 @@ export default function PublicPage() {
                 accumulated.
               </div>
             </div>
+
+            <div className="rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5">
+              <div className="font-mono text-sm text-[#b78f73]">
+                Eligibility Minimum
+              </div>
+              <div className="mt-3 text-3xl font-black text-white">
+                {formatNumber(minTokens)} $RANDO
+              </div>
+              <div className="mt-2 font-mono text-sm text-[#d5b190]">
+                A wallet must stay at or above this balance to remain eligible.
+              </div>
+            </div>
           </div>
 
           <div className="mt-4 rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5">
-            <div className="grid gap-4 md:grid-cols-4">
+            <div className="grid gap-4 md:grid-cols-5">
               <div>
                 <div className="font-mono text-xs uppercase tracking-wide text-[#b78f73]">
                   Rule 1
@@ -380,8 +394,8 @@ export default function PublicPage() {
                   Rule 2
                 </div>
                 <div className="mt-2 text-sm leading-6 text-white">
-                  That winner remains active until rewards reach at least{' '}
-                  {formatSol(minPayoutSol)} SOL.
+                  Only wallets holding at least {formatNumber(minTokens)} $RANDO
+                  are eligible.
                 </div>
               </div>
 
@@ -390,8 +404,8 @@ export default function PublicPage() {
                   Rule 3
                 </div>
                 <div className="mt-2 text-sm leading-6 text-white">
-                  If more than {formatSol(minPayoutSol)} SOL builds up during that
-                  same period, the winner still gets the extra amount too.
+                  That winner remains active until rewards reach at least{' '}
+                  {formatSol(minPayoutSol)} SOL.
                 </div>
               </div>
 
@@ -400,11 +414,28 @@ export default function PublicPage() {
                   Rule 4
                 </div>
                 <div className="mt-2 text-sm leading-6 text-white">
-                  After that payout threshold is satisfied, the next cycle can rotate
-                  to a new winner.
+                  If the winner drops below {formatNumber(minTokens)} $RANDO at
+                  the next draw check, they are disqualified.
+                </div>
+              </div>
+
+              <div>
+                <div className="font-mono text-xs uppercase tracking-wide text-[#b78f73]">
+                  Rule 5
+                </div>
+                <div className="mt-2 text-sm leading-6 text-white">
+                  Future fees stop routing to the disqualified winner and rotate
+                  to the next valid winner.
                 </div>
               </div>
             </div>
+          </div>
+
+          <div className="mt-4 rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5 font-mono text-sm leading-7 text-[#d5b190]">
+            Important: fees already routed before a disqualification are not
+            clawed back. Disqualification stops
+            <span className="font-semibold text-white"> future fee routing</span>
+            at the next draw-cycle validation.
           </div>
         </section>
 
