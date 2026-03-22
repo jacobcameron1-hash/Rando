@@ -545,7 +545,12 @@ async function runDraw(request: Request) {
   let claimTriggeredByApp = false;
   let manualPayoutPerformed = false;
 
-  if (!simulateDisqualification) {
+  const shouldUpdateBagsRecipients =
+    !simulateDisqualification &&
+    (cycleAction === 'started-new-winner-cycle' ||
+      cycleAction === 'disqualified-and-rotated-new-winner');
+
+  if (shouldUpdateBagsRecipients) {
     const updateConfigTransactions = await updateBagsFeeRecipients(winner.owner);
     configSignatures = await sendBagsTransactions(updateConfigTransactions);
     configUpdated = true;
@@ -603,7 +608,9 @@ async function runDraw(request: Request) {
       drawId,
       step: simulateDisqualification
         ? 'safe test mode simulated disqualification without changing live Bags routing'
-        : 'winner validated and Bags fee split updated',
+        : shouldUpdateBagsRecipients
+          ? 'winner validated and Bags fee split updated'
+          : 'winner validated and existing Bags fee split kept',
       snapshotAt,
       tokenMint: TOKEN_MINT,
       forced: effectiveForce,
