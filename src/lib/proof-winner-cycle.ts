@@ -22,6 +22,16 @@ export type ProofWinnerCycleRecord = {
   lastUpdatedAt: string | null;
 };
 
+export type ProofWinnerDisqualificationRecord = {
+  id: string;
+  wallet: string;
+  tokenAmount: number;
+  reason: string;
+  disqualifiedAt: string;
+  claimableSolAtCheck: number;
+  createdAt: string | null;
+};
+
 const DEFAULT_ID = 'global';
 const DEFAULT_TOKEN_MINT = 'EZthQ6SUL51jJihQiFMDiZVmZiRMNjMQoTb7rNvTBAGS';
 
@@ -116,6 +126,18 @@ async function ensureProofWinnerCycleTableExists() {
     ADD COLUMN IF NOT EXISTS last_claim_check_at timestamptz
   `);
 
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS proof_winner_disqualification_history (
+      id text PRIMARY KEY,
+      wallet text NOT NULL,
+      token_amount numeric(18, 9) NOT NULL DEFAULT 0,
+      reason text NOT NULL,
+      disqualified_at timestamptz NOT NULL,
+      claimable_sol_at_check numeric(18, 9) NOT NULL DEFAULT 0,
+      created_at timestamptz NOT NULL DEFAULT now()
+    )
+  `);
+
   tableReady = true;
 }
 
@@ -151,6 +173,21 @@ function mapRow(row: Record<string, unknown>): ProofWinnerCycleRecord {
     totalClaimedSol: asNumber(row.total_claimed_sol, 0),
     lastClaimCheckAt: asIsoString(row.last_claim_check_at),
     lastUpdatedAt: asIsoString(row.last_updated_at),
+  };
+}
+
+function mapDisqualificationRow(
+  row: Record<string, unknown>
+): ProofWinnerDisqualificationRecord {
+  return {
+    id: asString(row.id),
+    wallet: asString(row.wallet),
+    tokenAmount: asNumber(row.token_amount, 0),
+    reason: asString(row.reason),
+    disqualifiedAt:
+      asIsoString(row.disqualified_at) || new Date().toISOString(),
+    claimableSolAtCheck: asNumber(row.claimable_sol_at_check, 0),
+    createdAt: asIsoString(row.created_at),
   };
 }
 
@@ -334,6 +371,95 @@ export async function setProofWinnerCycle(
   `);
 
   return next;
+}
+
+export async function recordProofWinnerDisqualification(input: {
+  wallet: string;
+  tokenAmount: number;
+  reason: string;
+  disqualifiedAt: string;
+  claimableSolAtCheck: number;
+}): Promise<ProofWinnerDisqualificationRecord> {
+  await ensureProofWinnerCycleTableExists();
+
+  const id = `disq-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+  await db.execute(sql`
+    INSERT INTO proof_winner_disqualification_history (
+      id,
+      wallet,
+      token_amount,
+      reason,
+      disqualified_at,
+      claimable_sol_at_check
+    )
+    VALUES (
+      ${id},
+      ${input.wallet},
+      ${String(input.tokenAmount)},
+      ${input.reason},
+      ${input.disqualifiedAt},
+      ${String(input.claimableSolAtCheck)}
+    )
+  `);
+
+  await db.execute(sql`
+    DELETE FROM proof_winner_disqualification_history
+    WHERE id IN (
+      SELECT id
+      FROM proof_winner_disqualification_history
+      ORDER BY disqualified_at DESC, created_at DESC
+      OFFSET 3
+    )
+  `);
+
+  const result = await db.execute(sql`
+    SELECT
+      id,
+      wallet,
+      token_amount,
+      reason,
+      disqualified_at,
+      claimable_sol_at_check,
+      created_at
+    FROM proof_winner_disqualification_history
+    WHERE id = ${id}
+    LIMIT 1
+  `);
+
+  const row = result.rows[0] as Record<string, unknown> | undefined;
+
+  if (!row) {
+    throw new Error('Failed to load saved disqualification record');
+  }
+
+  return mapDisqualificationRow(row);
+}
+
+export async function getRecentProofWinnerDisqualifications(
+  limit = 3
+): Promise<ProofWinnerDisqualificationRecord[]> {
+  await ensureProofWinnerCycleTableExists();
+
+  const safeLimit = Math.max(1, Math.min(limit, 20));
+
+  const result = await db.execute(sql`
+    SELECT
+      id,
+      wallet,
+      token_amount,
+      reason,
+      disqualified_at,
+      claimable_sol_at_check,
+      created_at
+    FROM proof_winner_disqualification_history
+    ORDER BY disqualified_at DESC, created_at DESC
+    LIMIT ${safeLimit}
+  `);
+
+  return result.rows.map((row) =>
+    mapDisqualificationRow(row as Record<string, unknown>)
+  );
 }
 
 export async function resetProofWinnerCycle(
