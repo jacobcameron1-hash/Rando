@@ -29,6 +29,8 @@ const BAGS_PAYER_WALLET = process.env.BAGS_PAYER_WALLET!;
 const SOLANA_PRIVATE_KEY = process.env.SOLANA_PRIVATE_KEY!;
 const DEV_WALLET = process.env.RANDO_DEV_WALLET!;
 const RANDO_ADMIN_API_KEY = process.env.RANDO_ADMIN_API_KEY!;
+const ALLOW_UNSAFE_DRAW_TESTS = process.env.ALLOW_UNSAFE_DRAW_TESTS === '1';
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 
 type Holder = {
   owner: string;
@@ -92,6 +94,20 @@ function isAuthorizedRequest(request: Request) {
   }
 
   return headerValue === RANDO_ADMIN_API_KEY;
+}
+
+function assertSafeProductionRequest(request: Request) {
+  const { force, testId, simulateDisqualification, simulatePayoutReady } =
+    getRequestOptions(request);
+
+  const isUnsafeTestRequest =
+    force || Boolean(testId) || simulateDisqualification || simulatePayoutReady;
+
+  if (IS_PRODUCTION && !ALLOW_UNSAFE_DRAW_TESTS && isUnsafeTestRequest) {
+    throw new Error(
+      'Production safety block: force/test/simulate draw options are disabled'
+    );
+  }
 }
 
 async function sendBagsTransactions(transactions: string[]) {
@@ -378,6 +394,8 @@ async function runDraw(request: Request) {
       { status: 401 }
     );
   }
+
+  assertSafeProductionRequest(request);
 
   const config = await getDrawAdminConfig();
   const minTokens = config.minTokens;
