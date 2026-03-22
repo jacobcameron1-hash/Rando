@@ -1,4 +1,12 @@
-import { pgTable, text, integer, bigint, boolean, timestamp, jsonb } from 'drizzle-orm/pg-core';
+import {
+  pgTable,
+  text,
+  integer,
+  bigint,
+  boolean,
+  timestamp,
+  jsonb,
+} from 'drizzle-orm/pg-core';
 
 export const projects = pgTable('projects', {
   id: text('id').primaryKey(), // nanoid
@@ -25,7 +33,9 @@ export const projects = pgTable('projects', {
 
 export const draws = pgTable('draws', {
   id: text('id').primaryKey(),
-  projectId: text('project_id').notNull().references(() => projects.id),
+  projectId: text('project_id')
+    .notNull()
+    .references(() => projects.id),
   drawNumber: integer('draw_number').notNull(),
   winnerWallet: text('winner_wallet'), // null if rollover (no eligible winner)
   prizeAmountLamports: bigint('prize_amount_lamports', { mode: 'number' }),
@@ -37,13 +47,34 @@ export const draws = pgTable('draws', {
 
 export const snapshots = pgTable('snapshots', {
   id: text('id').primaryKey(),
-  projectId: text('project_id').notNull().references(() => projects.id),
+  projectId: text('project_id')
+    .notNull()
+    .references(() => projects.id),
   drawNumber: integer('draw_number').notNull(), // snapshot taken at START of this draw period
   takenAt: timestamp('taken_at').notNull().defaultNow(),
   holders: jsonb('holders').notNull(), // Array<{ wallet: string, balance: string }>
+});
+
+export const drawAdminConfig = pgTable('draw_admin_config', {
+  id: text('id').primaryKey(),
+  enabled: boolean('enabled').notNull().default(true),
+  timezone: text('timezone').notNull(),
+  firstDrawAt: timestamp('first_draw_at', { withTimezone: true }).notNull(),
+  initialIntervalHours: integer('initial_interval_hours').notNull(),
+  increaseEnabled: boolean('increase_enabled').notNull().default(false),
+  increaseHoursPerDraw: integer('increase_hours_per_draw').notNull().default(0),
+  maxIntervalHours: integer('max_interval_hours').notNull(),
+  minTokens: integer('min_tokens').notNull(),
+  excludedWallets: jsonb('excluded_wallets').notNull().default([]),
+  updatedAt: timestamp('updated_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });
 
 export type Project = typeof projects.$inferSelect;
 export type NewProject = typeof projects.$inferInsert;
 export type Draw = typeof draws.$inferSelect;
 export type Snapshot = typeof snapshots.$inferSelect;
+
+export type DrawAdminConfig = typeof drawAdminConfig.$inferSelect;
+export type NewDrawAdminConfig = typeof drawAdminConfig.$inferInsert;
