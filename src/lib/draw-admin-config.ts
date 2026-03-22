@@ -10,6 +10,7 @@ export type DrawAdminConfigRecord = {
   increaseHoursPerDraw: number;
   maxIntervalHours: number;
   minTokens: number;
+  minPayoutSol: number;
   excludedWallets: string[];
 };
 
@@ -24,7 +25,16 @@ function asString(value: unknown, fallback = ''): string {
 }
 
 function asNumber(value: unknown, fallback = 0): number {
-  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : fallback;
+  }
+
+  return fallback;
 }
 
 function asIsoString(value: unknown, fallback = ''): string {
@@ -41,7 +51,39 @@ function normalizeExcludedWallets(value: unknown): string[] {
   return value.filter((item): item is string => typeof item === 'string');
 }
 
+let configTableReady = false;
+
+async function ensureDrawAdminConfigTableExists() {
+  if (configTableReady) return;
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS draw_admin_config (
+      id text PRIMARY KEY,
+      enabled boolean NOT NULL DEFAULT true,
+      timezone text NOT NULL,
+      first_draw_at timestamptz NOT NULL,
+      initial_interval_hours integer NOT NULL,
+      increase_enabled boolean NOT NULL DEFAULT false,
+      increase_hours_per_draw integer NOT NULL DEFAULT 0,
+      max_interval_hours integer NOT NULL,
+      min_tokens integer NOT NULL,
+      min_payout_sol numeric(18, 9) NOT NULL DEFAULT 0.05,
+      excluded_wallets jsonb NOT NULL DEFAULT '[]'::jsonb,
+      updated_at timestamptz NOT NULL DEFAULT now()
+    )
+  `);
+
+  await db.execute(sql`
+    ALTER TABLE draw_admin_config
+    ADD COLUMN IF NOT EXISTS min_payout_sol numeric(18, 9) NOT NULL DEFAULT 0.05
+  `);
+
+  configTableReady = true;
+}
+
 export async function getDrawAdminConfig(): Promise<DrawAdminConfigRecord> {
+  await ensureDrawAdminConfigTableExists();
+
   const result = await db.execute(sql`
     SELECT
       enabled,
@@ -52,6 +94,7 @@ export async function getDrawAdminConfig(): Promise<DrawAdminConfigRecord> {
       increase_hours_per_draw,
       max_interval_hours,
       min_tokens,
+      min_payout_sol,
       excluded_wallets
     FROM draw_admin_config
     WHERE id = ${DEFAULT_ID}
@@ -70,6 +113,7 @@ export async function getDrawAdminConfig(): Promise<DrawAdminConfigRecord> {
       increaseHoursPerDraw: 0,
       maxIntervalHours: 24,
       minTokens: 1000000,
+      minPayoutSol: 0.05,
       excludedWallets: [
         '4FMEhKstf4AnZi6bdnVb5wvcffWPCebsvthvkPYTzC99',
         'BJz5RFx9ycWZ9dVbRtsZq7h3L6XPWVDuDtbgEeJVBJMG',
@@ -87,6 +131,7 @@ export async function getDrawAdminConfig(): Promise<DrawAdminConfigRecord> {
         increase_hours_per_draw,
         max_interval_hours,
         min_tokens,
+        min_payout_sol,
         excluded_wallets
       )
       VALUES (
@@ -99,6 +144,7 @@ export async function getDrawAdminConfig(): Promise<DrawAdminConfigRecord> {
         ${defaultConfig.increaseHoursPerDraw},
         ${defaultConfig.maxIntervalHours},
         ${defaultConfig.minTokens},
+        ${String(defaultConfig.minPayoutSol)},
         ${JSON.stringify(defaultConfig.excludedWallets)}::jsonb
       )
       ON CONFLICT (id) DO NOTHING
@@ -116,6 +162,7 @@ export async function getDrawAdminConfig(): Promise<DrawAdminConfigRecord> {
     increaseHoursPerDraw: asNumber(row.increase_hours_per_draw),
     maxIntervalHours: asNumber(row.max_interval_hours),
     minTokens: asNumber(row.min_tokens),
+    minPayoutSol: asNumber(row.min_payout_sol, 0.05),
     excludedWallets: normalizeExcludedWallets(row.excluded_wallets),
   };
 }
