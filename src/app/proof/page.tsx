@@ -15,6 +15,16 @@ type HistoryItem = {
   };
 };
 
+type DisqualificationItem = {
+  id: string;
+  wallet: string;
+  tokenAmount: number;
+  reason: string;
+  disqualifiedAt: string;
+  claimableSolAtCheck: number;
+  createdAt?: string | null;
+};
+
 type NextDrawSchedule = {
   nextDrawAtIso: string | null;
   countdownMs: number;
@@ -55,6 +65,7 @@ type DrawResponse = {
       minimumRequired?: number;
       reason?: string;
       disqualifiedAt?: string;
+      claimableSolAtCheck?: number;
     } | null;
     winnerCycle?: {
       activeWinnerWallet?: string | null;
@@ -147,6 +158,9 @@ function getTxExplorerUrl(signature: string) {
 
 export default function PublicPage() {
   const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [disqualifications, setDisqualifications] = useState<
+    DisqualificationItem[]
+  >([]);
   const [nextDraw, setNextDraw] = useState<NextDrawSchedule | null>(null);
   const [countdownMs, setCountdownMs] = useState(0);
   const [copied, setCopied] = useState<string | null>(null);
@@ -178,6 +192,7 @@ export default function PublicPage() {
       const nextSchedule = nextDrawData.schedule || null;
 
       setHistory(historyData.history || []);
+      setDisqualifications(historyData.disqualifications || []);
       setNextDraw(nextSchedule);
       setCountdownMs(nextSchedule?.countdownMs ?? 0);
       setAdminConfig(adminConfigData || null);
@@ -211,9 +226,7 @@ export default function PublicPage() {
   }, [countdownMs]);
 
   const eligibleCount =
-    drawResponse?.counts?.eligibleCount ??
-    latest?.counts?.eligibleCount ??
-    0;
+    drawResponse?.counts?.eligibleCount ?? latest?.counts?.eligibleCount ?? 0;
 
   const holderCount =
     drawResponse?.counts?.holderCountAfterExclusions ??
@@ -312,6 +325,7 @@ export default function PublicPage() {
             adminConfig.winnerCycle.lastDisqualificationReason ||
             'Dropped below minimum token threshold',
           disqualifiedAt: adminConfig.winnerCycle.lastDisqualifiedAt || '',
+          claimableSolAtCheck: 0,
         }
       : null);
 
@@ -369,9 +383,12 @@ export default function PublicPage() {
 
           <div className="grid gap-4 md:grid-cols-3">
             <div className="rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5">
-              <div className="font-mono text-sm text-[#b78f73]">Draw Frequency</div>
+              <div className="font-mono text-sm text-[#b78f73]">
+                Draw Frequency
+              </div>
               <div className="mt-3 text-3xl font-black text-white">
-                Every {drawFrequencyHours} hour{drawFrequencyHours === 1 ? '' : 's'}
+                Every {drawFrequencyHours} hour
+                {drawFrequencyHours === 1 ? '' : 's'}
               </div>
               <div className="mt-2 font-mono text-sm text-[#d5b190]">
                 The active winner is checked again on each draw cycle.
@@ -460,7 +477,10 @@ export default function PublicPage() {
           <div className="mt-4 rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5 font-mono text-sm leading-7 text-[#d5b190]">
             Important: fees already routed before a disqualification are not
             clawed back. Disqualification stops
-            <span className="font-semibold text-white"> future fee routing</span>
+            <span className="font-semibold text-white">
+              {' '}
+              future fee routing
+            </span>
             at the next draw-cycle validation.
           </div>
         </section>
@@ -477,7 +497,9 @@ export default function PublicPage() {
           </div>
 
           <div className="rounded-[26px] border border-[#3a2417] bg-[#120b09] p-5 shadow-[0_10px_30px_rgba(0,0,0,0.35)]">
-            <div className="font-mono text-sm text-[#b78f73]">Eligible Wallets</div>
+            <div className="font-mono text-sm text-[#b78f73]">
+              Eligible Wallets
+            </div>
             <div className="mt-3 text-4xl font-black text-white">
               {formatNumber(eligibleCount)}
             </div>
@@ -487,7 +509,9 @@ export default function PublicPage() {
           </div>
 
           <div className="rounded-[26px] border border-[#3a2417] bg-[#120b09] p-5 shadow-[0_10px_30px_rgba(0,0,0,0.35)]">
-            <div className="font-mono text-sm text-[#b78f73]">Eligibility Rate</div>
+            <div className="font-mono text-sm text-[#b78f73]">
+              Eligibility Rate
+            </div>
             <div className="mt-3 text-4xl font-black text-white">
               {eligiblePercent}%
             </div>
@@ -578,7 +602,9 @@ export default function PublicPage() {
           {displayWinnerAddress ? (
             <div className="space-y-5">
               <div className="rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5">
-                <div className="font-mono text-sm text-[#b78f73]">Winning Wallet</div>
+                <div className="font-mono text-sm text-[#b78f73]">
+                  Winning Wallet
+                </div>
                 <div className="mt-3">
                   <WalletRow address={displayWinnerAddress} large />
                 </div>
@@ -603,7 +629,9 @@ export default function PublicPage() {
                 </div>
 
                 <div className="rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5">
-                  <div className="font-mono text-sm text-[#b78f73]">Cycle Target</div>
+                  <div className="font-mono text-sm text-[#b78f73]">
+                    Cycle Target
+                  </div>
                   <div className="mt-3 text-2xl font-black text-white sm:text-3xl">
                     {formatSol(minPayoutSol)} SOL
                   </div>
@@ -613,7 +641,9 @@ export default function PublicPage() {
                 </div>
 
                 <div className="rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5">
-                  <div className="font-mono text-sm text-[#b78f73]">Cycle Started</div>
+                  <div className="font-mono text-sm text-[#b78f73]">
+                    Cycle Started
+                  </div>
                   <div className="mt-3 text-lg font-black leading-tight text-white">
                     {formatDate(displayWinnerTime)}
                   </div>
@@ -644,7 +674,9 @@ export default function PublicPage() {
             </div>
 
             <div className="rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5">
-              <div className="font-mono text-sm text-[#b78f73]">Accumulated</div>
+              <div className="font-mono text-sm text-[#b78f73]">
+                Accumulated
+              </div>
               <div className="mt-3 text-2xl font-black text-white">
                 {formatSol(accumulatedSol)} SOL
               </div>
@@ -658,7 +690,9 @@ export default function PublicPage() {
             </div>
 
             <div className="rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5">
-              <div className="font-mono text-sm text-[#b78f73]">Threshold Reached</div>
+              <div className="font-mono text-sm text-[#b78f73]">
+                Threshold Reached
+              </div>
               <div className="mt-3 text-2xl font-black text-white">
                 {targetReached ? 'Yes' : 'No'}
               </div>
@@ -689,8 +723,8 @@ export default function PublicPage() {
           </div>
 
           <div className="mt-4 rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5 font-mono text-sm leading-7 text-[#d5b190]">
-            The winner remains in the winning slot until the reward pool reaches at
-            least{' '}
+            The winner remains in the winning slot until the reward pool reaches
+            at least{' '}
             <span className="font-semibold text-white">
               {formatSol(minPayoutSol)} SOL
             </span>
@@ -827,6 +861,77 @@ export default function PublicPage() {
               Run a manual draw to show the latest live Bags routing update here.
             </div>
           )}
+        </section>
+
+        <section className="mt-6 rounded-[32px] border border-[#3a2417] bg-[#18100c] p-6 shadow-[0_18px_50px_rgba(0,0,0,0.42)] sm:p-8">
+          <div className="mb-1 text-3xl font-black text-white sm:text-4xl">
+            Recent Disqualifications
+          </div>
+          <div className="mb-6 font-mono text-sm text-[#b78f73]">
+            Latest 3 winner removals from the payout cycle
+          </div>
+
+          <div className="space-y-4">
+            {disqualifications.map((item) => (
+              <div
+                key={item.id}
+                className="rounded-[24px] border border-[#6a2d1c] bg-[#0f0907] p-5"
+              >
+                <div className="grid gap-4 md:grid-cols-4">
+                  <div>
+                    <div className="font-mono text-xs uppercase tracking-wide text-[#b78f73]">
+                      Wallet
+                    </div>
+                    <div className="mt-3">
+                      <WalletRow address={item.wallet} />
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="font-mono text-xs uppercase tracking-wide text-[#b78f73]">
+                      Token Balance At Check
+                    </div>
+                    <div className="mt-3 text-2xl font-black text-white">
+                      {formatNumber(item.tokenAmount)}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="font-mono text-xs uppercase tracking-wide text-[#b78f73]">
+                      Claimable SOL At Check
+                    </div>
+                    <div className="mt-3 text-2xl font-black text-white">
+                      {formatSol(item.claimableSolAtCheck)}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="font-mono text-xs uppercase tracking-wide text-[#b78f73]">
+                      Disqualified At
+                    </div>
+                    <div className="mt-3 text-sm leading-6 text-white">
+                      {formatDate(item.disqualifiedAt)}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-4 rounded-[20px] border border-[#3a2417] bg-[#120b09] p-4">
+                  <div className="font-mono text-xs uppercase tracking-wide text-[#b78f73]">
+                    Reason
+                  </div>
+                  <div className="mt-2 text-sm leading-6 text-white">
+                    {item.reason}
+                  </div>
+                </div>
+              </div>
+            ))}
+
+            {disqualifications.length === 0 && (
+              <div className="rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5 font-mono text-[#b78f73]">
+                No recent disqualifications
+              </div>
+            )}
+          </div>
         </section>
 
         <section className="mt-6 rounded-[32px] border border-[#3a2417] bg-[#18100c] p-6 shadow-[0_18px_50px_rgba(0,0,0,0.42)] sm:p-8">
