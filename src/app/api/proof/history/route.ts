@@ -1,8 +1,10 @@
 import { readProofHistory } from '@/lib/proof-history';
+import { getRecentProofWinnerDisqualifications } from '@/lib/proof-winner-cycle';
 
 export async function GET() {
   try {
     const history = await readProofHistory();
+    const disqualifications = await getRecentProofWinnerDisqualifications(3);
 
     const latestThree = history.slice(0, 3).map((item) => ({
       drawId: item.drawId,
@@ -15,11 +17,20 @@ export async function GET() {
     return Response.json({
       ok: true,
       history: latestThree,
+      disqualifications: disqualifications.map((item) => ({
+        id: item.id,
+        wallet: item.wallet,
+        tokenAmount: item.tokenAmount,
+        reason: item.reason,
+        disqualifiedAt: item.disqualifiedAt,
+        claimableSolAtCheck: item.claimableSolAtCheck,
+        createdAt: item.createdAt,
+      })),
     });
   } catch (err: any) {
     return Response.json({
       ok: false,
-      error: err.message || 'Failed to read draw history',
+      error: err.message || 'Failed to read proof history',
     });
   }
 }
