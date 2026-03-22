@@ -4,6 +4,10 @@ import {
   prependProofHistoryItem,
 } from '@/lib/proof-history';
 import { getDrawAdminConfig } from '@/lib/draw-admin-config';
+import {
+  getProofWinnerCycle,
+  setProofWinnerCycle,
+} from '@/lib/proof-winner-cycle';
 
 import {
   Connection,
@@ -231,9 +235,51 @@ async function pickValidatedWinner(
   throw new Error('No eligible holders remained above threshold during validation');
 }
 
+async function findValidatedActiveWinner(
+  activeWinnerWallet: string,
+  eligible: Holder[],
+  decimals: number,
+  minTokens: number
+): Promise<{
+  winner: Holder | null;
+  validatedUiAmount: number;
+}> {
+  const matchingHolder = eligible.find(
+    (holder) => holder.owner === activeWinnerWallet
+  );
+
+  if (!matchingHolder) {
+    return {
+      winner: null,
+      validatedUiAmount: 0,
+    };
+  }
+
+  const validatedUiAmount = await getCurrentUiAmountForOwner(
+    matchingHolder.owner,
+    decimals
+  );
+
+  if (validatedUiAmount < minTokens) {
+    return {
+      winner: null,
+      validatedUiAmount,
+    };
+  }
+
+  return {
+    winner: {
+      owner: matchingHolder.owner,
+      uiAmount: validatedUiAmount,
+    },
+    validatedUiAmount,
+  };
+}
+
 async function runDraw(request: Request) {
   const config = await getDrawAdminConfig();
   const minTokens = config.minTokens;
+  const minPayoutSol = config.minPayoutSol;
   const excludedWallets = config.excludedWallets;
 
   const snapshotAt = new Date().toISOString();
@@ -369,25 +415,84 @@ async function runDraw(request: Request) {
     });
   }
 
-  const validation = await pickValidatedWinner(eligible, decimals, minTokens);
-  const winner = validation.winner;
+  const existingCycle = await getProofWinnerCycle();
+
+  let winner: Holder;
+  let winnerIndex = -1;
+  let validatedUiAmount = 0;
+  let rerollsDuringValidation = 0;
+  let cycleAction = 'kept-existing-winner';
+
+  const currentCycleCanBeKept =
+    existingCycle.status === 'active' &&
+    existingCycle.activeWinnerWallet &&
+    !existingCycle.targetReached &&
+    existingCycle.activeWinnerWallet.length > 0;
+
+  if (currentCycleCanBeKept) {
+    const activeWinnerValidation = await findValidatedActiveWinner(
+      existingCycle.activeWinnerWallet!,
+      eligible,
+      decimals,
+      minTokens
+    );
+
+    if (activeWinnerValidation.winner) {
+      winner = activeWinnerValidation.winner;
+      winnerIndex = eligible.findIndex(
+        (holder) => holder.owner === activeWinnerValidation.winner!.owner
+      );
+      validatedUiAmount = activeWinnerValidation.validatedUiAmount;
+    } else {
+      const validation = await pickValidatedWinner(eligible, decimals, minTokens);
+      winner = validation.winner;
+      winnerIndex = validation.winnerIndex;
+      validatedUiAmount = validation.validatedUiAmount;
+      rerollsDuringValidation = validation.rerolls;
+      cycleAction = 'rotated-new-winner';
+    }
+  } else {
+    const validation = await pickValidatedWinner(eligible, decimals, minTokens);
+    winner = validation.winner;
+    winnerIndex = validation.winnerIndex;
+    validatedUiAmount = validation.validatedUiAmount;
+    rerollsDuringValidation = validation.rerolls;
+    cycleAction = 'started-new-winner-cycle';
+  }
 
   const updateConfigTransactions = await updateBagsFeeRecipients(winner.owner);
   const configSignatures = await sendBagsTransactions(updateConfigTransactions);
+
+  const nextCycle = await setProofWinnerCycle({
+    tokenMint: TOKEN_MINT,
+    activeWinnerWallet: winner.owner,
+    cycleStartedAt:
+      cycleAction === 'kept-existing-winner'
+        ? existingCycle.cycleStartedAt || snapshotAt
+        : snapshotAt,
+    cycleCompletedAt: null,
+    status: 'active',
+    minPayoutSol,
+    accumulatedSol: existingCycle.accumulatedSol,
+    targetReached: false,
+    lastDrawId: drawId,
+  });
 
   const responseBody = {
     ok: true,
     draw: {
       drawId,
-      step: 'winner selected, validated, and Bags fee split updated',
+      step: 'winner selected or retained, validated, and Bags fee split updated',
       snapshotAt,
       tokenMint: TOKEN_MINT,
       forced: effectiveForce,
       testId: effectiveTestId,
+      cycleAction,
     },
     rules: {
       decimals,
       minTokens: minTokens,
+      minPayoutSol,
       excludedWallets: excludedWallets,
     },
     counts: {
@@ -398,7 +503,7 @@ async function runDraw(request: Request) {
       eligibleCount: eligible.length,
       excludedWalletCount: excludedWallets.length,
       pagesScanned: page,
-      rerollsDuringValidation: validation.rerolls,
+      rerollsDuringValidation,
     },
     proof: {
       eligibleWalletSample: eligible.slice(0, 5).map((holder) => ({
@@ -414,9 +519,20 @@ async function runDraw(request: Request) {
         })),
       winnerValidation: {
         checkedOwner: winner.owner,
-        validatedUiAmount: formatUiAmount(validation.validatedUiAmount),
+        validatedUiAmount: formatUiAmount(validatedUiAmount),
         minimumRequired: minTokens,
         passed: true,
+      },
+      winnerCycle: {
+        activeWinnerWallet: nextCycle.activeWinnerWallet,
+        cycleStartedAt: nextCycle.cycleStartedAt,
+        cycleCompletedAt: nextCycle.cycleCompletedAt,
+        status: nextCycle.status,
+        minPayoutSol: nextCycle.minPayoutSol,
+        accumulatedSol: nextCycle.accumulatedSol,
+        targetReached: nextCycle.targetReached,
+        explanation:
+          'Winner remains active until accumulated rewards reach at least the minimum payout threshold.',
       },
     },
     slot: {
@@ -430,7 +546,7 @@ async function runDraw(request: Request) {
       testId: effectiveTestId,
     },
     winner: {
-      winnerIndex: validation.winnerIndex,
+      winnerIndex,
       owner: winner.owner,
       uiAmount: formatUiAmount(winner.uiAmount),
     },
@@ -441,6 +557,8 @@ async function runDraw(request: Request) {
       claimTriggeredByApp: false,
       manualPayoutPerformed: false,
       rotatingRole: 'winner',
+      minimumPayoutSol: minPayoutSol,
+      winnerKeepsAccumulatingUntilMinimumMet: true,
       recipients: [
         {
           role: 'dev',
@@ -466,7 +584,7 @@ async function runDraw(request: Request) {
     winner: {
       owner: winner.owner,
       uiAmount: formatUiAmount(winner.uiAmount),
-      winnerIndex: validation.winnerIndex,
+      winnerIndex,
     },
     counts: {
       totalTokenAccounts: allTokenAccounts.length,
