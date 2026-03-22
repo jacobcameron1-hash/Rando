@@ -28,6 +28,7 @@ const BAGS_BASE_URL =
 const BAGS_PAYER_WALLET = process.env.BAGS_PAYER_WALLET!;
 const SOLANA_PRIVATE_KEY = process.env.SOLANA_PRIVATE_KEY!;
 const DEV_WALLET = process.env.RANDO_DEV_WALLET!;
+const RANDO_ADMIN_API_KEY = process.env.RANDO_ADMIN_API_KEY!;
 
 type Holder = {
   owner: string;
@@ -81,6 +82,16 @@ function buildSlotId(slotId: string, force: boolean, testId: string | null) {
   }
 
   return `${slotId}-forced`;
+}
+
+function isAuthorizedRequest(request: Request) {
+  const headerValue = request.headers.get('x-rando-admin-key');
+
+  if (!RANDO_ADMIN_API_KEY) {
+    throw new Error('Missing RANDO_ADMIN_API_KEY environment variable');
+  }
+
+  return headerValue === RANDO_ADMIN_API_KEY;
 }
 
 async function sendBagsTransactions(transactions: string[]) {
@@ -358,6 +369,16 @@ async function validateActiveWinner(
 }
 
 async function runDraw(request: Request) {
+  if (!isAuthorizedRequest(request)) {
+    return Response.json(
+      {
+        ok: false,
+        error: 'Unauthorized',
+      },
+      { status: 401 }
+    );
+  }
+
   const config = await getDrawAdminConfig();
   const minTokens = config.minTokens;
   const minPayoutSol = config.minPayoutSol;
