@@ -54,6 +54,7 @@ type DrawResponse = {
       validatedUiAmount?: number;
       minimumRequired?: number;
       reason?: string;
+      disqualifiedAt?: string;
     } | null;
     winnerCycle?: {
       activeWinnerWallet?: string | null;
@@ -93,6 +94,10 @@ type AdminConfigResponse = {
     targetReached?: boolean;
     lastDrawId?: string | null;
     lastUpdatedAt?: string | null;
+    lastDisqualifiedWinnerWallet?: string | null;
+    lastDisqualifiedWinnerAmount?: number;
+    lastDisqualifiedAt?: string | null;
+    lastDisqualificationReason?: string | null;
   };
 };
 
@@ -296,7 +301,19 @@ export default function PublicPage() {
     drawResponse?.proof?.winnerCycle || adminConfig?.winnerCycle || null;
 
   const disqualifiedPreviousWinner =
-    drawResponse?.proof?.disqualifiedPreviousWinner || null;
+    drawResponse?.proof?.disqualifiedPreviousWinner ||
+    (adminConfig?.winnerCycle?.lastDisqualifiedWinnerWallet
+      ? {
+          owner: adminConfig.winnerCycle.lastDisqualifiedWinnerWallet,
+          validatedUiAmount:
+            adminConfig.winnerCycle.lastDisqualifiedWinnerAmount ?? 0,
+          minimumRequired: minTokens,
+          reason:
+            adminConfig.winnerCycle.lastDisqualificationReason ||
+            'Dropped below minimum token threshold',
+          disqualifiedAt: adminConfig.winnerCycle.lastDisqualifiedAt || '',
+        }
+      : null);
 
   const accumulatedSol = winnerCycle?.accumulatedSol ?? 0;
   const targetReached = winnerCycle?.targetReached ?? false;
@@ -515,15 +532,13 @@ export default function PublicPage() {
                 and was removed from the active payout cycle.
               </div>
 
-              <div className="mt-4 grid gap-4 md:grid-cols-3">
+              <div className="mt-4 grid gap-4 md:grid-cols-4">
                 <div className="rounded-[20px] border border-[#3a2417] bg-[#120b09] p-4">
                   <div className="font-mono text-xs uppercase tracking-wide text-[#b78f73]">
                     Removed Wallet
                   </div>
                   <div className="mt-3">
-                    <WalletRow
-                      address={disqualifiedPreviousWinner.owner || ''}
-                    />
+                    <WalletRow address={disqualifiedPreviousWinner.owner || ''} />
                   </div>
                 </div>
 
@@ -535,6 +550,15 @@ export default function PublicPage() {
                     {formatNumber(
                       disqualifiedPreviousWinner.validatedUiAmount ?? 0
                     )}
+                  </div>
+                </div>
+
+                <div className="rounded-[20px] border border-[#3a2417] bg-[#120b09] p-4">
+                  <div className="font-mono text-xs uppercase tracking-wide text-[#b78f73]">
+                    Disqualified At
+                  </div>
+                  <div className="mt-3 text-sm leading-6 text-white">
+                    {formatDate(disqualifiedPreviousWinner.disqualifiedAt || '')}
                   </div>
                 </div>
 
