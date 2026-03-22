@@ -883,15 +883,15 @@ async function runDraw(request: Request) {
   return Response.json(responseBody);
 }
 
-export async function GET(request: Request) {
-  try {
-    return await runDraw(request);
-  } catch (err: any) {
-    return Response.json({
+export async function GET() {
+  return Response.json(
+    {
       ok: false,
-      error: err.message,
-    });
-  }
+      error:
+        'Method not allowed. Use POST for /api/proof/run-draw. GET is disabled for production safety.',
+    },
+    { status: 405 }
+  );
 }
 
 export async function POST(request: Request) {
