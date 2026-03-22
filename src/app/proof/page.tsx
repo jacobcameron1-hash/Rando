@@ -49,6 +49,12 @@ type DrawResponse = {
     holderCountAfterExclusions?: number;
   };
   proof?: {
+    disqualifiedPreviousWinner?: {
+      owner?: string;
+      validatedUiAmount?: number;
+      minimumRequired?: number;
+      reason?: string;
+    } | null;
     winnerCycle?: {
       activeWinnerWallet?: string | null;
       cycleStartedAt?: string | null;
@@ -289,6 +295,9 @@ export default function PublicPage() {
   const winnerCycle =
     drawResponse?.proof?.winnerCycle || adminConfig?.winnerCycle || null;
 
+  const disqualifiedPreviousWinner =
+    drawResponse?.proof?.disqualifiedPreviousWinner || null;
+
   const accumulatedSol = winnerCycle?.accumulatedSol ?? 0;
   const targetReached = winnerCycle?.targetReached ?? false;
   const cycleStatus = winnerCycle?.status || 'idle';
@@ -488,6 +497,59 @@ export default function PublicPage() {
               </div>
             ) : null}
           </div>
+
+          {disqualifiedPreviousWinner && (
+            <div className="mb-5 rounded-[24px] border border-[#6a2d1c] bg-[#1a0d09] p-5">
+              <div className="text-lg font-black text-[#ffd7b8]">
+                Winner Disqualified
+              </div>
+
+              <div className="mt-3 font-mono text-sm leading-7 text-[#e3b896]">
+                The previous winner dropped below the required minimum of{' '}
+                <span className="font-semibold text-white">
+                  {formatNumber(
+                    disqualifiedPreviousWinner.minimumRequired ?? minTokens
+                  )}{' '}
+                  $RANDO
+                </span>{' '}
+                and was removed from the active payout cycle.
+              </div>
+
+              <div className="mt-4 grid gap-4 md:grid-cols-3">
+                <div className="rounded-[20px] border border-[#3a2417] bg-[#120b09] p-4">
+                  <div className="font-mono text-xs uppercase tracking-wide text-[#b78f73]">
+                    Removed Wallet
+                  </div>
+                  <div className="mt-3">
+                    <WalletRow
+                      address={disqualifiedPreviousWinner.owner || ''}
+                    />
+                  </div>
+                </div>
+
+                <div className="rounded-[20px] border border-[#3a2417] bg-[#120b09] p-4">
+                  <div className="font-mono text-xs uppercase tracking-wide text-[#b78f73]">
+                    Validated Balance
+                  </div>
+                  <div className="mt-3 text-2xl font-black text-white">
+                    {formatNumber(
+                      disqualifiedPreviousWinner.validatedUiAmount ?? 0
+                    )}
+                  </div>
+                </div>
+
+                <div className="rounded-[20px] border border-[#3a2417] bg-[#120b09] p-4">
+                  <div className="font-mono text-xs uppercase tracking-wide text-[#b78f73]">
+                    Reason
+                  </div>
+                  <div className="mt-3 text-sm leading-6 text-white">
+                    {disqualifiedPreviousWinner.reason ||
+                      'Dropped below minimum token threshold'}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {displayWinnerAddress ? (
             <div className="space-y-5">
