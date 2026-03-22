@@ -1,6 +1,6 @@
 # Rando
 
-A provably fair, on-chain randomized rewards system for Solana token holders — powered by Bags.
+A provably fair, non-custodial rewards system for Solana token holders — built on top of Bags.
 
 ---
 
@@ -12,7 +12,7 @@ I suggested this feature to FinnBags — and he told me to build it myself.
 
 So I did.
 
-Rando was built from scratch over the past week as a proof-of-concept for automated, on-chain reward distribution using Bags. Everything in this project — APIs, Solana interactions, and protocol integration — was learned and implemented during that process.
+Rando was built from scratch in one week as a working proof-of-concept for automated, on-chain reward distribution using Bags. Everything in this project — APIs, Solana interactions, and protocol integration — was learned and implemented during that process.
 
 This is what it looks like when the barrier to building is low enough for anyone to ship.
 
@@ -20,29 +20,42 @@ This is what it looks like when the barrier to building is low enough for anyone
 
 ## What Rando Does
 
-Rando allows token projects to automatically distribute a portion of their Bags-generated fees to randomly selected eligible holders.
+Rando automates holder rewards using Bags fee infrastructure — without ever taking custody of funds.
 
 Instead of manually sending rewards, Rando:
 
-* selects a random eligible wallet
-* updates Bags fee routing
-* lets Bags handle payout distribution on-chain
+- selects a provably fair eligible wallet
+- continuously validates eligibility (anti-dump protection)
+- updates Bags fee routing to the active winner
 
-No custody. No manual payouts. Fully transparent.
+Bags handles all fee collection and payouts on-chain.
 
 ---
 
-## ⚙️ Current Live Behavior
+## ⚙️ Live Distribution Model
 
 - **50% → Dev wallet**
-- **50% → Current winner**
+- **50% → Active winner**
 
-Each draw:
+Rando does **not send tokens or SOL**.
 
-* selects a new eligible holder
-* replaces the previous winner
-* updates Bags fee configuration on-chain
-* routes all future fees to the new winner automatically
+It only updates the Bags fee configuration. All distribution is executed by Bags.
+
+---
+
+## Winner Lifecycle
+
+Each winner remains active until:
+
+- they accumulate enough fees to reach the payout threshold, or
+- they fall below the minimum token requirement (auto-disqualified)
+
+If disqualified:
+- winner is removed
+- a new eligible holder is selected
+- fee routing is updated
+
+No manual intervention required.
 
 ---
 
@@ -50,38 +63,47 @@ Each draw:
 
 1. Fetch all token holders from Solana
 2. Filter holders:
-
-   * Minimum token requirement
-   * Excluded wallets (dev / fee wallets)
-3. Generate a snapshot of eligible wallets
-4. Randomly select a winner
-5. Validate winner still meets requirements (anti-dump protection)
-6. Update Bags fee configuration:
-
-   * Dev (50%)
-   * Winner (50%)
-7. Bags distributes rewards automatically through its fee system
+   - Minimum token requirement
+   - Excluded wallets (dev / system)
+3. Build eligible holder set
+4. Select a random winner
+5. Validate winner still meets requirements (anti-dump)
+6. Set Bags fee routing:
+   - Dev (50%)
+   - Winner (50%)
+7. Bags distributes fees automatically
 
 ---
 
 ## Core Features
 
-* Deterministic draw scheduling (slot system)
-* Provably fair random selection
-* On-chain holder snapshot + filtering
-* Duplicate draw protection
-* Winner validation (anti-dump)
-* Transparent proof + history tracking
-* Bags fee routing integration
-* No manual payout logic (Bags-managed distribution)
+- Deterministic draw scheduling (slot-based)
+- Provably fair random selection
+- On-chain holder snapshot + filtering
+- Winner validation (anti-dump protection)
+- Automatic disqualification + reroll
+- Winner lifecycle tracking
+- Duplicate draw protection
+- Transparent proof + history logging
+- Bags-native fee routing (no custom payout logic)
+- **Non-custodial by design**
+
+---
+
+## 🔐 Production Safety
+
+- Draw execution is **POST-only** (no accidental browser triggers)
+- Requires **admin API key** to run draws
+- No public endpoint can trigger payouts
+- Bags transactions are signed server-side only
 
 ---
 
 ## API Routes
 
-* `/api/proof/run-draw` → executes a draw and updates fee routing
-* `/api/proof/next-draw` → returns next scheduled draw
-* `/api/proof/history` → returns past draws
+- `/api/proof/run-draw` → executes draw + updates Bags routing (POST only)
+- `/api/proof/next-draw` → returns next scheduled draw
+- `/api/proof/history` → returns past draws
 
 ---
 
@@ -95,6 +117,7 @@ BAGS_PAYER_WALLET=
 BAGS_BASE_URL=https://public-api-v2.bags.fm/api/v1
 
 RANDO_DEV_WALLET=
+RANDO_ADMIN_API_KEY=
 
 
 ---
@@ -102,50 +125,47 @@ RANDO_DEV_WALLET=
 ## Phases
 
 ### Phase 1
-
-* Draw scheduling system
-* Holder snapshot + filtering
-* Random winner selection
-* Proof logging
+- Draw scheduling
+- Holder snapshot + filtering
+- Random selection
+- Proof logging
 
 ### Phase 2
-
-* Bags integration
-* Vault-based fee routing
-* Claim + payout execution (manual flow)
+- Bags integration
+- Fee routing configuration
+- Claim + payout execution
 
 ### Phase 3 (Current)
-
-* Winner becomes fee recipient directly
-* Bags handles reward distribution
-* Manual payout logic removed
-* Fully trust-minimized reward flow
+- Winner becomes fee recipient
+- Bags handles all distribution
+- Manual payout logic removed
+- Fully non-custodial reward system
 
 ---
 
 ## Why This Matters
 
 Traditional reward systems require:
+- manual payouts
+- trust in a central wallet
+- opaque selection processes
 
-* manual payouts
-* trust in a central wallet
-* opaque selection processes
+Rando removes all of that:
 
-Rando removes all of that.
-
-* Selection is transparent
-* Distribution is handled by Bags
-* No funds are held or manually sent by the app
+- No custody of funds
+- No manual payouts
+- Fully transparent selection
+- Native integration with Bags fee system
 
 ---
 
 ## 🛣️ Next Steps
 
-* ⏱️ Automated scheduled draws (cron)
-* 💰 Claimable fee tracking (dashboard)
-* 🎯 Minimum payout threshold logic
-* 🎉 Live UI updates + animations
-* 🌐 Multi-token support
+- ⏱️ Automated scheduled draws (cron)
+- 💰 Live claimable fee tracking UI
+- 🎯 Configurable payout thresholds
+- 🎉 Real-time UI updates
+- 🌐 Multi-token support
 
 ---
 
@@ -161,11 +181,9 @@ Hackathon proof-of-concept — built and shipped in one week.
 
 ---
 
-## 🚀 Next step — push to GitHub
-
-Run this:
+## GitHub push steps
 
 ```bash
-git add .
-git commit -m "Rando: working 50/50 Bags winner rotation + updated README"
-git push
+git add README.md
+git commit -m "Upgrade README for hackathon"
+git push origin main
