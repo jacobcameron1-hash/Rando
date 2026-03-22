@@ -167,7 +167,7 @@ export default function PublicPage() {
 
           <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
             <a
-              href="/dashboard"
+              href="/proof"
               className="inline-flex items-center justify-center rounded-2xl bg-[#e23b28] px-6 py-4 font-mono text-lg font-semibold text-white transition hover:bg-[#f04a36]"
             >
               Open Dashboard →
