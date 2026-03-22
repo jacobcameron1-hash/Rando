@@ -34,7 +34,8 @@ export type ProofWinnerDisqualificationRecord = {
 
 const DEFAULT_ID = 'global';
 const DEFAULT_TOKEN_MINT = 'EZthQ6SUL51jJihQiFMDiZVmZiRMNjMQoTb7rNvTBAGS';
-const DRAW_EXECUTION_LOCK_ID = 88442211;
+const DRAW_EXECUTION_LOCK_ID = 'draw-execution-lock';
+const DRAW_EXECUTION_LOCK_MS = 60_000;
 
 let tableReady = false;
 
@@ -139,6 +140,14 @@ async function ensureProofWinnerCycleTableExists() {
     )
   `);
 
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS proof_execution_lock (
+      id text PRIMARY KEY,
+      locked_until timestamptz NOT NULL,
+      updated_at timestamptz NOT NULL DEFAULT now()
+    )
+  `);
+
   tableReady = true;
 }
 
@@ -192,29 +201,46 @@ function mapDisqualificationRow(
   };
 }
 
-export async function withProofWinnerCycleLock<T>(
-  callback: () => Promise<T>
-): Promise<T> {
-  await ensureProofWinnerCycleTableExists();
-
-  const lockResult = await db.execute(sql`
-    SELECT pg_try_advisory_lock(${DRAW_EXECUTION_LOCK_ID}) AS locked
+async function acquireProofWinnerCycleLock(): Promise<void> {
+  const result = await db.execute(sql`
+    INSERT INTO proof_execution_lock (id, locked_until, updated_at)
+    VALUES (
+      ${DRAW_EXECUTION_LOCK_ID},
+      now() + (${String(DRAW_EXECUTION_LOCK_MS)} || ' milliseconds')::interval,
+      now()
+    )
+    ON CONFLICT (id)
+    DO UPDATE SET
+      locked_until = now() + (${String(DRAW_EXECUTION_LOCK_MS)} || ' milliseconds')::interval,
+      updated_at = now()
+    WHERE proof_execution_lock.locked_until <= now()
+    RETURNING id
   `);
 
-  const locked = Boolean(lockResult.rows[0]?.locked);
-
-  if (!locked) {
+  if (result.rows.length === 0) {
     throw new Error(
       'Another draw is already running. Please wait a few seconds and try again.'
     );
   }
+}
+
+async function releaseProofWinnerCycleLock(): Promise<void> {
+  await db.execute(sql`
+    DELETE FROM proof_execution_lock
+    WHERE id = ${DRAW_EXECUTION_LOCK_ID}
+  `);
+}
+
+export async function withProofWinnerCycleLock<T>(
+  callback: () => Promise<T>
+): Promise<T> {
+  await ensureProofWinnerCycleTableExists();
+  await acquireProofWinnerCycleLock();
 
   try {
     return await callback();
   } finally {
-    await db.execute(sql`
-      SELECT pg_advisory_unlock(${DRAW_EXECUTION_LOCK_ID})
-    `);
+    await releaseProofWinnerCycleLock();
   }
 }
 
