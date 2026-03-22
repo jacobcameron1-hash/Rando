@@ -12,6 +12,10 @@ export type ProofWinnerCycleRecord = {
   accumulatedSol: number;
   targetReached: boolean;
   lastDrawId: string | null;
+  lastDisqualifiedWinnerWallet: string | null;
+  lastDisqualifiedWinnerAmount: number;
+  lastDisqualifiedAt: string | null;
+  lastDisqualificationReason: string | null;
   lastUpdatedAt: string | null;
 };
 
@@ -63,59 +67,32 @@ async function ensureProofWinnerCycleTableExists() {
       accumulated_sol numeric(18, 9) NOT NULL DEFAULT 0,
       target_reached boolean NOT NULL DEFAULT false,
       last_draw_id text,
+      last_disqualified_winner_wallet text,
+      last_disqualified_winner_amount numeric(18, 9) NOT NULL DEFAULT 0,
+      last_disqualified_at timestamptz,
+      last_disqualification_reason text,
       last_updated_at timestamptz NOT NULL DEFAULT now()
     )
   `);
 
-  // 🚨 FIX: remove DEFAULT with parameter (hardcode instead)
   await db.execute(sql`
     ALTER TABLE proof_winner_cycle
-    ADD COLUMN IF NOT EXISTS token_mint text NOT NULL DEFAULT 'EZthQ6SUL51jJihQiFMDiZVmZiRMNjMQoTb7rNvTBAGS'
+    ADD COLUMN IF NOT EXISTS last_disqualified_winner_wallet text
   `);
 
   await db.execute(sql`
     ALTER TABLE proof_winner_cycle
-    ADD COLUMN IF NOT EXISTS active_winner_wallet text
+    ADD COLUMN IF NOT EXISTS last_disqualified_winner_amount numeric(18, 9) NOT NULL DEFAULT 0
   `);
 
   await db.execute(sql`
     ALTER TABLE proof_winner_cycle
-    ADD COLUMN IF NOT EXISTS cycle_started_at timestamptz
+    ADD COLUMN IF NOT EXISTS last_disqualified_at timestamptz
   `);
 
   await db.execute(sql`
     ALTER TABLE proof_winner_cycle
-    ADD COLUMN IF NOT EXISTS cycle_completed_at timestamptz
-  `);
-
-  await db.execute(sql`
-    ALTER TABLE proof_winner_cycle
-    ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'idle'
-  `);
-
-  await db.execute(sql`
-    ALTER TABLE proof_winner_cycle
-    ADD COLUMN IF NOT EXISTS min_payout_sol numeric(18, 9) NOT NULL DEFAULT 0.05
-  `);
-
-  await db.execute(sql`
-    ALTER TABLE proof_winner_cycle
-    ADD COLUMN IF NOT EXISTS accumulated_sol numeric(18, 9) NOT NULL DEFAULT 0
-  `);
-
-  await db.execute(sql`
-    ALTER TABLE proof_winner_cycle
-    ADD COLUMN IF NOT EXISTS target_reached boolean NOT NULL DEFAULT false
-  `);
-
-  await db.execute(sql`
-    ALTER TABLE proof_winner_cycle
-    ADD COLUMN IF NOT EXISTS last_draw_id text
-  `);
-
-  await db.execute(sql`
-    ALTER TABLE proof_winner_cycle
-    ADD COLUMN IF NOT EXISTS last_updated_at timestamptz NOT NULL DEFAULT now()
+    ADD COLUMN IF NOT EXISTS last_disqualification_reason text
   `);
 
   tableReady = true;
@@ -136,6 +113,19 @@ function mapRow(row: Record<string, unknown>): ProofWinnerCycleRecord {
     accumulatedSol: asNumber(row.accumulated_sol, 0),
     targetReached: asBoolean(row.target_reached, false),
     lastDrawId: typeof row.last_draw_id === 'string' ? row.last_draw_id : null,
+    lastDisqualifiedWinnerWallet:
+      typeof row.last_disqualified_winner_wallet === 'string'
+        ? row.last_disqualified_winner_wallet
+        : null,
+    lastDisqualifiedWinnerAmount: asNumber(
+      row.last_disqualified_winner_amount,
+      0
+    ),
+    lastDisqualifiedAt: asIsoString(row.last_disqualified_at),
+    lastDisqualificationReason:
+      typeof row.last_disqualification_reason === 'string'
+        ? row.last_disqualification_reason
+        : null,
     lastUpdatedAt: asIsoString(row.last_updated_at),
   };
 }
@@ -155,6 +145,10 @@ export async function getProofWinnerCycle(): Promise<ProofWinnerCycleRecord> {
       accumulated_sol,
       target_reached,
       last_draw_id,
+      last_disqualified_winner_wallet,
+      last_disqualified_winner_amount,
+      last_disqualified_at,
+      last_disqualification_reason,
       last_updated_at
     FROM proof_winner_cycle
     WHERE id = ${DEFAULT_ID}
@@ -178,6 +172,10 @@ export async function getProofWinnerCycle(): Promise<ProofWinnerCycleRecord> {
     accumulatedSol: 0,
     targetReached: false,
     lastDrawId: null,
+    lastDisqualifiedWinnerWallet: null,
+    lastDisqualifiedWinnerAmount: 0,
+    lastDisqualifiedAt: null,
+    lastDisqualificationReason: null,
     lastUpdatedAt: new Date().toISOString(),
   };
 
@@ -193,6 +191,10 @@ export async function getProofWinnerCycle(): Promise<ProofWinnerCycleRecord> {
       accumulated_sol,
       target_reached,
       last_draw_id,
+      last_disqualified_winner_wallet,
+      last_disqualified_winner_amount,
+      last_disqualified_at,
+      last_disqualification_reason,
       last_updated_at
     )
     VALUES (
@@ -206,6 +208,10 @@ export async function getProofWinnerCycle(): Promise<ProofWinnerCycleRecord> {
       ${String(defaultRecord.accumulatedSol)},
       ${defaultRecord.targetReached},
       ${defaultRecord.lastDrawId},
+      ${defaultRecord.lastDisqualifiedWinnerWallet},
+      ${String(defaultRecord.lastDisqualifiedWinnerAmount)},
+      ${defaultRecord.lastDisqualifiedAt},
+      ${defaultRecord.lastDisqualificationReason},
       ${defaultRecord.lastUpdatedAt}
     )
     ON CONFLICT (id) DO NOTHING
@@ -241,6 +247,10 @@ export async function setProofWinnerCycle(
       accumulated_sol,
       target_reached,
       last_draw_id,
+      last_disqualified_winner_wallet,
+      last_disqualified_winner_amount,
+      last_disqualified_at,
+      last_disqualification_reason,
       last_updated_at
     )
     VALUES (
@@ -254,6 +264,10 @@ export async function setProofWinnerCycle(
       ${String(next.accumulatedSol)},
       ${next.targetReached},
       ${next.lastDrawId},
+      ${next.lastDisqualifiedWinnerWallet},
+      ${String(next.lastDisqualifiedWinnerAmount)},
+      ${next.lastDisqualifiedAt},
+      ${next.lastDisqualificationReason},
       ${next.lastUpdatedAt}
     )
     ON CONFLICT (id)
@@ -267,6 +281,10 @@ export async function setProofWinnerCycle(
       accumulated_sol = EXCLUDED.accumulated_sol,
       target_reached = EXCLUDED.target_reached,
       last_draw_id = EXCLUDED.last_draw_id,
+      last_disqualified_winner_wallet = EXCLUDED.last_disqualified_winner_wallet,
+      last_disqualified_winner_amount = EXCLUDED.last_disqualified_winner_amount,
+      last_disqualified_at = EXCLUDED.last_disqualified_at,
+      last_disqualification_reason = EXCLUDED.last_disqualification_reason,
       last_updated_at = EXCLUDED.last_updated_at
   `);
 
@@ -285,5 +303,9 @@ export async function resetProofWinnerCycle(
     accumulatedSol: 0,
     targetReached: false,
     lastDrawId: null,
+    lastDisqualifiedWinnerWallet: null,
+    lastDisqualifiedWinnerAmount: 0,
+    lastDisqualifiedAt: null,
+    lastDisqualificationReason: null,
   });
 }
