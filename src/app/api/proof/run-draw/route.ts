@@ -6,6 +6,7 @@ import {
 import { getDrawAdminConfig } from '@/lib/draw-admin-config';
 import {
   getProofWinnerCycle,
+  recordProofWinnerDisqualification,
   setProofWinnerCycle,
 } from '@/lib/proof-winner-cycle';
 
@@ -566,6 +567,14 @@ async function runDraw(request: Request) {
         disqualifiedAt: snapshotAt,
         claimableSolAtCheck: activeWinnerClaimableSol,
       };
+
+      await recordProofWinnerDisqualification({
+        wallet: disqualifiedPreviousWinner.owner,
+        tokenAmount: disqualifiedPreviousWinner.validatedUiAmount,
+        reason: disqualifiedPreviousWinner.reason,
+        disqualifiedAt: disqualifiedPreviousWinner.disqualifiedAt,
+        claimableSolAtCheck: disqualifiedPreviousWinner.claimableSolAtCheck,
+      });
 
       const validation = await pickValidatedWinner(
         eligible,
