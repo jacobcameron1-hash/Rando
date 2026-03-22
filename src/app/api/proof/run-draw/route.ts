@@ -410,6 +410,7 @@ async function runDraw(request: Request) {
         validatedUiAmount: number;
         minimumRequired: number;
         reason: string;
+        disqualifiedAt: string;
       }
     | null = null;
 
@@ -443,6 +444,7 @@ async function runDraw(request: Request) {
         validatedUiAmount: activeWinnerValidation.validatedUiAmount,
         minimumRequired: minTokens,
         reason: 'Active winner dropped below minimum token threshold',
+        disqualifiedAt: snapshotAt,
       };
 
       const validation = await pickValidatedWinner(
@@ -487,6 +489,16 @@ async function runDraw(request: Request) {
     accumulatedSol: shouldResetAccumulation ? 0 : existingCycle.accumulatedSol,
     targetReached: false,
     lastDrawId: drawId,
+    lastDisqualifiedWinnerWallet: disqualifiedPreviousWinner?.owner ?? existingCycle.lastDisqualifiedWinnerWallet,
+    lastDisqualifiedWinnerAmount:
+      disqualifiedPreviousWinner?.validatedUiAmount ??
+      existingCycle.lastDisqualifiedWinnerAmount,
+    lastDisqualifiedAt:
+      disqualifiedPreviousWinner?.disqualifiedAt ??
+      existingCycle.lastDisqualifiedAt,
+    lastDisqualificationReason:
+      disqualifiedPreviousWinner?.reason ??
+      existingCycle.lastDisqualificationReason,
   });
 
   const responseBody = {
@@ -542,6 +554,7 @@ async function runDraw(request: Request) {
             ),
             minimumRequired: disqualifiedPreviousWinner.minimumRequired,
             reason: disqualifiedPreviousWinner.reason,
+            disqualifiedAt: disqualifiedPreviousWinner.disqualifiedAt,
           }
         : null,
       winnerCycle: {
