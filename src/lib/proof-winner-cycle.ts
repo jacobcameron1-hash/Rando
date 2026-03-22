@@ -67,9 +67,10 @@ async function ensureProofWinnerCycleTableExists() {
     )
   `);
 
+  // 🚨 FIX: remove DEFAULT with parameter (hardcode instead)
   await db.execute(sql`
     ALTER TABLE proof_winner_cycle
-    ADD COLUMN IF NOT EXISTS token_mint text NOT NULL DEFAULT ${DEFAULT_TOKEN_MINT}
+    ADD COLUMN IF NOT EXISTS token_mint text NOT NULL DEFAULT 'EZthQ6SUL51jJihQiFMDiZVmZiRMNjMQoTb7rNvTBAGS'
   `);
 
   await db.execute(sql`
