@@ -46,8 +46,10 @@ function getRequestOptions(request: Request) {
   const { searchParams } = new URL(request.url);
   const force = searchParams.get('force') === '1';
   const testId = searchParams.get('testId')?.trim() || null;
+  const simulateDisqualification =
+    searchParams.get('simulateDisqualification') === '1';
 
-  return { force, testId };
+  return { force, testId, simulateDisqualification };
 }
 
 function buildUniqueManualTestId() {
@@ -242,7 +244,8 @@ async function pickValidatedWinner(
 async function validateActiveWinner(
   activeWinnerWallet: string,
   decimals: number,
-  minTokens: number
+  minTokens: number,
+  simulateDisqualification: boolean
 ): Promise<{
   stillEligible: boolean;
   validatedUiAmount: number;
@@ -251,6 +254,13 @@ async function validateActiveWinner(
     activeWinnerWallet,
     decimals
   );
+
+  if (simulateDisqualification) {
+    return {
+      stillEligible: false,
+      validatedUiAmount,
+    };
+  }
 
   return {
     stillEligible: validatedUiAmount >= minTokens,
@@ -266,7 +276,8 @@ async function runDraw(request: Request) {
 
   const snapshotAt = new Date().toISOString();
   const currentSlot = await getCurrentDrawSlotFromAdmin(new Date());
-  const { force, testId } = getRequestOptions(request);
+  const { force, testId, simulateDisqualification } =
+    getRequestOptions(request);
 
   const effectiveForce = force;
   const effectiveTestId =
@@ -425,7 +436,8 @@ async function runDraw(request: Request) {
     const activeWinnerValidation = await validateActiveWinner(
       activeWinnerWallet,
       decimals,
-      minTokens
+      minTokens,
+      simulateDisqualification
     );
 
     if (activeWinnerValidation.stillEligible) {
@@ -443,7 +455,9 @@ async function runDraw(request: Request) {
         owner: activeWinnerWallet,
         validatedUiAmount: activeWinnerValidation.validatedUiAmount,
         minimumRequired: minTokens,
-        reason: 'Active winner dropped below minimum token threshold',
+        reason: simulateDisqualification
+          ? 'Safe test mode simulated disqualification'
+          : 'Active winner dropped below minimum token threshold',
         disqualifiedAt: snapshotAt,
       };
 
@@ -489,7 +503,9 @@ async function runDraw(request: Request) {
     accumulatedSol: shouldResetAccumulation ? 0 : existingCycle.accumulatedSol,
     targetReached: false,
     lastDrawId: drawId,
-    lastDisqualifiedWinnerWallet: disqualifiedPreviousWinner?.owner ?? existingCycle.lastDisqualifiedWinnerWallet,
+    lastDisqualifiedWinnerWallet:
+      disqualifiedPreviousWinner?.owner ??
+      existingCycle.lastDisqualifiedWinnerWallet,
     lastDisqualifiedWinnerAmount:
       disqualifiedPreviousWinner?.validatedUiAmount ??
       existingCycle.lastDisqualifiedWinnerAmount,
@@ -511,6 +527,7 @@ async function runDraw(request: Request) {
       forced: effectiveForce,
       testId: effectiveTestId,
       cycleAction,
+      simulateDisqualification,
     },
     rules: {
       decimals,
