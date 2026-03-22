@@ -197,14 +197,16 @@ async function getCurrentUiAmountForOwner(
 async function pickValidatedWinner(
   eligible: Holder[],
   decimals: number,
-  minTokens: number
+  minTokens: number,
+  excludedOwners: string[] = []
 ): Promise<{
   winner: Holder;
   winnerIndex: number;
   validatedUiAmount: number;
   rerolls: number;
 }> {
-  const remaining = [...eligible];
+  const excludedSet = new Set(excludedOwners);
+  const remaining = eligible.filter((holder) => !excludedSet.has(holder.owner));
   let rerolls = 0;
 
   while (remaining.length > 0) {
@@ -222,7 +224,9 @@ async function pickValidatedWinner(
           owner: candidate.owner,
           uiAmount: validatedUiAmount,
         },
-        winnerIndex: randomIndex,
+        winnerIndex: eligible.findIndex(
+          (holder) => holder.owner === candidate.owner
+        ),
         validatedUiAmount,
         rerolls,
       };
@@ -235,43 +239,21 @@ async function pickValidatedWinner(
   throw new Error('No eligible holders remained above threshold during validation');
 }
 
-async function findValidatedActiveWinner(
+async function validateActiveWinner(
   activeWinnerWallet: string,
-  eligible: Holder[],
   decimals: number,
   minTokens: number
 ): Promise<{
-  winner: Holder | null;
+  stillEligible: boolean;
   validatedUiAmount: number;
 }> {
-  const matchingHolder = eligible.find(
-    (holder) => holder.owner === activeWinnerWallet
-  );
-
-  if (!matchingHolder) {
-    return {
-      winner: null,
-      validatedUiAmount: 0,
-    };
-  }
-
   const validatedUiAmount = await getCurrentUiAmountForOwner(
-    matchingHolder.owner,
+    activeWinnerWallet,
     decimals
   );
 
-  if (validatedUiAmount < minTokens) {
-    return {
-      winner: null,
-      validatedUiAmount,
-    };
-  }
-
   return {
-    winner: {
-      owner: matchingHolder.owner,
-      uiAmount: validatedUiAmount,
-    },
+    stillEligible: validatedUiAmount >= minTokens,
     validatedUiAmount,
   };
 }
@@ -422,6 +404,14 @@ async function runDraw(request: Request) {
   let validatedUiAmount = 0;
   let rerollsDuringValidation = 0;
   let cycleAction = 'kept-existing-winner';
+  let disqualifiedPreviousWinner:
+    | {
+        owner: string;
+        validatedUiAmount: number;
+        minimumRequired: number;
+        reason: string;
+      }
+    | null = null;
 
   const currentCycleCanBeKept =
     existingCycle.status === 'active' &&
@@ -430,26 +420,43 @@ async function runDraw(request: Request) {
     existingCycle.activeWinnerWallet.length > 0;
 
   if (currentCycleCanBeKept) {
-    const activeWinnerValidation = await findValidatedActiveWinner(
-      existingCycle.activeWinnerWallet!,
-      eligible,
+    const activeWinnerWallet = existingCycle.activeWinnerWallet!;
+    const activeWinnerValidation = await validateActiveWinner(
+      activeWinnerWallet,
       decimals,
       minTokens
     );
 
-    if (activeWinnerValidation.winner) {
-      winner = activeWinnerValidation.winner;
+    if (activeWinnerValidation.stillEligible) {
+      winner = {
+        owner: activeWinnerWallet,
+        uiAmount: activeWinnerValidation.validatedUiAmount,
+      };
       winnerIndex = eligible.findIndex(
-        (holder) => holder.owner === activeWinnerValidation.winner!.owner
+        (holder) => holder.owner === activeWinnerWallet
       );
       validatedUiAmount = activeWinnerValidation.validatedUiAmount;
+      cycleAction = 'kept-existing-winner';
     } else {
-      const validation = await pickValidatedWinner(eligible, decimals, minTokens);
+      disqualifiedPreviousWinner = {
+        owner: activeWinnerWallet,
+        validatedUiAmount: activeWinnerValidation.validatedUiAmount,
+        minimumRequired: minTokens,
+        reason: 'Active winner dropped below minimum token threshold',
+      };
+
+      const validation = await pickValidatedWinner(
+        eligible,
+        decimals,
+        minTokens,
+        [activeWinnerWallet]
+      );
+
       winner = validation.winner;
       winnerIndex = validation.winnerIndex;
       validatedUiAmount = validation.validatedUiAmount;
       rerollsDuringValidation = validation.rerolls;
-      cycleAction = 'rotated-new-winner';
+      cycleAction = 'disqualified-and-rotated-new-winner';
     }
   } else {
     const validation = await pickValidatedWinner(eligible, decimals, minTokens);
@@ -463,6 +470,10 @@ async function runDraw(request: Request) {
   const updateConfigTransactions = await updateBagsFeeRecipients(winner.owner);
   const configSignatures = await sendBagsTransactions(updateConfigTransactions);
 
+  const shouldResetAccumulation =
+    cycleAction === 'started-new-winner-cycle' ||
+    cycleAction === 'disqualified-and-rotated-new-winner';
+
   const nextCycle = await setProofWinnerCycle({
     tokenMint: TOKEN_MINT,
     activeWinnerWallet: winner.owner,
@@ -473,7 +484,7 @@ async function runDraw(request: Request) {
     cycleCompletedAt: null,
     status: 'active',
     minPayoutSol,
-    accumulatedSol: existingCycle.accumulatedSol,
+    accumulatedSol: shouldResetAccumulation ? 0 : existingCycle.accumulatedSol,
     targetReached: false,
     lastDrawId: drawId,
   });
@@ -482,7 +493,7 @@ async function runDraw(request: Request) {
     ok: true,
     draw: {
       drawId,
-      step: 'winner selected or retained, validated, and Bags fee split updated',
+      step: 'winner validated and Bags fee split updated',
       snapshotAt,
       tokenMint: TOKEN_MINT,
       forced: effectiveForce,
@@ -523,6 +534,16 @@ async function runDraw(request: Request) {
         minimumRequired: minTokens,
         passed: true,
       },
+      disqualifiedPreviousWinner: disqualifiedPreviousWinner
+        ? {
+            owner: disqualifiedPreviousWinner.owner,
+            validatedUiAmount: formatUiAmount(
+              disqualifiedPreviousWinner.validatedUiAmount
+            ),
+            minimumRequired: disqualifiedPreviousWinner.minimumRequired,
+            reason: disqualifiedPreviousWinner.reason,
+          }
+        : null,
       winnerCycle: {
         activeWinnerWallet: nextCycle.activeWinnerWallet,
         cycleStartedAt: nextCycle.cycleStartedAt,
@@ -532,7 +553,7 @@ async function runDraw(request: Request) {
         accumulatedSol: nextCycle.accumulatedSol,
         targetReached: nextCycle.targetReached,
         explanation:
-          'Winner remains active until accumulated rewards reach at least the minimum payout threshold.',
+          'Winner remains active until accumulated rewards reach at least the minimum payout threshold unless they fall below the minimum token requirement first.',
       },
     },
     slot: {
