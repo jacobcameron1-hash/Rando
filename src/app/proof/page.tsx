@@ -139,9 +139,10 @@ export default function PublicPage() {
   const [countdownMs, setCountdownMs] = useState(0);
   const [copied, setCopied] = useState<string | null>(null);
   const [drawResponse, setDrawResponse] = useState<DrawResponse | null>(null);
-  const [isRunningDraw, setIsRunningDraw] = useState(false);
   const [drawError, setDrawError] = useState<string | null>(null);
-  const [adminConfig, setAdminConfig] = useState<AdminConfigResponse | null>(null);
+  const [adminConfig, setAdminConfig] = useState<AdminConfigResponse | null>(
+    null
+  );
 
   async function load() {
     try {
@@ -220,38 +221,6 @@ export default function PublicPage() {
     }
   }
 
-  async function handleRunDraw() {
-    try {
-      setIsRunningDraw(true);
-      setDrawError(null);
-
-      const response = await fetch('/api/proof/run-draw', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        cache: 'no-store',
-      });
-
-      const data = await response.json();
-
-      if (!response.ok || !data.ok) {
-        setDrawResponse(data);
-        setDrawError(data.error || 'Failed to run draw');
-        await load();
-        return;
-      }
-
-      setDrawResponse(data);
-      await load();
-    } catch (error) {
-      console.error('Failed to run draw', error);
-      setDrawError('Failed to run draw');
-    } finally {
-      setIsRunningDraw(false);
-    }
-  }
-
   function WalletRow({
     address,
     large = false,
@@ -321,6 +290,10 @@ export default function PublicPage() {
   const accumulatedSol = winnerCycle?.accumulatedSol ?? 0;
   const targetReached = winnerCycle?.targetReached ?? false;
   const cycleStatus = winnerCycle?.status || 'idle';
+  const payoutProgressPercent = Math.min(
+    100,
+    (accumulatedSol / (minPayoutSol || 1)) * 100
+  );
 
   return (
     <main className="min-h-screen bg-[#070404] text-white">
@@ -347,9 +320,9 @@ export default function PublicPage() {
             Automated randomized rewards for your bags.fm token
           </p>
 
-         <div className="mt-6 font-mono text-sm text-[#b78f73]">
-  Live on-chain proof of winner selection and reward routing
-</div>
+          <div className="mt-6 font-mono text-sm text-[#b78f73]">
+            Live on-chain proof of winner selection and reward routing
+          </div>
 
           {(drawError || drawResponse?.reason) && (
             <div className="mx-auto mt-4 max-w-xl rounded-xl border border-[#4a2519] bg-[#130b09] px-4 py-2 font-mono text-xs text-[#d9b393]">
@@ -575,11 +548,37 @@ export default function PublicPage() {
             </div>
           </div>
 
+          <div className="mt-4 rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5">
+            <div className="mb-3 flex items-center justify-between font-mono text-sm text-[#b78f73]">
+              <span>Payout Progress</span>
+              <span>
+                {formatSol(accumulatedSol)} / {formatSol(minPayoutSol)} SOL
+              </span>
+            </div>
+
+            <div className="h-3 w-full overflow-hidden rounded-full bg-[#1a0f0b]">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-[#ff5a36] to-[#ff8a4d] transition-all duration-500"
+                style={{
+                  width: `${payoutProgressPercent}%`,
+                }}
+              />
+            </div>
+
+            <div className="mt-3 font-mono text-xs text-[#d5b190]">
+              The winner continues accumulating rewards until this bar reaches
+              100%.
+            </div>
+          </div>
+
           <div className="mt-4 rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5 font-mono text-sm leading-7 text-[#d5b190]">
             The winner remains in the winning slot until the reward pool reaches at
-            least <span className="font-semibold text-white">{formatSol(minPayoutSol)} SOL</span>.
-            Anything that accumulates above that amount during the same winner cycle
-            also goes to that same winner before rotation.
+            least{' '}
+            <span className="font-semibold text-white">
+              {formatSol(minPayoutSol)} SOL
+            </span>
+            . Anything that accumulates above that amount during the same winner
+            cycle also goes to that same winner before rotation.
           </div>
         </section>
 
@@ -607,7 +606,9 @@ export default function PublicPage() {
                   </div>
 
                   <div>
-                    <div className="font-mono text-sm text-[#b78f73]">Cycle Action</div>
+                    <div className="font-mono text-sm text-[#b78f73]">
+                      Cycle Action
+                    </div>
                     <div className="mt-2 text-sm font-mono text-[#f2cfb0]">
                       {drawResponse.draw?.cycleAction || '—'}
                     </div>
@@ -654,7 +655,9 @@ export default function PublicPage() {
                             {recipient.wallet ? (
                               <WalletRow address={recipient.wallet} />
                             ) : (
-                              <div className="font-mono text-sm text-[#b78f73]">—</div>
+                              <div className="font-mono text-sm text-[#b78f73]">
+                                —
+                              </div>
                             )}
                           </div>
 
