@@ -6,6 +6,7 @@ import {
   boolean,
   timestamp,
   jsonb,
+  numeric,
 } from 'drizzle-orm/pg-core';
 
 export const projects = pgTable('projects', {
@@ -71,8 +72,31 @@ export const drawAdminConfig = pgTable('draw_admin_config', {
   increaseHoursPerDraw: integer('increase_hours_per_draw').notNull().default(0),
   maxIntervalHours: integer('max_interval_hours').notNull(),
   minTokens: integer('min_tokens').notNull(),
+  minPayoutSol: numeric('min_payout_sol', { precision: 18, scale: 9 })
+    .notNull()
+    .default('0.05'),
   excludedWallets: jsonb('excluded_wallets').notNull().default([]),
   updatedAt: timestamp('updated_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+export const proofWinnerCycle = pgTable('proof_winner_cycle', {
+  id: text('id').primaryKey(),
+  tokenMint: text('token_mint').notNull(),
+  activeWinnerWallet: text('active_winner_wallet'),
+  cycleStartedAt: timestamp('cycle_started_at', { withTimezone: true }),
+  cycleCompletedAt: timestamp('cycle_completed_at', { withTimezone: true }),
+  status: text('status').notNull().default('idle'),
+  minPayoutSol: numeric('min_payout_sol', { precision: 18, scale: 9 })
+    .notNull()
+    .default('0.05'),
+  accumulatedSol: numeric('accumulated_sol', { precision: 18, scale: 9 })
+    .notNull()
+    .default('0'),
+  targetReached: boolean('target_reached').notNull().default(false),
+  lastDrawId: text('last_draw_id'),
+  lastUpdatedAt: timestamp('last_updated_at', { withTimezone: true })
     .notNull()
     .defaultNow(),
 });
@@ -85,3 +109,5 @@ export type ProofHistory = typeof proofHistory.$inferSelect;
 export type NewProofHistory = typeof proofHistory.$inferInsert;
 export type DrawAdminConfig = typeof drawAdminConfig.$inferSelect;
 export type NewDrawAdminConfig = typeof drawAdminConfig.$inferInsert;
+export type ProofWinnerCycle = typeof proofWinnerCycle.$inferSelect;
+export type NewProofWinnerCycle = typeof proofWinnerCycle.$inferInsert;
