@@ -742,7 +742,7 @@ async function runDraw(request: Request) {
       existingCycle.lastDisqualifiedWinnerAmount,
     lastDisqualifiedAt:
       disqualifiedPreviousWinner?.disqualifiedAt ??
-      existingCycle.lastDisqualifiedAt,
+      existingCycle.lastDisqualificationReason,
     lastDisqualificationReason:
       disqualifiedPreviousWinner?.reason ??
       existingCycle.lastDisqualificationReason,
