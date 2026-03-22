@@ -61,8 +61,9 @@ function getRequestOptions(request: Request) {
   const testId = searchParams.get('testId')?.trim() || null;
   const simulateDisqualification =
     searchParams.get('simulateDisqualification') === '1';
+  const simulatePayoutReady = searchParams.get('simulatePayoutReady') === '1';
 
-  return { force, testId, simulateDisqualification };
+  return { force, testId, simulateDisqualification, simulatePayoutReady };
 }
 
 function buildUniqueManualTestId() {
@@ -349,7 +350,7 @@ async function runDraw(request: Request) {
 
   const snapshotAt = new Date().toISOString();
   const currentSlot = await getCurrentDrawSlotFromAdmin(new Date());
-  const { force, testId, simulateDisqualification } =
+  const { force, testId, simulateDisqualification, simulatePayoutReady } =
     getRequestOptions(request);
 
   const effectiveForce = force;
@@ -529,6 +530,10 @@ async function runDraw(request: Request) {
     totalClaimedSol = existingCycle.totalClaimedSol + inferredUserClaimedSol;
     accumulatedSol = totalClaimedSol + activeWinnerClaimableSol;
 
+    const effectiveClaimableSol = simulatePayoutReady
+      ? Math.max(activeWinnerClaimableSol, minPayoutSol)
+      : activeWinnerClaimableSol;
+
     const activeWinnerValidation = await validateActiveWinner(
       activeWinnerWallet,
       decimals,
@@ -562,7 +567,11 @@ async function runDraw(request: Request) {
       cycleAction = simulateDisqualification
         ? 'simulated-disqualification'
         : 'disqualified-and-rotated-new-winner';
-    } else if (activeWinnerClaimableSol >= minPayoutSol && !simulateDisqualification) {
+    } else if (
+      effectiveClaimableSol >= minPayoutSol &&
+      !simulateDisqualification &&
+      !simulatePayoutReady
+    ) {
       const claimTransactions = await claimBagsFees(activeWinnerWallet);
       claimSignatures = await sendBagsTransactions(claimTransactions);
       claimTriggeredByApp = true;
@@ -583,6 +592,27 @@ async function runDraw(request: Request) {
       validatedUiAmount = validation.validatedUiAmount;
       rerollsDuringValidation = validation.rerolls;
       cycleAction = 'completed-payout-and-rotated-new-winner';
+    } else if (
+      effectiveClaimableSol >= minPayoutSol &&
+      !simulateDisqualification &&
+      simulatePayoutReady
+    ) {
+      claimTriggeredByApp = false;
+      manualPayoutPerformed = false;
+      targetReached = true;
+
+      const validation = await pickValidatedWinner(
+        eligible,
+        decimals,
+        minTokens,
+        [activeWinnerWallet]
+      );
+
+      winner = validation.winner;
+      winnerIndex = validation.winnerIndex;
+      validatedUiAmount = validation.validatedUiAmount;
+      rerollsDuringValidation = validation.rerolls;
+      cycleAction = 'simulated-payout-ready-rotated-new-winner';
     } else {
       winner = {
         owner: activeWinnerWallet,
@@ -612,7 +642,8 @@ async function runDraw(request: Request) {
     !simulateDisqualification &&
     (cycleAction === 'started-new-winner-cycle' ||
       cycleAction === 'disqualified-and-rotated-new-winner' ||
-      cycleAction === 'completed-payout-and-rotated-new-winner');
+      cycleAction === 'completed-payout-and-rotated-new-winner' ||
+      cycleAction === 'simulated-payout-ready-rotated-new-winner');
 
   if (shouldUpdateBagsRecipients) {
     const updateConfigTransactions = await updateBagsFeeRecipients(winner.owner);
@@ -623,7 +654,8 @@ async function runDraw(request: Request) {
   const shouldResetCycleProgress =
     cycleAction === 'started-new-winner-cycle' ||
     cycleAction === 'disqualified-and-rotated-new-winner' ||
-    cycleAction === 'completed-payout-and-rotated-new-winner';
+    cycleAction === 'completed-payout-and-rotated-new-winner' ||
+    cycleAction === 'simulated-payout-ready-rotated-new-winner';
 
   const nextCycleStatus =
     cycleAction === 'kept-existing-winner'
@@ -674,15 +706,18 @@ async function runDraw(request: Request) {
       drawId,
       step: simulateDisqualification
         ? 'safe test mode simulated disqualification without changing live Bags routing'
-        : shouldUpdateBagsRecipients
-          ? 'winner processed and Bags fee split updated when required'
-          : 'winner validated and existing Bags fee split kept',
+        : simulatePayoutReady
+          ? 'safe test mode simulated payout-ready rotation without claiming live Bags fees'
+          : shouldUpdateBagsRecipients
+            ? 'winner processed and Bags fee split updated when required'
+            : 'winner validated and existing Bags fee split kept',
       snapshotAt,
       tokenMint: TOKEN_MINT,
       forced: effectiveForce,
       testId: effectiveTestId,
       cycleAction,
       simulateDisqualification,
+      simulatePayoutReady,
     },
     rules: {
       decimals,
@@ -771,7 +806,7 @@ async function runDraw(request: Request) {
       rotatingRole: 'winner',
       minimumPayoutSol: minPayoutSol,
       winnerKeepsAccumulatingUntilMinimumMet: true,
-      simulated: simulateDisqualification,
+      simulated: simulateDisqualification || simulatePayoutReady,
       currentClaimableSolForActiveWinner: formatSolAmount(
         activeWinnerClaimableSol
       ),
