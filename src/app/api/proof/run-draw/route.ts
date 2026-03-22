@@ -1,4 +1,4 @@
-import { getCurrentDrawSlot } from '@/lib/draw-slot';
+import { getCurrentDrawSlotFromAdmin } from '@/lib/draw-slot';
 import {
   hasProofHistorySlot,
   prependProofHistoryItem,
@@ -51,12 +51,22 @@ function buildUniqueManualTestId() {
 }
 
 function buildSlotId(slotId: string, force: boolean, testId: string | null) {
-  if (!force) return slotId;
-  if (testId) return `${slotId}-forced-${testId}`;
+  if (!force) {
+    return slotId;
+  }
+
+  if (testId) {
+    return `${slotId}-forced-${testId}`;
+  }
+
   return `${slotId}-forced`;
 }
 
 async function sendBagsTransactions(transactions: string[]) {
+  if (!transactions.length) {
+    throw new Error('Bags returned no transactions to sign');
+  }
+
   const connection = new Connection(HELIUS_RPC_URL, 'confirmed');
   const keypair = getAdminKeypair();
 
@@ -105,7 +115,9 @@ async function updateBagsFeeRecipients(winnerWallet: string) {
   const json = await response.json();
 
   if (!response.ok || !json.success) {
-    throw new Error('Bags update-config failed');
+    throw new Error(
+      json.error || JSON.stringify(json) || 'Bags update-config failed'
+    );
   }
 
   return (
@@ -129,7 +141,9 @@ async function filterSystemOwnedWallets(holders: Holder[]) {
       const holder = chunk[j];
       const accountInfo = accounts[j];
 
-      if (!accountInfo) continue;
+      if (!accountInfo) {
+        continue;
+      }
 
       if (accountInfo.owner.equals(SystemProgram.programId)) {
         valid.push(holder);
@@ -154,7 +168,9 @@ async function getCurrentUiAmountForOwner(
       params: [
         owner,
         { mint: TOKEN_MINT },
-        { encoding: 'jsonParsed' },
+        {
+          encoding: 'jsonParsed',
+        },
       ],
     }),
   });
@@ -178,55 +194,90 @@ async function pickValidatedWinner(
   eligible: Holder[],
   decimals: number,
   minTokens: number
-) {
+): Promise<{
+  winner: Holder;
+  winnerIndex: number;
+  validatedUiAmount: number;
+  rerolls: number;
+}> {
   const remaining = [...eligible];
+  let rerolls = 0;
 
   while (remaining.length > 0) {
-    const index = Math.floor(Math.random() * remaining.length);
-    const candidate = remaining[index];
+    const randomIndex = Math.floor(Math.random() * remaining.length);
+    const candidate = remaining[randomIndex];
 
-    const validated = await getCurrentUiAmountForOwner(
+    const validatedUiAmount = await getCurrentUiAmountForOwner(
       candidate.owner,
       decimals
     );
 
-    if (validated >= minTokens) {
+    if (validatedUiAmount >= minTokens) {
       return {
-        winner: { owner: candidate.owner, uiAmount: validated },
-        winnerIndex: index,
+        winner: {
+          owner: candidate.owner,
+          uiAmount: validatedUiAmount,
+        },
+        winnerIndex: randomIndex,
+        validatedUiAmount,
+        rerolls,
       };
     }
 
-    remaining.splice(index, 1);
+    remaining.splice(randomIndex, 1);
+    rerolls++;
   }
 
-  throw new Error('No eligible holders after validation');
+  throw new Error('No eligible holders remained above threshold during validation');
 }
 
 async function runDraw(request: Request) {
   const config = await getDrawAdminConfig();
-  const MIN_TOKENS = config.minTokens;
-  const EXCLUDED_WALLETS = config.excludedWallets;
+  const minTokens = config.minTokens;
+  const excludedWallets = config.excludedWallets;
 
   const snapshotAt = new Date().toISOString();
-  const currentSlot = getCurrentDrawSlot(new Date());
+  const currentSlot = await getCurrentDrawSlotFromAdmin(new Date());
   const { force, testId } = getRequestOptions(request);
 
-  if (!force && !currentSlot.isDue) {
+  const effectiveForce = force;
+  const effectiveTestId =
+    effectiveForce && !currentSlot.isDue
+      ? testId || buildUniqueManualTestId()
+      : testId;
+
+  if (!effectiveForce && !currentSlot.isDue) {
     return Response.json({
       ok: true,
       skipped: true,
-      reason: 'Not due',
+      reason: 'Current draw slot is not due yet',
+      slot: {
+        slotId: currentSlot.slotId,
+        drawIndex: currentSlot.drawIndex,
+        scheduledDrawAt: currentSlot.nextDrawAtIso,
+        previousDrawAtIso: currentSlot.previousDrawAtIso,
+        currentIntervalHours: currentSlot.currentIntervalHours,
+        isDue: currentSlot.isDue,
+      },
     });
   }
 
-  const slotId = buildSlotId(currentSlot.slotId, force, testId);
+  const slotIdToCheck = buildSlotId(
+    currentSlot.slotId,
+    effectiveForce,
+    effectiveTestId
+  );
 
-  if (await hasProofHistorySlot(slotId)) {
-    return Response.json({ ok: false, error: 'Already processed' });
+  const existingSlot = await hasProofHistorySlot(slotIdToCheck);
+
+  if (existingSlot) {
+    return Response.json({
+      ok: false,
+      error: 'This scheduled draw slot has already been processed',
+    });
   }
 
-  const mintInfo = await fetch(HELIUS_RPC_URL, {
+  const mintInfoResponse = await fetch(HELIUS_RPC_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -237,100 +288,217 @@ async function runDraw(request: Request) {
     }),
   });
 
-  const mintData = await mintInfo.json();
-  const decimals = mintData?.result?.value?.data?.parsed?.info?.decimals;
+  const mintInfoData = await mintInfoResponse.json();
+  const decimals = mintInfoData?.result?.value?.data?.parsed?.info?.decimals;
 
-  let accounts: any[] = [];
+  if (decimals === undefined) {
+    throw new Error('Failed to fetch token decimals');
+  }
+
+  let allTokenAccounts: any[] = [];
   let page = 1;
   let hasMore = true;
 
   while (hasMore) {
-    const res = await fetch(HELIUS_RPC_URL, {
+    const response = await fetch(HELIUS_RPC_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         jsonrpc: '2.0',
-        id: `page-${page}`,
+        id: `getTokenAccounts-${page}`,
         method: 'getTokenAccounts',
-        params: { mint: TOKEN_MINT, page, limit: 1000 },
+        params: {
+          mint: TOKEN_MINT,
+          page,
+          limit: 1000,
+        },
       }),
     });
 
-    const data = await res.json();
+    const data = await response.json();
     const items = data?.result?.token_accounts ?? [];
 
-    accounts.push(...items);
+    allTokenAccounts.push(...items);
 
-    if (items.length < 1000) hasMore = false;
-    else page++;
+    if (items.length < 1000) {
+      hasMore = false;
+    } else {
+      page++;
+    }
   }
 
-  const balances: Record<string, number> = {};
+  const balancesByOwner: Record<string, number> = {};
 
-  for (const acc of accounts) {
+  for (const acc of allTokenAccounts) {
     const owner = acc.owner;
-    const raw = Number(acc.amount || 0);
+    const rawAmount = Number(acc.amount || 0);
+
     if (!owner) continue;
-    balances[owner] = (balances[owner] || 0) + raw;
+
+    balancesByOwner[owner] = (balancesByOwner[owner] || 0) + rawAmount;
   }
 
-  const holders: Holder[] = Object.entries(balances).map(([owner, raw]) => ({
-    owner,
-    uiAmount: raw / Math.pow(10, decimals),
-  }));
-
-  const eligible = await filterSystemOwnedWallets(
-    holders
-      .filter((h) => !EXCLUDED_WALLETS.includes(h.owner))
-      .filter((h) => h.uiAmount >= MIN_TOKENS)
+  const holders: Holder[] = Object.entries(balancesByOwner).map(
+    ([owner, totalRaw]) => ({
+      owner,
+      uiAmount: totalRaw / Math.pow(10, decimals),
+    })
   );
 
-  if (!eligible.length) {
-    return Response.json({ ok: false, error: 'No eligible wallets' });
+  const nonExcludedHolders = holders.filter(
+    (holder) => !excludedWallets.includes(holder.owner)
+  );
+
+  const thresholdEligible = nonExcludedHolders.filter(
+    (holder) => holder.uiAmount >= minTokens
+  );
+
+  const eligible = await filterSystemOwnedWallets(thresholdEligible);
+
+  const drawId = [
+    'rando',
+    TOKEN_MINT.slice(0, 6),
+    snapshotAt.replace(/[:.]/g, '-'),
+    eligible.length,
+  ].join('-');
+
+  if (eligible.length === 0) {
+    return Response.json({
+      ok: false,
+      error: 'No eligible system-owned holders found',
+    });
   }
 
-  const result = await pickValidatedWinner(
-    eligible,
-    decimals,
-    MIN_TOKENS
-  );
+  const validation = await pickValidatedWinner(eligible, decimals, minTokens);
+  const winner = validation.winner;
 
-  const txs = await updateBagsFeeRecipients(result.winner.owner);
-  const sigs = await sendBagsTransactions(txs);
+  const updateConfigTransactions = await updateBagsFeeRecipients(winner.owner);
+  const configSignatures = await sendBagsTransactions(updateConfigTransactions);
 
-  await prependProofHistoryItem({
-    drawId: `rando-${Date.now()}`,
-    snapshotAt,
-    tokenMint: TOKEN_MINT,
-    slotId,
-    scheduledDrawAt: currentSlot.nextDrawAtIso,
-    winner: {
-      owner: result.winner.owner,
-      uiAmount: result.winner.uiAmount,
-      winnerIndex: result.winnerIndex,
+  const responseBody = {
+    ok: true,
+    draw: {
+      drawId,
+      step: 'winner selected, validated, and Bags fee split updated',
+      snapshotAt,
+      tokenMint: TOKEN_MINT,
+      forced: effectiveForce,
+      testId: effectiveTestId,
+    },
+    rules: {
+      decimals,
+      minTokens: minTokens,
+      excludedWallets: excludedWallets,
     },
     counts: {
-      totalTokenAccounts: accounts.length,
+      totalTokenAccounts: allTokenAccounts.length,
       totalHolders: holders.length,
-      holderCountAfterExclusions: holders.length,
+      holderCountAfterExclusions: nonExcludedHolders.length,
+      thresholdEligibleCount: thresholdEligible.length,
       eligibleCount: eligible.length,
-      excludedWalletCount: EXCLUDED_WALLETS.length,
+      excludedWalletCount: excludedWallets.length,
+      pagesScanned: page,
+      rerollsDuringValidation: validation.rerolls,
+    },
+    proof: {
+      eligibleWalletSample: eligible.slice(0, 5).map((holder) => ({
+        owner: holder.owner,
+        uiAmount: formatUiAmount(holder.uiAmount),
+      })),
+      topEligibleSample: [...eligible]
+        .sort((a, b) => b.uiAmount - a.uiAmount)
+        .slice(0, 5)
+        .map((holder) => ({
+          owner: holder.owner,
+          uiAmount: formatUiAmount(holder.uiAmount),
+        })),
+      winnerValidation: {
+        checkedOwner: winner.owner,
+        validatedUiAmount: formatUiAmount(validation.validatedUiAmount),
+        minimumRequired: minTokens,
+        passed: true,
+      },
+    },
+    slot: {
+      slotId: slotIdToCheck,
+      drawIndex: currentSlot.drawIndex,
+      scheduledDrawAt: currentSlot.nextDrawAtIso,
+      previousDrawAtIso: currentSlot.previousDrawAtIso,
+      currentIntervalHours: currentSlot.currentIntervalHours,
+      isDue: currentSlot.isDue,
+      forced: effectiveForce,
+      testId: effectiveTestId,
+    },
+    winner: {
+      winnerIndex: validation.winnerIndex,
+      owner: winner.owner,
+      uiAmount: formatUiAmount(winner.uiAmount),
+    },
+    payout: {
+      provider: 'bags',
+      distributionModel: 'bags-managed',
+      configUpdated: true,
+      claimTriggeredByApp: false,
+      manualPayoutPerformed: false,
+      rotatingRole: 'winner',
+      recipients: [
+        {
+          role: 'dev',
+          wallet: DEV_WALLET,
+          basisPoints: 5000,
+        },
+        {
+          role: 'winner',
+          wallet: winner.owner,
+          basisPoints: 5000,
+        },
+      ],
+      configSignatures,
+    },
+  };
+
+  await prependProofHistoryItem({
+    drawId,
+    snapshotAt,
+    tokenMint: TOKEN_MINT,
+    slotId: slotIdToCheck,
+    scheduledDrawAt: currentSlot.nextDrawAtIso,
+    winner: {
+      owner: winner.owner,
+      uiAmount: formatUiAmount(winner.uiAmount),
+      winnerIndex: validation.winnerIndex,
+    },
+    counts: {
+      totalTokenAccounts: allTokenAccounts.length,
+      totalHolders: holders.length,
+      holderCountAfterExclusions: nonExcludedHolders.length,
+      eligibleCount: eligible.length,
+      excludedWalletCount: excludedWallets.length,
       pagesScanned: page,
     },
   });
 
-  return Response.json({
-    ok: true,
-    winner: result.winner,
-    configUsed: config,
-    signatures: sigs,
-  });
+  return Response.json(responseBody);
 }
 
-export async function GET(req: Request) {
-  return runDraw(req);
+export async function GET(request: Request) {
+  try {
+    return await runDraw(request);
+  } catch (err: any) {
+    return Response.json({
+      ok: false,
+      error: err.message,
+    });
+  }
 }
 
-export async function POST(req: Request) {
-  return runDraw(req);
+export async function POST(request: Request) {
+  try {
+    return await runDraw(request);
+  } catch (err: any) {
+    return Response.json({
+      ok: false,
+      error: err.message,
+    });
+  }
 }
