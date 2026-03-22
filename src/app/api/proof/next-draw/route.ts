@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
-import { getDrawScheduleState } from '@/lib/draw-schedule-utils';
+import { getDrawScheduleStateFromAdminConfig } from '@/lib/draw-schedule-utils';
 
 export async function GET() {
   try {
-    const schedule = getDrawScheduleState();
+    const schedule = await getDrawScheduleStateFromAdminConfig();
 
     return NextResponse.json({
       ok: true,
