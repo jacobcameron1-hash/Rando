@@ -1,34 +1,12 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-
-/* --- TYPES --- */
-
-type WalletEntry = {
-  owner: string;
-  uiAmount: number;
-};
+import { useEffect, useState } from 'react';
 
 type DrawResponse = {
   ok: boolean;
   error?: string;
-  draw?: {
-    drawId: string;
-    step: string;
-    snapshotAt: string;
-    tokenMint: string;
-  };
-  rules?: {
-    decimals: number;
-    minTokens: number;
-    excludedWallets: string[];
-  };
-  counts?: {
-    totalTokenAccounts: number;
-    totalHolders: number;
-    holderCountAfterExclusions: number;
-    eligibleCount: number;
-  };
+  skipped?: boolean;
+  reason?: string;
   winner?: {
     owner: string;
     uiAmount: number;
@@ -51,8 +29,6 @@ type HistoryItem = {
   winnerAmount: number;
 };
 
-/* --- HELPERS --- */
-
 function shortWallet(w: string) {
   return `${w.slice(0, 6)}...${w.slice(-6)}`;
 }
@@ -60,8 +36,6 @@ function shortWallet(w: string) {
 function formatDate(d: string) {
   return new Date(d).toLocaleString();
 }
-
-/* --- PAGE --- */
 
 export default function ProofPage() {
   const [data, setData] = useState<DrawResponse | null>(null);
@@ -71,17 +45,22 @@ export default function ProofPage() {
   const runDraw = async () => {
     setLoading(true);
 
-    const res = await fetch('/api/proof/run-draw');
-    const json = await res.json();
-
-    setData(json);
-    setLoading(false);
-
-    loadHistory();
+    try {
+      const res = await fetch('/api/proof/run-draw?force=1', {
+        cache: 'no-store',
+      });
+      const json = await res.json();
+      setData(json);
+      await loadHistory();
+    } finally {
+      setLoading(false);
+    }
   };
 
   const loadHistory = async () => {
-    const res = await fetch('/api/proof/history');
+    const res = await fetch('/api/proof/history', {
+      cache: 'no-store',
+    });
     const json = await res.json();
 
     if (json.ok) {
@@ -108,7 +87,20 @@ export default function ProofPage() {
         {loading ? 'Running...' : 'Run Draw & Update Rewards'}
       </button>
 
-      {/* WINNER */}
+      {data?.error && (
+        <div style={{ marginTop: 24 }}>
+          <h2>❌ Error</h2>
+          <div>{data.error}</div>
+        </div>
+      )}
+
+      {data?.skipped && (
+        <div style={{ marginTop: 24 }}>
+          <h2>⏭️ Skipped</h2>
+          <div>{data.reason || 'Draw was skipped.'}</div>
+        </div>
+      )}
+
       {data?.winner && (
         <div style={{ marginTop: 24 }}>
           <h2>🏆 Winner</h2>
@@ -117,14 +109,12 @@ export default function ProofPage() {
         </div>
       )}
 
-      {/* 🔥 REWARD ROUTING */}
       {data?.payout && (
         <div style={{ marginTop: 24 }}>
           <h2>💰 Reward Routing</h2>
 
           <div>
-            Status:{' '}
-            {data.payout.configUpdated ? '✅ Live' : '❌ Not updated'}
+            Status: {data.payout.configUpdated ? '✅ Live' : '❌ Not updated'}
           </div>
 
           <div>Distribution: 50% / 50%</div>
@@ -146,14 +136,11 @@ export default function ProofPage() {
           </div>
 
           {data.payout.configSignatures.map((sig, i) => (
-            <div key={i}>
-              https://solscan.io/tx/{sig}
-            </div>
+            <div key={i}>https://solscan.io/tx/{sig}</div>
           ))}
         </div>
       )}
 
-      {/* HISTORY */}
       <div style={{ marginTop: 32 }}>
         <h2>🕘 Recent Draws</h2>
 
