@@ -347,22 +347,9 @@ export default function PublicPage() {
             Automated randomized rewards for your bags.fm token
           </p>
 
-          <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <a
-              href="/dashboard"
-              className="inline-flex min-w-[200px] items-center justify-center rounded-2xl bg-[#df3f29] px-5 py-3 font-mono text-sm font-semibold text-white transition hover:bg-[#f04d36]"
-            >
-              Open Dashboard
-            </a>
-
-            <button
-              onClick={handleRunDraw}
-              disabled={isRunningDraw}
-              className="inline-flex min-w-[200px] items-center justify-center rounded-2xl border border-[#4a2519] bg-[#18100d] px-5 py-3 font-mono text-sm font-semibold text-[#f6d1b0] transition hover:border-[#6a3526] hover:text-white disabled:opacity-60"
-            >
-              {isRunningDraw ? 'Running...' : 'Run Draw'}
-            </button>
-          </div>
+         <div className="mt-6 font-mono text-sm text-[#b78f73]">
+  Live on-chain proof of winner selection and reward routing
+</div>
 
           {(drawError || drawResponse?.reason) && (
             <div className="mx-auto mt-4 max-w-xl rounded-xl border border-[#4a2519] bg-[#130b09] px-4 py-2 font-mono text-xs text-[#d9b393]">
