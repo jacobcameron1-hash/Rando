@@ -47,6 +47,12 @@ async function ensureHistoryTableExists() {
     sql`CREATE INDEX IF NOT EXISTS proof_history_slot_id_idx ON proof_history (slot_id)`
   );
 
+  await db.execute(sql`
+    CREATE UNIQUE INDEX IF NOT EXISTS proof_history_slot_id_unique_idx
+    ON proof_history (slot_id)
+    WHERE slot_id IS NOT NULL
+  `);
+
   tableReady = true;
 }
 
@@ -148,7 +154,7 @@ export async function prependProofHistoryItem(
       ${JSON.stringify(item.winner)}::jsonb,
       ${JSON.stringify(item.counts)}::jsonb
     )
-    ON CONFLICT (draw_id) DO NOTHING
+    ON CONFLICT DO NOTHING
   `);
 
   return readProofHistory();
