@@ -25,6 +25,7 @@ type DrawRecipient = {
   wallet?: string;
   percent?: number;
   bps?: number;
+  basisPoints?: number;
 };
 
 type DrawResponse = {
@@ -37,6 +38,7 @@ type DrawResponse = {
     snapshotAt?: string;
     tokenMint?: string;
     step?: string;
+    cycleAction?: string;
   };
   winner?: {
     owner?: string;
@@ -46,16 +48,57 @@ type DrawResponse = {
     eligibleCount?: number;
     holderCountAfterExclusions?: number;
   };
+  proof?: {
+    winnerCycle?: {
+      activeWinnerWallet?: string | null;
+      cycleStartedAt?: string | null;
+      cycleCompletedAt?: string | null;
+      status?: string;
+      minPayoutSol?: number;
+      accumulatedSol?: number;
+      targetReached?: boolean;
+      explanation?: string;
+    };
+  };
   payout?: {
     configUpdated?: boolean;
     transactionSignature?: string;
+    configSignatures?: string[];
+    minimumPayoutSol?: number;
+    winnerKeepsAccumulatingUntilMinimumMet?: boolean;
     recipients?: DrawRecipient[];
+  };
+};
+
+type AdminConfigResponse = {
+  ok: boolean;
+  config?: {
+    initialIntervalHours?: number;
+    minPayoutSol?: number;
+  };
+  winnerCycle?: {
+    activeWinnerWallet?: string | null;
+    cycleStartedAt?: string | null;
+    cycleCompletedAt?: string | null;
+    status?: string;
+    minPayoutSol?: number;
+    accumulatedSol?: number;
+    targetReached?: boolean;
+    lastDrawId?: string | null;
+    lastUpdatedAt?: string | null;
   };
 };
 
 function formatNumber(value: number) {
   return new Intl.NumberFormat('en-US', {
     maximumFractionDigits: 2,
+  }).format(value);
+}
+
+function formatSol(value: number) {
+  return new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 4,
   }).format(value);
 }
 
@@ -98,24 +141,33 @@ export default function PublicPage() {
   const [drawResponse, setDrawResponse] = useState<DrawResponse | null>(null);
   const [isRunningDraw, setIsRunningDraw] = useState(false);
   const [drawError, setDrawError] = useState<string | null>(null);
+  const [adminConfig, setAdminConfig] = useState<AdminConfigResponse | null>(null);
 
   async function load() {
     try {
-      const historyResponse = await fetch('/api/proof/history', {
-        cache: 'no-store',
-      });
-      const historyData = await historyResponse.json();
+      const [historyResponse, nextDrawResponse, adminConfigResponse] =
+        await Promise.all([
+          fetch('/api/proof/history', {
+            cache: 'no-store',
+          }),
+          fetch('/api/proof/next-draw', {
+            cache: 'no-store',
+          }),
+          fetch('/api/proof/admin-config', {
+            cache: 'no-store',
+          }),
+        ]);
 
-      const nextDrawResponse = await fetch('/api/proof/next-draw', {
-        cache: 'no-store',
-      });
+      const historyData = await historyResponse.json();
       const nextDrawData = await nextDrawResponse.json();
+      const adminConfigData = await adminConfigResponse.json();
 
       const nextSchedule = nextDrawData.schedule || null;
 
       setHistory(historyData.history || []);
       setNextDraw(nextSchedule);
       setCountdownMs(nextSchedule?.countdownMs ?? 0);
+      setAdminConfig(adminConfigData || null);
     } catch (error) {
       console.error('Failed to load proof data', error);
     }
@@ -186,6 +238,7 @@ export default function PublicPage() {
       if (!response.ok || !data.ok) {
         setDrawResponse(data);
         setDrawError(data.error || 'Failed to run draw');
+        await load();
         return;
       }
 
@@ -234,16 +287,40 @@ export default function PublicPage() {
   }
 
   const displayWinnerAddress =
-    drawResponse?.winner?.owner || latest?.winner?.owner || '';
+    drawResponse?.winner?.owner ||
+    adminConfig?.winnerCycle?.activeWinnerWallet ||
+    latest?.winner?.owner ||
+    '';
 
   const displayWinnerAmount =
     drawResponse?.winner?.uiAmount ?? latest?.winner?.uiAmount ?? 0;
 
   const displayWinnerTime =
-    drawResponse?.draw?.snapshotAt || latest?.snapshotAt || '';
+    drawResponse?.draw?.snapshotAt ||
+    adminConfig?.winnerCycle?.cycleStartedAt ||
+    latest?.snapshotAt ||
+    '';
 
   const payoutRecipients = drawResponse?.payout?.recipients || [];
-  const txSignature = drawResponse?.payout?.transactionSignature || '';
+  const txSignature =
+    drawResponse?.payout?.transactionSignature ||
+    drawResponse?.payout?.configSignatures?.[0] ||
+    '';
+
+  const minPayoutSol =
+    drawResponse?.payout?.minimumPayoutSol ??
+    adminConfig?.config?.minPayoutSol ??
+    adminConfig?.winnerCycle?.minPayoutSol ??
+    0.05;
+
+  const drawFrequencyHours = adminConfig?.config?.initialIntervalHours ?? 1;
+
+  const winnerCycle =
+    drawResponse?.proof?.winnerCycle || adminConfig?.winnerCycle || null;
+
+  const accumulatedSol = winnerCycle?.accumulatedSol ?? 0;
+  const targetReached = winnerCycle?.targetReached ?? false;
+  const cycleStatus = winnerCycle?.status || 'idle';
 
   return (
     <main className="min-h-screen bg-[#070404] text-white">
@@ -294,6 +371,83 @@ export default function PublicPage() {
           )}
         </section>
 
+        <section className="mb-6 rounded-[32px] border border-[#4a2519] bg-[#18100c] p-6 shadow-[0_18px_50px_rgba(0,0,0,0.42)] sm:p-8">
+          <div className="mb-2 text-3xl font-black text-white sm:text-4xl">
+            How The Proof Works
+          </div>
+          <div className="mb-6 font-mono text-sm text-[#b78f73]">
+            Clear rules for how winners stay active and when rewards rotate
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5">
+              <div className="font-mono text-sm text-[#b78f73]">Draw Frequency</div>
+              <div className="mt-3 text-3xl font-black text-white">
+                Every {drawFrequencyHours} hour{drawFrequencyHours === 1 ? '' : 's'}
+              </div>
+              <div className="mt-2 font-mono text-sm text-[#d5b190]">
+                A draw runs on this schedule and decides the active winner cycle.
+              </div>
+            </div>
+
+            <div className="rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5">
+              <div className="font-mono text-sm text-[#b78f73]">
+                Minimum Winner Payout
+              </div>
+              <div className="mt-3 text-3xl font-black text-white">
+                {formatSol(minPayoutSol)} SOL
+              </div>
+              <div className="mt-2 font-mono text-sm text-[#d5b190]">
+                The active winner stays in place until at least this amount has
+                accumulated.
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-4 rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5">
+            <div className="grid gap-4 md:grid-cols-4">
+              <div>
+                <div className="font-mono text-xs uppercase tracking-wide text-[#b78f73]">
+                  Rule 1
+                </div>
+                <div className="mt-2 text-sm leading-6 text-white">
+                  A winner is selected for the current cycle.
+                </div>
+              </div>
+
+              <div>
+                <div className="font-mono text-xs uppercase tracking-wide text-[#b78f73]">
+                  Rule 2
+                </div>
+                <div className="mt-2 text-sm leading-6 text-white">
+                  That winner remains active until rewards reach at least{' '}
+                  {formatSol(minPayoutSol)} SOL.
+                </div>
+              </div>
+
+              <div>
+                <div className="font-mono text-xs uppercase tracking-wide text-[#b78f73]">
+                  Rule 3
+                </div>
+                <div className="mt-2 text-sm leading-6 text-white">
+                  If more than {formatSol(minPayoutSol)} SOL builds up during that
+                  same period, the winner still gets the extra amount too.
+                </div>
+              </div>
+
+              <div>
+                <div className="font-mono text-xs uppercase tracking-wide text-[#b78f73]">
+                  Rule 4
+                </div>
+                <div className="mt-2 text-sm leading-6 text-white">
+                  After that payout threshold is satisfied, the next cycle can rotate
+                  to a new winner.
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
         <section className="grid gap-4 md:grid-cols-3">
           <div className="rounded-[26px] border border-[#3a2417] bg-[#120b09] p-5 shadow-[0_10px_30px_rgba(0,0,0,0.35)]">
             <div className="font-mono text-sm text-[#b78f73]">Next Draw</div>
@@ -333,13 +487,13 @@ export default function PublicPage() {
                 Current Winner
               </div>
               <div className="mt-2 font-mono text-sm text-[#b78f73]">
-                Most recent winning wallet and balance snapshot
+                Active winner for the current payout cycle
               </div>
             </div>
 
             {displayWinnerAddress ? (
               <div className="rounded-full border border-[#4a2519] bg-[#120b09] px-4 py-2 font-mono text-xs text-[#f2cfb0]">
-                Latest draw
+                {cycleStatus === 'active' ? 'Winner cycle active' : 'Latest draw'}
               </div>
             ) : null}
           </div>
@@ -353,7 +507,7 @@ export default function PublicPage() {
                 </div>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-3">
+              <div className="grid gap-4 md:grid-cols-4">
                 <div className="rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5">
                   <div className="font-mono text-sm text-[#b78f73]">Wallet</div>
                   <div className="mt-3 text-2xl font-black text-white sm:text-3xl">
@@ -367,12 +521,22 @@ export default function PublicPage() {
                     {formatNumber(displayWinnerAmount)}
                   </div>
                   <div className="mt-2 font-mono text-sm text-[#d5b190]">
-                    winner balance
+                    winner token balance
                   </div>
                 </div>
 
                 <div className="rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5">
-                  <div className="font-mono text-sm text-[#b78f73]">Draw Time</div>
+                  <div className="font-mono text-sm text-[#b78f73]">Cycle Target</div>
+                  <div className="mt-3 text-2xl font-black text-white sm:text-3xl">
+                    {formatSol(minPayoutSol)} SOL
+                  </div>
+                  <div className="mt-2 font-mono text-sm text-[#d5b190]">
+                    minimum payout before rotation
+                  </div>
+                </div>
+
+                <div className="rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5">
+                  <div className="font-mono text-sm text-[#b78f73]">Cycle Started</div>
                   <div className="mt-3 text-lg font-black leading-tight text-white">
                     {formatDate(displayWinnerTime)}
                   </div>
@@ -388,6 +552,52 @@ export default function PublicPage() {
 
         <section className="mt-6 rounded-[32px] border border-[#3a2417] bg-[#18100c] p-6 shadow-[0_18px_50px_rgba(0,0,0,0.42)] sm:p-8">
           <div className="mb-1 text-3xl font-black text-white sm:text-4xl">
+            Winner Cycle Status
+          </div>
+          <div className="mb-6 font-mono text-sm text-[#b78f73]">
+            Live status for the active payout cycle
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-4">
+            <div className="rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5">
+              <div className="font-mono text-sm text-[#b78f73]">Status</div>
+              <div className="mt-3 text-2xl font-black text-white">
+                {cycleStatus}
+              </div>
+            </div>
+
+            <div className="rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5">
+              <div className="font-mono text-sm text-[#b78f73]">Accumulated</div>
+              <div className="mt-3 text-2xl font-black text-white">
+                {formatSol(accumulatedSol)} SOL
+              </div>
+            </div>
+
+            <div className="rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5">
+              <div className="font-mono text-sm text-[#b78f73]">Target</div>
+              <div className="mt-3 text-2xl font-black text-white">
+                {formatSol(minPayoutSol)} SOL
+              </div>
+            </div>
+
+            <div className="rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5">
+              <div className="font-mono text-sm text-[#b78f73]">Threshold Reached</div>
+              <div className="mt-3 text-2xl font-black text-white">
+                {targetReached ? 'Yes' : 'No'}
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-4 rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5 font-mono text-sm leading-7 text-[#d5b190]">
+            The winner remains in the winning slot until the reward pool reaches at
+            least <span className="font-semibold text-white">{formatSol(minPayoutSol)} SOL</span>.
+            Anything that accumulates above that amount during the same winner cycle
+            also goes to that same winner before rotation.
+          </div>
+        </section>
+
+        <section className="mt-6 rounded-[32px] border border-[#3a2417] bg-[#18100c] p-6 shadow-[0_18px_50px_rgba(0,0,0,0.42)] sm:p-8">
+          <div className="mb-1 text-3xl font-black text-white sm:text-4xl">
             Live Reward Routing
           </div>
           <div className="mb-6 font-mono text-sm text-[#b78f73]">
@@ -397,7 +607,7 @@ export default function PublicPage() {
           {drawResponse ? (
             <div className="space-y-4">
               <div className="rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5">
-                <div className="grid gap-4 md:grid-cols-3">
+                <div className="grid gap-4 md:grid-cols-4">
                   <div>
                     <div className="font-mono text-sm text-[#b78f73]">Status</div>
                     <div className="mt-2 text-xl font-black text-white">
@@ -410,9 +620,9 @@ export default function PublicPage() {
                   </div>
 
                   <div>
-                    <div className="font-mono text-sm text-[#b78f73]">Step</div>
+                    <div className="font-mono text-sm text-[#b78f73]">Cycle Action</div>
                     <div className="mt-2 text-sm font-mono text-[#f2cfb0]">
-                      {drawResponse.draw?.step || drawResponse.reason || '—'}
+                      {drawResponse.draw?.cycleAction || '—'}
                     </div>
                   </div>
 
@@ -422,6 +632,15 @@ export default function PublicPage() {
                     </div>
                     <div className="mt-2 text-xl font-black text-white">
                       {drawResponse.payout?.configUpdated ? 'Yes' : 'No'}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="font-mono text-sm text-[#b78f73]">
+                      Minimum Payout
+                    </div>
+                    <div className="mt-2 text-xl font-black text-white">
+                      {formatSol(minPayoutSol)} SOL
                     </div>
                   </div>
                 </div>
@@ -455,9 +674,11 @@ export default function PublicPage() {
                           <div className="text-left md:text-right">
                             <div className="text-xl font-black text-white">
                               {recipient.percent ??
-                                (typeof recipient.bps === 'number'
-                                  ? recipient.bps / 100
-                                  : 0)}
+                                (typeof recipient.basisPoints === 'number'
+                                  ? recipient.basisPoints / 100
+                                  : typeof recipient.bps === 'number'
+                                    ? recipient.bps / 100
+                                    : 0)}
                               %
                             </div>
                           </div>
