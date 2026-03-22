@@ -609,7 +609,6 @@ export default function PublicPage() {
           <div className="mt-4 rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5 font-mono text-sm leading-7 text-[#d5b190]">
             Bags fee routing is the live payout engine for Rando. Winners are
             rotated as fee recipients rather than being paid by manual SOL sends.
-            See the Bags reference here: :contentReference[oaicite:0]{index=0}
           </div>
         </section>
 
