@@ -472,7 +472,9 @@ async function runDraw(request: Request) {
       winnerIndex = validation.winnerIndex;
       validatedUiAmount = validation.validatedUiAmount;
       rerollsDuringValidation = validation.rerolls;
-      cycleAction = 'disqualified-and-rotated-new-winner';
+      cycleAction = simulateDisqualification
+        ? 'simulated-disqualification'
+        : 'disqualified-and-rotated-new-winner';
     }
   } else {
     const validation = await pickValidatedWinner(eligible, decimals, minTokens);
@@ -483,8 +485,16 @@ async function runDraw(request: Request) {
     cycleAction = 'started-new-winner-cycle';
   }
 
-  const updateConfigTransactions = await updateBagsFeeRecipients(winner.owner);
-  const configSignatures = await sendBagsTransactions(updateConfigTransactions);
+  let configSignatures: string[] = [];
+  let configUpdated = false;
+  let claimTriggeredByApp = false;
+  let manualPayoutPerformed = false;
+
+  if (!simulateDisqualification) {
+    const updateConfigTransactions = await updateBagsFeeRecipients(winner.owner);
+    configSignatures = await sendBagsTransactions(updateConfigTransactions);
+    configUpdated = true;
+  }
 
   const shouldResetAccumulation =
     cycleAction === 'started-new-winner-cycle' ||
@@ -492,15 +502,22 @@ async function runDraw(request: Request) {
 
   const nextCycle = await setProofWinnerCycle({
     tokenMint: TOKEN_MINT,
-    activeWinnerWallet: winner.owner,
-    cycleStartedAt:
-      cycleAction === 'kept-existing-winner'
+    activeWinnerWallet: simulateDisqualification
+      ? existingCycle.activeWinnerWallet
+      : winner.owner,
+    cycleStartedAt: simulateDisqualification
+      ? existingCycle.cycleStartedAt
+      : cycleAction === 'kept-existing-winner'
         ? existingCycle.cycleStartedAt || snapshotAt
         : snapshotAt,
     cycleCompletedAt: null,
-    status: 'active',
+    status: existingCycle.status || 'active',
     minPayoutSol,
-    accumulatedSol: shouldResetAccumulation ? 0 : existingCycle.accumulatedSol,
+    accumulatedSol: simulateDisqualification
+      ? existingCycle.accumulatedSol
+      : shouldResetAccumulation
+        ? 0
+        : existingCycle.accumulatedSol,
     targetReached: false,
     lastDrawId: drawId,
     lastDisqualifiedWinnerWallet:
@@ -521,7 +538,9 @@ async function runDraw(request: Request) {
     ok: true,
     draw: {
       drawId,
-      step: 'winner validated and Bags fee split updated',
+      step: simulateDisqualification
+        ? 'safe test mode simulated disqualification without changing live Bags routing'
+        : 'winner validated and Bags fee split updated',
       snapshotAt,
       tokenMint: TOKEN_MINT,
       forced: effectiveForce,
@@ -604,12 +623,13 @@ async function runDraw(request: Request) {
     payout: {
       provider: 'bags',
       distributionModel: 'bags-managed',
-      configUpdated: true,
-      claimTriggeredByApp: false,
-      manualPayoutPerformed: false,
+      configUpdated,
+      claimTriggeredByApp,
+      manualPayoutPerformed,
       rotatingRole: 'winner',
       minimumPayoutSol: minPayoutSol,
       winnerKeepsAccumulatingUntilMinimumMet: true,
+      simulated: simulateDisqualification,
       recipients: [
         {
           role: 'dev',
@@ -618,7 +638,9 @@ async function runDraw(request: Request) {
         },
         {
           role: 'winner',
-          wallet: winner.owner,
+          wallet: simulateDisqualification
+            ? existingCycle.activeWinnerWallet
+            : winner.owner,
           basisPoints: 5000,
         },
       ],
