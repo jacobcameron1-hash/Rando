@@ -555,6 +555,11 @@ async function runDraw(request: Request) {
     cycleAction === 'started-new-winner-cycle' ||
     cycleAction === 'disqualified-and-rotated-new-winner';
 
+  const nextCycleStatus =
+    simulateDisqualification && existingCycle.activeWinnerWallet
+      ? existingCycle.status || 'active'
+      : 'active';
+
   const nextCycle = await setProofWinnerCycle({
     tokenMint: TOKEN_MINT,
     activeWinnerWallet: simulateDisqualification
@@ -566,7 +571,7 @@ async function runDraw(request: Request) {
         ? existingCycle.cycleStartedAt || snapshotAt
         : snapshotAt,
     cycleCompletedAt: null,
-    status: existingCycle.status || 'active',
+    status: nextCycleStatus,
     minPayoutSol,
     accumulatedSol: simulateDisqualification
       ? existingCycle.accumulatedSol
