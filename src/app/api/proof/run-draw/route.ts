@@ -8,6 +8,7 @@ import {
   getProofWinnerCycle,
   recordProofWinnerDisqualification,
   setProofWinnerCycle,
+  withProofWinnerCycleLock,
 } from '@/lib/proof-winner-cycle';
 
 import {
@@ -935,7 +936,9 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    return await runDraw(request);
+    return await withProofWinnerCycleLock(async () => {
+      return await runDraw(request);
+    });
   } catch (err: any) {
     return Response.json({
       ok: false,
