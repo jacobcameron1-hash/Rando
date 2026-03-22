@@ -269,9 +269,6 @@ export default function PublicPage() {
   const displayWinnerAmount =
     drawResponse?.winner?.uiAmount ?? latest?.winner?.uiAmount ?? 0;
 
-  const cycleStartedAt = adminConfig?.winnerCycle?.cycleStartedAt || '';
-  const cycleEndingAt = nextDraw?.nextDrawAtIso || '';
-
   const minPayoutSol =
     adminConfig?.config?.minPayoutSol ??
     adminConfig?.winnerCycle?.minPayoutSol ??
@@ -301,6 +298,8 @@ export default function PublicPage() {
 
   const accumulatedSol = winnerCycle?.accumulatedSol ?? 0;
   const cycleStatus = winnerCycle?.status || 'idle';
+  const cycleStartedAt = winnerCycle?.cycleStartedAt || '';
+  const cycleEndingAt = nextDraw?.nextDrawAtIso || '';
 
   return (
     <main className="min-h-screen bg-[#070404] text-white">
@@ -358,60 +357,23 @@ export default function PublicPage() {
 
           {disqualifiedPreviousWinner && (
             <div className="mb-5 rounded-[24px] border border-[#6a2d1c] bg-[#1a0d09] p-5">
-              <div className="text-lg font-black text-[#ffd7b8]">
-                Winner Disqualified
-              </div>
-
-              <div className="mt-3 font-mono text-sm leading-7 text-[#e3b896]">
-                The previous winner dropped below the required minimum of{' '}
-                <span className="font-semibold text-white">
-                  {formatNumber(
-                    disqualifiedPreviousWinner.minimumRequired ?? minTokens
-                  )}{' '}
-                  $RANDO
-                </span>{' '}
-                and was removed from the active payout cycle.
-              </div>
-
-              <div className="mt-4 grid gap-4 md:grid-cols-4">
-                <div className="rounded-[20px] border border-[#3a2417] bg-[#120b09] p-4">
-                  <div className="font-mono text-xs uppercase tracking-wide text-[#b78f73]">
-                    Removed Wallet
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="text-lg font-black text-[#ffd7b8]">
+                    Winner Disqualified
                   </div>
-                  <div className="mt-3">
-                    <WalletRow address={disqualifiedPreviousWinner.owner || ''} />
+                  <div className="mt-2 font-mono text-sm leading-7 text-[#e3b896]">
+                    A winner was removed after dropping below the minimum token
+                    requirement.
                   </div>
                 </div>
 
-                <div className="rounded-[20px] border border-[#3a2417] bg-[#120b09] p-4">
-                  <div className="font-mono text-xs uppercase tracking-wide text-[#b78f73]">
-                    Validated Balance
-                  </div>
-                  <div className="mt-3 text-2xl font-black text-white">
-                    {formatNumber(
-                      disqualifiedPreviousWinner.validatedUiAmount ?? 0
-                    )}
-                  </div>
-                </div>
-
-                <div className="rounded-[20px] border border-[#3a2417] bg-[#120b09] p-4">
-                  <div className="font-mono text-xs uppercase tracking-wide text-[#b78f73]">
-                    Disqualified At
-                  </div>
-                  <div className="mt-3 text-sm leading-6 text-white">
-                    {formatDate(disqualifiedPreviousWinner.disqualifiedAt || '')}
-                  </div>
-                </div>
-
-                <div className="rounded-[20px] border border-[#3a2417] bg-[#120b09] p-4">
-                  <div className="font-mono text-xs uppercase tracking-wide text-[#b78f73]">
-                    Reason
-                  </div>
-                  <div className="mt-3 text-sm leading-6 text-white">
-                    {disqualifiedPreviousWinner.reason ||
-                      'Dropped below minimum token threshold'}
-                  </div>
-                </div>
+                <a
+                  href="#disqualifications"
+                  className="inline-flex items-center justify-center rounded-full border border-[#6a2d1c] bg-[#120b09] px-4 py-2 font-mono text-sm text-[#ffd7b8] transition hover:border-[#8a3a23] hover:text-white"
+                >
+                  Show disqualification details
+                </a>
               </div>
             </div>
           )}
@@ -484,15 +446,31 @@ export default function PublicPage() {
             Winner Cycle Status
           </div>
           <div className="mb-6 font-mono text-sm text-[#b78f73]">
-            Current cycle timing for the live winner
+            Live status for the active payout cycle
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 md:grid-cols-4">
+            <div className="rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5">
+              <div className="font-mono text-sm text-[#b78f73]">Status</div>
+              <div className="mt-3 text-2xl font-black text-white">
+                {cycleStatus}
+              </div>
+            </div>
+
+            <div className="rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5">
+              <div className="font-mono text-sm text-[#b78f73]">
+                Accumulated
+              </div>
+              <div className="mt-3 text-2xl font-black text-white">
+                {formatSol(accumulatedSol)} SOL
+              </div>
+            </div>
+
             <div className="rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5">
               <div className="font-mono text-sm text-[#b78f73]">
                 Cycle Started
               </div>
-              <div className="mt-3 text-xl font-black leading-tight text-white">
+              <div className="mt-3 text-lg font-black leading-tight text-white">
                 {formatDate(cycleStartedAt)}
               </div>
             </div>
@@ -501,10 +479,16 @@ export default function PublicPage() {
               <div className="font-mono text-sm text-[#b78f73]">
                 Cycle Ending
               </div>
-              <div className="mt-3 text-xl font-black leading-tight text-white">
+              <div className="mt-3 text-lg font-black leading-tight text-white">
                 {formatDate(cycleEndingAt)}
               </div>
             </div>
+          </div>
+
+          <div className="mt-4 rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5 font-mono text-sm leading-7 text-[#d5b190]">
+            The winner remains active until payout is ready. If they still meet
+            the minimum token requirement at the next cycle check, they keep the
+            winning slot.
           </div>
         </section>
 
@@ -690,9 +674,12 @@ export default function PublicPage() {
           </div>
         </section>
 
-        <section className="rounded-[32px] border border-[#3a2417] bg-[#18100c] p-6 shadow-[0_18px_50px_rgba(0,0,0,0.42)] sm:p-8">
+        <section
+          id="disqualifications"
+          className="rounded-[32px] border border-[#3a2417] bg-[#18100c] p-6 shadow-[0_18px_50px_rgba(0,0,0,0.42)] sm:p-8"
+        >
           <div className="mb-1 text-3xl font-black text-white sm:text-4xl">
-            Recent Disqualifications
+            Disqualifications
           </div>
           <div className="mb-6 font-mono text-sm text-[#b78f73]">
             Latest 3 winner removals from the payout cycle
