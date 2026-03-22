@@ -140,11 +140,25 @@ async function updateBagsFeeRecipients(winnerWallet: string) {
     );
   }
 
-  return (
-    json.response?.map((item: { tx: string; transaction?: string }) => {
-      return item.tx || item.transaction || '';
-    }).filter(Boolean) || []
-  );
+  const raw = json.response;
+
+  if (!raw) {
+    return [];
+  }
+
+  if (Array.isArray(raw)) {
+    return raw
+      .map((item: any) => item.tx || item.transaction)
+      .filter(Boolean);
+  }
+
+  if (Array.isArray(raw.transactions)) {
+    return raw.transactions
+      .map((item: any) => item.tx || item.transaction)
+      .filter(Boolean);
+  }
+
+  return [];
 }
 
 async function claimBagsFees(feeClaimer: string) {
