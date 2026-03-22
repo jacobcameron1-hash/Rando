@@ -16,6 +16,9 @@ export type ProofWinnerCycleRecord = {
   lastDisqualifiedWinnerAmount: number;
   lastDisqualifiedAt: string | null;
   lastDisqualificationReason: string | null;
+  lastKnownClaimableSol: number;
+  totalClaimedSol: number;
+  lastClaimCheckAt: string | null;
   lastUpdatedAt: string | null;
 };
 
@@ -71,6 +74,9 @@ async function ensureProofWinnerCycleTableExists() {
       last_disqualified_winner_amount numeric(18, 9) NOT NULL DEFAULT 0,
       last_disqualified_at timestamptz,
       last_disqualification_reason text,
+      last_known_claimable_sol numeric(18, 9) NOT NULL DEFAULT 0,
+      total_claimed_sol numeric(18, 9) NOT NULL DEFAULT 0,
+      last_claim_check_at timestamptz,
       last_updated_at timestamptz NOT NULL DEFAULT now()
     )
   `);
@@ -93,6 +99,21 @@ async function ensureProofWinnerCycleTableExists() {
   await db.execute(sql`
     ALTER TABLE proof_winner_cycle
     ADD COLUMN IF NOT EXISTS last_disqualification_reason text
+  `);
+
+  await db.execute(sql`
+    ALTER TABLE proof_winner_cycle
+    ADD COLUMN IF NOT EXISTS last_known_claimable_sol numeric(18, 9) NOT NULL DEFAULT 0
+  `);
+
+  await db.execute(sql`
+    ALTER TABLE proof_winner_cycle
+    ADD COLUMN IF NOT EXISTS total_claimed_sol numeric(18, 9) NOT NULL DEFAULT 0
+  `);
+
+  await db.execute(sql`
+    ALTER TABLE proof_winner_cycle
+    ADD COLUMN IF NOT EXISTS last_claim_check_at timestamptz
   `);
 
   tableReady = true;
@@ -126,6 +147,9 @@ function mapRow(row: Record<string, unknown>): ProofWinnerCycleRecord {
       typeof row.last_disqualification_reason === 'string'
         ? row.last_disqualification_reason
         : null,
+    lastKnownClaimableSol: asNumber(row.last_known_claimable_sol, 0),
+    totalClaimedSol: asNumber(row.total_claimed_sol, 0),
+    lastClaimCheckAt: asIsoString(row.last_claim_check_at),
     lastUpdatedAt: asIsoString(row.last_updated_at),
   };
 }
@@ -149,6 +173,9 @@ export async function getProofWinnerCycle(): Promise<ProofWinnerCycleRecord> {
       last_disqualified_winner_amount,
       last_disqualified_at,
       last_disqualification_reason,
+      last_known_claimable_sol,
+      total_claimed_sol,
+      last_claim_check_at,
       last_updated_at
     FROM proof_winner_cycle
     WHERE id = ${DEFAULT_ID}
@@ -176,6 +203,9 @@ export async function getProofWinnerCycle(): Promise<ProofWinnerCycleRecord> {
     lastDisqualifiedWinnerAmount: 0,
     lastDisqualifiedAt: null,
     lastDisqualificationReason: null,
+    lastKnownClaimableSol: 0,
+    totalClaimedSol: 0,
+    lastClaimCheckAt: null,
     lastUpdatedAt: new Date().toISOString(),
   };
 
@@ -195,6 +225,9 @@ export async function getProofWinnerCycle(): Promise<ProofWinnerCycleRecord> {
       last_disqualified_winner_amount,
       last_disqualified_at,
       last_disqualification_reason,
+      last_known_claimable_sol,
+      total_claimed_sol,
+      last_claim_check_at,
       last_updated_at
     )
     VALUES (
@@ -212,6 +245,9 @@ export async function getProofWinnerCycle(): Promise<ProofWinnerCycleRecord> {
       ${String(defaultRecord.lastDisqualifiedWinnerAmount)},
       ${defaultRecord.lastDisqualifiedAt},
       ${defaultRecord.lastDisqualificationReason},
+      ${String(defaultRecord.lastKnownClaimableSol)},
+      ${String(defaultRecord.totalClaimedSol)},
+      ${defaultRecord.lastClaimCheckAt},
       ${defaultRecord.lastUpdatedAt}
     )
     ON CONFLICT (id) DO NOTHING
@@ -251,6 +287,9 @@ export async function setProofWinnerCycle(
       last_disqualified_winner_amount,
       last_disqualified_at,
       last_disqualification_reason,
+      last_known_claimable_sol,
+      total_claimed_sol,
+      last_claim_check_at,
       last_updated_at
     )
     VALUES (
@@ -268,6 +307,9 @@ export async function setProofWinnerCycle(
       ${String(next.lastDisqualifiedWinnerAmount)},
       ${next.lastDisqualifiedAt},
       ${next.lastDisqualificationReason},
+      ${String(next.lastKnownClaimableSol)},
+      ${String(next.totalClaimedSol)},
+      ${next.lastClaimCheckAt},
       ${next.lastUpdatedAt}
     )
     ON CONFLICT (id)
@@ -285,6 +327,9 @@ export async function setProofWinnerCycle(
       last_disqualified_winner_amount = EXCLUDED.last_disqualified_winner_amount,
       last_disqualified_at = EXCLUDED.last_disqualified_at,
       last_disqualification_reason = EXCLUDED.last_disqualification_reason,
+      last_known_claimable_sol = EXCLUDED.last_known_claimable_sol,
+      total_claimed_sol = EXCLUDED.total_claimed_sol,
+      last_claim_check_at = EXCLUDED.last_claim_check_at,
       last_updated_at = EXCLUDED.last_updated_at
   `);
 
@@ -307,5 +352,8 @@ export async function resetProofWinnerCycle(
     lastDisqualifiedWinnerAmount: 0,
     lastDisqualifiedAt: null,
     lastDisqualificationReason: null,
+    lastKnownClaimableSol: 0,
+    totalClaimedSol: 0,
+    lastClaimCheckAt: null,
   });
 }
