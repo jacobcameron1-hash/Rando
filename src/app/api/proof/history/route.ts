@@ -1,6 +1,14 @@
 import { readProofHistory } from '@/lib/proof-history';
 import { getRecentProofWinnerDisqualifications } from '@/lib/proof-winner-cycle';
 
+function formatUiAmount(value: number) {
+  return Number(value.toFixed(6));
+}
+
+function formatSolAmount(value: number) {
+  return Number(value.toFixed(9));
+}
+
 export async function GET() {
   try {
     const history = await readProofHistory();
@@ -20,10 +28,12 @@ export async function GET() {
       disqualifications: disqualifications.map((item) => ({
         id: item.id,
         wallet: item.wallet,
-        tokenAmount: item.tokenAmount,
+        tokenAmount: formatUiAmount(item.tokenAmount),
         reason: item.reason,
         disqualifiedAt: item.disqualifiedAt,
-        claimableSolAtCheck: item.claimableSolAtCheck,
+        claimableSolAtCheck: formatSolAmount(
+          item.claimableSolAtCheck
+        ),
         createdAt: item.createdAt,
       })),
     });
