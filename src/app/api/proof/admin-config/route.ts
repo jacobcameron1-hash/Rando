@@ -2,6 +2,15 @@ import { getDrawAdminConfig } from '@/lib/draw-admin-config';
 import { getProofWinnerCycle } from '@/lib/proof-winner-cycle';
 
 const RANDO_ADMIN_API_KEY = process.env.RANDO_ADMIN_API_KEY!;
+const BAGS_API_KEY = process.env.BAGS_API_KEY!;
+const BAGS_BASE_URL =
+  process.env.BAGS_BASE_URL || 'https://public-api-v2.bags.fm/api/v1';
+const TOKEN_MINT = 'EZthQ6SUL51jJihQiFMDiZVmZiRMNjMQoTb7rNvTBAGS';
+
+type BagsClaimablePosition = {
+  baseMint?: string;
+  totalClaimableLamportsUserShare?: number;
+};
 
 function isAuthorizedRequest(request: Request) {
   const headerValue = request.headers.get('x-rando-admin-key');
@@ -13,18 +22,91 @@ function isAuthorizedRequest(request: Request) {
   return headerValue === RANDO_ADMIN_API_KEY;
 }
 
+function lamportsToSol(value: number) {
+  return value / 1_000_000_000;
+}
+
+async function getBagsClaimableSol(wallet: string): Promise<number> {
+  const url = new URL(`${BAGS_BASE_URL}/token-launch/claimable-positions`);
+  url.searchParams.set('wallet', wallet);
+
+  const response = await fetch(url.toString(), {
+    method: 'GET',
+    headers: {
+      'x-api-key': BAGS_API_KEY,
+    },
+    cache: 'no-store',
+  });
+
+  const json = await response.json();
+
+  if (!response.ok || !json.success) {
+    throw new Error(
+      json.error || JSON.stringify(json) || 'Bags claimable-positions failed'
+    );
+  }
+
+  const positions: BagsClaimablePosition[] = Array.isArray(json.response)
+    ? json.response
+    : [];
+
+  const totalLamports = positions
+    .filter((position) => position.baseMint === TOKEN_MINT)
+    .reduce((sum, position) => {
+      return sum + Number(position.totalClaimableLamportsUserShare || 0);
+    }, 0);
+
+  return lamportsToSol(totalLamports);
+}
+
 export async function GET(request: Request) {
   try {
     const config = await getDrawAdminConfig();
     const winnerCycle = await getProofWinnerCycle();
-
     const isAdmin = isAuthorizedRequest(request);
+    const { searchParams } = new URL(request.url);
+    const includeVerification = searchParams.get('verify') === '1';
+
+    let verification:
+      | {
+          activeWinnerWallet: string | null;
+          storedAccumulatedSol: number;
+          storedLastKnownClaimableSol: number;
+          storedTotalClaimedSol: number;
+          liveBagsClaimableSol: number | null;
+          bagsMatchesStoredClaimable: boolean | null;
+        }
+      | undefined;
+
+    if (includeVerification) {
+      const activeWinnerWallet = winnerCycle.activeWinnerWallet || null;
+
+      let liveBagsClaimableSol: number | null = null;
+
+      if (activeWinnerWallet) {
+        liveBagsClaimableSol = await getBagsClaimableSol(activeWinnerWallet);
+      }
+
+      verification = {
+        activeWinnerWallet,
+        storedAccumulatedSol: winnerCycle.accumulatedSol,
+        storedLastKnownClaimableSol: winnerCycle.lastKnownClaimableSol,
+        storedTotalClaimedSol: winnerCycle.totalClaimedSol,
+        liveBagsClaimableSol,
+        bagsMatchesStoredClaimable:
+          liveBagsClaimableSol == null
+            ? null
+            : Math.abs(liveBagsClaimableSol - winnerCycle.lastKnownClaimableSol) <
+              0.000000001,
+      };
+    }
 
     if (isAdmin) {
       return Response.json({
         ok: true,
         config,
         winnerCycle,
+        verification,
       });
     }
 
@@ -36,6 +118,7 @@ export async function GET(request: Request) {
         minTokens: config.minTokens,
       },
       winnerCycle,
+      verification,
     });
   } catch (error) {
     console.error('[admin-config route] GET failed:', {
