@@ -1,5 +1,3 @@
-import { POST as runDraw } from '@/app/api/proof/run-draw/route';
-
 const CRON_SECRET = process.env.CRON_SECRET || '';
 const RANDO_ADMIN_API_KEY = process.env.RANDO_ADMIN_API_KEY || '';
 
@@ -32,20 +30,19 @@ async function runCycle(request: Request) {
       );
     }
 
-    let requestToUse = request;
+    const runDrawUrl = new URL('/api/proof/run-draw', request.url).toString();
 
-    if (isCron && RANDO_ADMIN_API_KEY) {
-      const headers = new Headers(request.headers);
-      headers.delete('authorization');
-      headers.set('x-rando-admin-key', RANDO_ADMIN_API_KEY);
+    const response = await fetch(runDrawUrl, {
+      method: 'POST',
+      headers: {
+        'x-rando-admin-key': RANDO_ADMIN_API_KEY,
+      },
+      cache: 'no-store',
+    });
 
-      requestToUse = new Request(request, { headers });
-    }
-
-    const response = await runDraw(requestToUse);
     const drawData = await response.json();
 
-    if (!drawData?.ok) {
+    if (!response.ok || !drawData?.ok) {
       return Response.json(
         {
           ok: false,
