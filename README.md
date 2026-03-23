@@ -36,13 +36,16 @@ Bags handles all fee collection and distribution on-chain.
 
 > One holder earns the protocol’s fees at a time.
 
-Every cycle:
+Unlike traditional “draw every cycle” systems:
 
-- a new winner is selected
-- fee routing updates to that winner
-- the previous winner stops receiving fees
+- A winner is selected once
+- That winner remains active
+- They accumulate fees continuously
+- They are only replaced if:
+  - payout threshold is reached, or
+  - they become ineligible
 
-No custody. No manual payouts. No trust required.
+This creates a **continuous reward stream**, not a one-off payout.
 
 ---
 
@@ -79,14 +82,34 @@ This runs continuously with no manual intervention.
 1. Fetch all token holders from Solana
 2. Filter holders:
    - Minimum token requirement
-   - Excluded wallets (dev/system)
+   - Excluded wallets
+   - **System-owned wallets only (critical for Bags compatibility)**
 3. Build eligible holder set
 4. Select a random winner
 5. Validate winner still meets requirements (anti-dump)
-6. Update Bags fee routing:
+6. Start or continue winner cycle
+7. Update Bags fee routing:
    - Dev (50%)
    - Winner (50%)
-7. Bags distributes fees automatically
+8. Bags distributes fees automatically
+
+---
+
+## ⚠️ Critical Design Detail
+
+Rando **only selects system-owned wallets**:
+
+
+Owner = 11111111111111111111111111111111
+
+
+This ensures:
+
+- winners are real user wallets
+- Bags can use them as valid fee claimers
+- program-owned accounts (PDAs, vaults) are excluded
+
+This distinction is required for safe production operation.
 
 ---
 
@@ -95,9 +118,10 @@ This runs continuously with no manual intervention.
 - Deterministic draw scheduling (slot-based)
 - Provably fair random selection
 - On-chain holder snapshot + filtering
+- **System wallet validation (Bags compatibility)**
 - Winner validation (anti-dump protection)
 - Automatic disqualification + reroll
-- Winner lifecycle tracking
+- Winner lifecycle tracking (persistent cycle)
 - Duplicate slot protection (DB-level)
 - Draw locking via DB lease (Neon-safe)
 - Transparent proof + history logging
@@ -115,6 +139,7 @@ This runs continuously with no manual intervention.
 - Duplicate slot protection prevents replay
 - DB lease lock prevents concurrent execution
 - Bags transactions are signed server-side only
+- Only system-owned wallets can become winners
 
 ---
 
@@ -133,7 +158,6 @@ This runs continuously with no manual intervention.
 NEXT_PUBLIC_SOLANA_RPC_URL=
 BAGS_API_KEY=
 SOLANA_PRIVATE_KEY=
-BAGS_PAYER_WALLET=
 BAGS_BASE_URL=https://public-api-v2.bags.fm/api/v1
 
 RANDO_DEV_WALLET=
@@ -175,6 +199,7 @@ ALLOW_UNSAFE_DRAW_TESTS=0
 
 ### Phase 3 (Live)
 - Winner becomes fee recipient
+- Persistent winner cycle (not per-draw reset)
 - Bags handles all distribution
 - Manual payout logic removed
 - Fully non-custodial reward system
@@ -194,6 +219,7 @@ Rando replaces that with:
 
 - No custody
 - No manual payouts
+- Continuous reward accumulation
 - Fully transparent selection
 - Native on-chain distribution via Bags
 
@@ -201,7 +227,7 @@ Rando replaces that with:
 
 ## 🛣️ Next Steps
 
-- ⏱️ Automated scheduled draws (cron)
+- ⏱️ Automated scheduled draws (cron stabilization)
 - 💰 Live earned fee tracking UI
 - 🎯 Configurable payout thresholds
 - 🔁 Real-time UI updates
@@ -210,27 +236,3 @@ Rando replaces that with:
 
 ---
 
-## Run Locally
-
-```bash
-npm install
-npm run dev
-Status
-
-Live production system.
-
-Deploy
-git add .
-git commit -m "Update README for production launch"
-git push origin main
-
----
-
-## Step 3: Commit it
-
-Run:
-
-```bash
-git add README.md
-git commit -m "Production README update"
-git push origin main
