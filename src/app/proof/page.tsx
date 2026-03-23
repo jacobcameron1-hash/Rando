@@ -68,17 +68,23 @@ type DrawResponse = {
       accumulatedSol?: number;
       targetReached?: boolean;
       explanation?: string;
+      lastDrawId?: string | null;
+      lastUpdatedAt?: string | null;
+      lastDisqualifiedWinnerWallet?: string | null;
+      lastDisqualifiedWinnerAmount?: number;
+      lastDisqualifiedAt?: string | null;
+      lastDisqualificationReason?: string | null;
+      lastKnownClaimableSol?: number;
+      totalClaimedSol?: number;
+      lastClaimCheckAt?: string | null;
     };
   };
 };
 
-type AdminConfigResponse = {
+type PublicProofResponse = {
   ok: boolean;
-  config?: {
-    initialIntervalHours?: number;
-    minPayoutSol?: number;
-    minTokens?: number;
-  };
+  history?: HistoryItem[];
+  disqualifications?: DisqualificationItem[];
   winnerCycle?: {
     activeWinnerWallet?: string | null;
     cycleStartedAt?: string | null;
@@ -93,6 +99,14 @@ type AdminConfigResponse = {
     lastDisqualifiedWinnerAmount?: number;
     lastDisqualifiedAt?: string | null;
     lastDisqualificationReason?: string | null;
+    lastKnownClaimableSol?: number;
+    totalClaimedSol?: number;
+    lastClaimCheckAt?: string | null;
+  };
+  config?: {
+    initialIntervalHours?: number;
+    minPayoutSol?: number;
+    minTokens?: number;
   };
 };
 
@@ -146,36 +160,31 @@ export default function PublicPage() {
   const [copied, setCopied] = useState<string | null>(null);
   const [drawResponse, setDrawResponse] = useState<DrawResponse | null>(null);
   const [drawError, setDrawError] = useState<string | null>(null);
-  const [adminConfig, setAdminConfig] = useState<AdminConfigResponse | null>(
+  const [publicProof, setPublicProof] = useState<PublicProofResponse | null>(
     null
   );
 
   async function load() {
     try {
-      const [historyResponse, nextDrawResponse, adminConfigResponse] =
-        await Promise.all([
-          fetch('/api/proof/history', {
-            cache: 'no-store',
-          }),
-          fetch('/api/proof/next-draw', {
-            cache: 'no-store',
-          }),
-          fetch('/api/proof/admin-config', {
-            cache: 'no-store',
-          }),
-        ]);
+      const [historyResponse, nextDrawResponse] = await Promise.all([
+        fetch('/api/proof/history', {
+          cache: 'no-store',
+        }),
+        fetch('/api/proof/next-draw', {
+          cache: 'no-store',
+        }),
+      ]);
 
       const historyData = await historyResponse.json();
       const nextDrawData = await nextDrawResponse.json();
-      const adminConfigData = await adminConfigResponse.json();
 
       const nextSchedule = nextDrawData.schedule || null;
 
       setHistory(historyData.history || []);
       setDisqualifications(historyData.disqualifications || []);
+      setPublicProof(historyData || null);
       setNextDraw(nextSchedule);
       setCountdownMs(nextSchedule?.countdownMs ?? 0);
-      setAdminConfig(adminConfigData || null);
     } catch (error) {
       console.error('Failed to load proof data', error);
     }
@@ -260,9 +269,12 @@ export default function PublicPage() {
     );
   }
 
+  const publicWinnerCycle = publicProof?.winnerCycle || null;
+  const publicConfig = publicProof?.config || null;
+
   const displayWinnerAddress =
     drawResponse?.winner?.owner ||
-    adminConfig?.winnerCycle?.activeWinnerWallet ||
+    publicWinnerCycle?.activeWinnerWallet ||
     latest?.winner?.owner ||
     '';
 
@@ -270,28 +282,29 @@ export default function PublicPage() {
     drawResponse?.winner?.uiAmount ?? latest?.winner?.uiAmount ?? 0;
 
   const minPayoutSol =
-    adminConfig?.config?.minPayoutSol ??
-    adminConfig?.winnerCycle?.minPayoutSol ??
+    drawResponse?.proof?.winnerCycle?.minPayoutSol ??
+    publicConfig?.minPayoutSol ??
+    publicWinnerCycle?.minPayoutSol ??
     0.05;
 
-  const minTokens = adminConfig?.config?.minTokens ?? 1000000;
-  const drawFrequencyHours = adminConfig?.config?.initialIntervalHours ?? 1;
+  const minTokens = publicConfig?.minTokens ?? 1000000;
+  const drawFrequencyHours = publicConfig?.initialIntervalHours ?? 1;
 
   const winnerCycle =
-    drawResponse?.proof?.winnerCycle || adminConfig?.winnerCycle || null;
+    drawResponse?.proof?.winnerCycle || publicWinnerCycle || null;
 
   const disqualifiedPreviousWinner =
     drawResponse?.proof?.disqualifiedPreviousWinner ||
-    (adminConfig?.winnerCycle?.lastDisqualifiedWinnerWallet
+    (publicWinnerCycle?.lastDisqualifiedWinnerWallet
       ? {
-          owner: adminConfig.winnerCycle.lastDisqualifiedWinnerWallet,
+          owner: publicWinnerCycle.lastDisqualifiedWinnerWallet,
           validatedUiAmount:
-            adminConfig.winnerCycle.lastDisqualifiedWinnerAmount ?? 0,
+            publicWinnerCycle.lastDisqualifiedWinnerAmount ?? 0,
           minimumRequired: minTokens,
           reason:
-            adminConfig.winnerCycle.lastDisqualificationReason ||
+            publicWinnerCycle.lastDisqualificationReason ||
             'Dropped below minimum token threshold',
-          disqualifiedAt: adminConfig.winnerCycle.lastDisqualifiedAt || '',
+          disqualifiedAt: publicWinnerCycle.lastDisqualifiedAt || '',
           claimableSolAtCheck: 0,
         }
       : null);
