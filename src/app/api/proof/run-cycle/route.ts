@@ -1,8 +1,47 @@
 import { POST as runDraw } from '@/app/api/proof/run-draw/route';
 
+const CRON_SECRET = process.env.CRON_SECRET || '';
+const RANDO_ADMIN_API_KEY = process.env.RANDO_ADMIN_API_KEY || '';
+
+function isVercelCronRequest(request: Request): boolean {
+  const authHeader = request.headers.get('authorization') || '';
+  if (!CRON_SECRET) {
+    return false;
+  }
+  return authHeader === `Bearer ${CRON_SECRET}`;
+}
+
+function isAdminRequest(request: Request): boolean {
+  const adminKey = request.headers.get('x-rando-admin-key') || '';
+  return RANDO_ADMIN_API_KEY && adminKey === RANDO_ADMIN_API_KEY;
+}
+
 async function runCycle(request: Request) {
   try {
-    const response = await runDraw(request);
+    const isCron = isVercelCronRequest(request);
+    const isAdmin = isAdminRequest(request);
+
+    if (!isCron && !isAdmin) {
+      return Response.json(
+        {
+          ok: false,
+          error: 'Unauthorized. Valid CRON_SECRET or x-rando-admin-key required.',
+        },
+        { status: 401 }
+      );
+    }
+
+    let requestToUse = request;
+
+    if (isCron && RANDO_ADMIN_API_KEY) {
+      const headers = new Headers(request.headers);
+      headers.delete('authorization');
+      headers.set('x-rando-admin-key', RANDO_ADMIN_API_KEY);
+
+      requestToUse = new Request(request, { headers });
+    }
+
+    const response = await runDraw(requestToUse);
     const drawData = await response.json();
 
     if (!drawData?.ok) {
