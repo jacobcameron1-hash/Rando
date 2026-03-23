@@ -281,20 +281,7 @@ export default function PublicPage() {
     drawResponse?.proof?.winnerCycle || adminConfig?.winnerCycle || null;
 
   const disqualifiedPreviousWinner =
-    drawResponse?.proof?.disqualifiedPreviousWinner ||
-    (adminConfig?.winnerCycle?.lastDisqualifiedWinnerWallet
-      ? {
-          owner: adminConfig.winnerCycle.lastDisqualifiedWinnerWallet,
-          validatedUiAmount:
-            adminConfig.winnerCycle.lastDisqualifiedWinnerAmount ?? 0,
-          minimumRequired: minTokens,
-          reason:
-            adminConfig.winnerCycle.lastDisqualificationReason ||
-            'Dropped below minimum token threshold',
-          disqualifiedAt: adminConfig.winnerCycle.lastDisqualifiedAt || '',
-          claimableSolAtCheck: 0,
-        }
-      : null);
+    drawResponse?.proof?.disqualifiedPreviousWinner || null;
 
   const accumulatedSol = winnerCycle?.accumulatedSol ?? 0;
   const cycleStatus = winnerCycle?.status || 'idle';
