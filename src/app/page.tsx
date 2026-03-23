@@ -104,7 +104,7 @@ function formatNumber(value: number) {
 
 function formatSol(value: number) {
   return new Intl.NumberFormat('en-US', {
-    minimumFractionDigits: 2,
+    minimumFractionDigits: 3,
     maximumFractionDigits: 4,
   }).format(value);
 }
