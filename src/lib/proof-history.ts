@@ -188,3 +188,12 @@ export async function hasProofHistorySlot(slotId: string): Promise<boolean> {
   const match = await findProofHistoryBySlotId(slotId);
   return Boolean(match);
 }
+
+export async function deleteProofHistoryBySlotId(slotId: string): Promise<void> {
+  await ensureHistoryTableExists();
+
+  await db.execute(sql`
+    DELETE FROM proof_history
+    WHERE slot_id = ${slotId}
+  `);
+}
