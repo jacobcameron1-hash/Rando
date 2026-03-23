@@ -1,5 +1,9 @@
 import { readProofHistory } from '@/lib/proof-history';
-import { getRecentProofWinnerDisqualifications } from '@/lib/proof-winner-cycle';
+import {
+  getProofWinnerCycle,
+  getRecentProofWinnerDisqualifications,
+} from '@/lib/proof-winner-cycle';
+import { getDrawAdminConfig } from '@/lib/draw-admin-config';
 
 function formatUiAmount(value: number) {
   return Number(value.toFixed(6));
@@ -11,8 +15,12 @@ function formatSolAmount(value: number) {
 
 export async function GET() {
   try {
-    const history = await readProofHistory();
-    const disqualifications = await getRecentProofWinnerDisqualifications(3);
+    const [history, disqualifications, winnerCycle, config] = await Promise.all([
+      readProofHistory(),
+      getRecentProofWinnerDisqualifications(3),
+      getProofWinnerCycle(),
+      getDrawAdminConfig(),
+    ]);
 
     const latestThree = history.slice(0, 3).map((item) => ({
       drawId: item.drawId,
@@ -31,11 +39,36 @@ export async function GET() {
         tokenAmount: formatUiAmount(item.tokenAmount),
         reason: item.reason,
         disqualifiedAt: item.disqualifiedAt,
-        claimableSolAtCheck: formatSolAmount(
-          item.claimableSolAtCheck
-        ),
+        claimableSolAtCheck: formatSolAmount(item.claimableSolAtCheck),
         createdAt: item.createdAt,
       })),
+      winnerCycle: {
+        activeWinnerWallet: winnerCycle.activeWinnerWallet,
+        cycleStartedAt: winnerCycle.cycleStartedAt,
+        cycleCompletedAt: winnerCycle.cycleCompletedAt,
+        status: winnerCycle.status,
+        minPayoutSol: formatSolAmount(winnerCycle.minPayoutSol),
+        accumulatedSol: formatSolAmount(winnerCycle.accumulatedSol),
+        targetReached: winnerCycle.targetReached,
+        lastDrawId: winnerCycle.lastDrawId,
+        lastUpdatedAt: winnerCycle.lastUpdatedAt,
+        lastDisqualifiedWinnerWallet: winnerCycle.lastDisqualifiedWinnerWallet,
+        lastDisqualifiedWinnerAmount: formatUiAmount(
+          winnerCycle.lastDisqualifiedWinnerAmount
+        ),
+        lastDisqualifiedAt: winnerCycle.lastDisqualifiedAt,
+        lastDisqualificationReason: winnerCycle.lastDisqualificationReason,
+        lastKnownClaimableSol: formatSolAmount(
+          winnerCycle.lastKnownClaimableSol
+        ),
+        totalClaimedSol: formatSolAmount(winnerCycle.totalClaimedSol),
+        lastClaimCheckAt: winnerCycle.lastClaimCheckAt,
+      },
+      config: {
+        initialIntervalHours: config.initialIntervalHours,
+        minPayoutSol: formatSolAmount(config.minPayoutSol),
+        minTokens: config.minTokens,
+      },
     });
   } catch (err: any) {
     return Response.json({
