@@ -267,7 +267,7 @@ async function filterSystemOwnedWallets(holders: Holder[]) {
         continue;
       }
 
-      if (accountInfo.owner.equals(SystemProgram.programId)) {
+      if (!accountInfo.owner.equals(SystemProgram.programId)) {
         valid.push(holder);
       }
     }
@@ -532,7 +532,7 @@ async function runDraw(request: Request) {
   if (eligible.length === 0) {
     return Response.json({
       ok: false,
-      error: 'No eligible system-owned holders found',
+      error: 'No eligible holders found after filtering system-owned accounts',
     });
   }
 
