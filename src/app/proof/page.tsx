@@ -330,6 +330,15 @@ export default function PublicPage() {
             Live on-chain proof of winner selection and reward routing
           </div>
 
+          <div className="mt-6">
+            <a
+              href="/try"
+              className="inline-flex items-center justify-center rounded-2xl bg-[#e23b28] px-6 py-4 font-mono text-base font-semibold text-white transition hover:bg-[#f04a36]"
+            >
+              Try it with your coin →
+            </a>
+          </div>
+
           {(drawError || drawResponse?.reason) && (
             <div className="mx-auto mt-4 max-w-xl rounded-xl border border-[#4a2519] bg-[#130b09] px-4 py-2 font-mono text-xs text-[#d9b393]">
               {drawError || drawResponse?.reason}
