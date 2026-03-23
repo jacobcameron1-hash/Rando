@@ -15,22 +15,26 @@ function isAuthorizedRequest(request: Request) {
 
 export async function GET(request: Request) {
   try {
-    if (!isAuthorizedRequest(request)) {
-      return Response.json(
-        {
-          ok: false,
-          error: 'Unauthorized',
-        },
-        { status: 401 }
-      );
-    }
-
     const config = await getDrawAdminConfig();
     const winnerCycle = await getProofWinnerCycle();
 
+    const isAdmin = isAuthorizedRequest(request);
+
+    if (isAdmin) {
+      return Response.json({
+        ok: true,
+        config,
+        winnerCycle,
+      });
+    }
+
     return Response.json({
       ok: true,
-      config,
+      config: {
+        initialIntervalHours: config.initialIntervalHours,
+        minPayoutSol: config.minPayoutSol,
+        minTokens: config.minTokens,
+      },
       winnerCycle,
     });
   } catch (error) {
