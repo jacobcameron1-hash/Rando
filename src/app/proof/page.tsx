@@ -299,7 +299,7 @@ export default function PublicPage() {
   const accumulatedSol = winnerCycle?.accumulatedSol ?? 0;
   const cycleStatus = winnerCycle?.status || 'idle';
   const cycleStartedAt = winnerCycle?.cycleStartedAt || '';
-  const cycleEndingAt = nextDraw?.nextDrawAtIso || '';
+  const nextCycleCheckAt = nextDraw?.nextDrawAtIso || '';
 
   return (
     <main className="min-h-screen bg-[#070404] text-white">
@@ -429,16 +429,16 @@ export default function PublicPage() {
                     {formattedCountdown}
                   </div>
                   <div className="mt-2 font-mono text-sm text-[#d5b190]">
-                    until next draw validation
+                    until next winner validation
                   </div>
                 </div>
 
                 <div className="rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5">
                   <div className="font-mono text-sm text-[#b78f73]">
-                    Ending At
+                    Next Check At
                   </div>
                   <div className="mt-3 text-lg font-black leading-tight text-white">
-                    {formatDate(cycleEndingAt)}
+                    {formatDate(nextCycleCheckAt)}
                   </div>
                 </div>
               </div>
@@ -486,18 +486,18 @@ export default function PublicPage() {
 
             <div className="rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5">
               <div className="font-mono text-sm text-[#b78f73]">
-                Cycle Ending
+                Next Validation
               </div>
               <div className="mt-3 text-lg font-black leading-tight text-white">
-                {formatDate(cycleEndingAt)}
+                {formatDate(nextCycleCheckAt)}
               </div>
             </div>
           </div>
 
           <div className="mt-4 rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5 font-mono text-sm leading-7 text-[#d5b190]">
-            The winner remains active until payout is ready. If they still meet
-            the minimum token requirement at the next cycle check, they keep the
-            winning slot.
+            The winner remains active until payout is ready. The scheduled time
+            shown on this page is the next validation check, not the guaranteed
+            end of the winner cycle.
           </div>
         </section>
 
@@ -607,7 +607,7 @@ export default function PublicPage() {
 
         <section className="mb-6 grid gap-4 md:grid-cols-3">
           <div className="rounded-[26px] border border-[#3a2417] bg-[#120b09] p-5 shadow-[0_10px_30px_rgba(0,0,0,0.35)]">
-            <div className="font-mono text-sm text-[#b78f73]">Next Draw</div>
+            <div className="font-mono text-sm text-[#b78f73]">Next Check</div>
             <div className="mt-3 text-2xl font-black leading-tight text-white">
               {nextDraw?.nextDrawAtIso ? formatDate(nextDraw.nextDrawAtIso) : '—'}
             </div>
