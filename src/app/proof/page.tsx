@@ -310,6 +310,9 @@ export default function PublicPage() {
       : null);
 
   const accumulatedSol = winnerCycle?.accumulatedSol ?? 0;
+  const currentClaimableSol = winnerCycle?.lastKnownClaimableSol ?? 0;
+  const totalClaimedSol = winnerCycle?.totalClaimedSol ?? 0;
+  const lastClaimCheckAt = winnerCycle?.lastClaimCheckAt || '';
   const cycleStatus = winnerCycle?.status || 'idle';
   const cycleStartedAt = winnerCycle?.cycleStartedAt || '';
   const nextCycleCheckAt = nextDraw?.nextDrawAtIso || '';
@@ -424,13 +427,25 @@ export default function PublicPage() {
 
                 <div className="rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5">
                   <div className="font-mono text-sm text-[#b78f73]">
-                    Accumulated
+                    Current Claimable
                   </div>
                   <div className="mt-3 text-2xl font-black text-white sm:text-3xl">
-                    {formatSol(accumulatedSol)} SOL
+                    {formatSol(currentClaimableSol)} SOL
                   </div>
                   <div className="mt-2 font-mono text-sm text-[#d5b190]">
-                    {formatSol(minPayoutSol)} SOL minimum before payout
+                    last checked {formatDate(lastClaimCheckAt)}
+                  </div>
+                </div>
+
+                <div className="rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5">
+                  <div className="font-mono text-sm text-[#b78f73]">
+                    Cycle Progress
+                  </div>
+                  <div className="mt-3 text-2xl font-black text-white sm:text-3xl">
+                    {formatSol(accumulatedSol)} / {formatSol(minPayoutSol)} SOL
+                  </div>
+                  <div className="mt-2 font-mono text-sm text-[#d5b190]">
+                    total toward winner payout threshold
                   </div>
                 </div>
 
@@ -445,13 +460,24 @@ export default function PublicPage() {
                     until next winner validation
                   </div>
                 </div>
+              </div>
 
+              <div className="grid gap-4 md:grid-cols-2">
                 <div className="rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5">
                   <div className="font-mono text-sm text-[#b78f73]">
                     Next Check At
                   </div>
                   <div className="mt-3 text-lg font-black leading-tight text-white">
                     {formatDate(nextCycleCheckAt)}
+                  </div>
+                </div>
+
+                <div className="rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5">
+                  <div className="font-mono text-sm text-[#b78f73]">
+                    Total Claimed This Cycle
+                  </div>
+                  <div className="mt-3 text-lg font-black leading-tight text-white">
+                    {formatSol(totalClaimedSol)} SOL
                   </div>
                 </div>
               </div>
@@ -481,10 +507,10 @@ export default function PublicPage() {
 
             <div className="rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5">
               <div className="font-mono text-sm text-[#b78f73]">
-                Accumulated
+                Current Claimable
               </div>
               <div className="mt-3 text-2xl font-black text-white">
-                {formatSol(accumulatedSol)} SOL
+                {formatSol(currentClaimableSol)} SOL
               </div>
             </div>
 
@@ -508,9 +534,9 @@ export default function PublicPage() {
           </div>
 
           <div className="mt-4 rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5 font-mono text-sm leading-7 text-[#d5b190]">
-            The winner remains active until payout is ready. The scheduled time
-            shown on this page is the next validation check, not the guaranteed
-            end of the winner cycle.
+            The winner remains active until payout is ready. Current Claimable is
+            the last observed Bags claimable amount. Cycle Progress tracks total
+            payout progress toward the minimum threshold.
           </div>
         </section>
 
