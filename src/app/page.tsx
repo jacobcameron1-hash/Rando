@@ -94,7 +94,10 @@ type AdminConfigResponse = {
     lastDisqualifiedAt?: string | null;
     lastDisqualificationReason?: string | null;
   };
+  liveBagsClaimableSol?: number | null;
 };
+
+const LIVE_CLAIMABLE_REFRESH_MS = 10 * 60 * 1000;
 
 function formatNumber(value: number) {
   return new Intl.NumberFormat('en-US', {
@@ -149,6 +152,10 @@ export default function PublicPage() {
   const [adminConfig, setAdminConfig] = useState<AdminConfigResponse | null>(
     null
   );
+  const [liveClaimableSol, setLiveClaimableSol] = useState<number | null>(null);
+  const [liveClaimableCountdownMs, setLiveClaimableCountdownMs] = useState(
+    LIVE_CLAIMABLE_REFRESH_MS
+  );
 
   async function load() {
     try {
@@ -176,6 +183,12 @@ export default function PublicPage() {
       setNextDraw(nextSchedule);
       setCountdownMs(nextSchedule?.countdownMs ?? 0);
       setAdminConfig(adminConfigData || null);
+      setLiveClaimableSol(
+        typeof adminConfigData?.liveBagsClaimableSol === 'number'
+          ? adminConfigData.liveBagsClaimableSol
+          : null
+      );
+      setLiveClaimableCountdownMs(LIVE_CLAIMABLE_REFRESH_MS);
     } catch (error) {
       console.error('Failed to load proof data', error);
     }
@@ -194,16 +207,35 @@ export default function PublicPage() {
   useEffect(() => {
     const countdownInterval = setInterval(() => {
       setCountdownMs((current) => Math.max(0, current - 1000));
+      setLiveClaimableCountdownMs((current) => {
+        if (current <= 1000) {
+          return LIVE_CLAIMABLE_REFRESH_MS;
+        }
+
+        return current - 1000;
+      });
     }, 1000);
 
     return () => clearInterval(countdownInterval);
   }, []);
+
+  useEffect(() => {
+    if (liveClaimableCountdownMs > 0) {
+      return;
+    }
+
+    load();
+  }, [liveClaimableCountdownMs]);
 
   const latest = history[0];
 
   const formattedCountdown = useMemo(() => {
     return formatCountdown(countdownMs);
   }, [countdownMs]);
+
+  const formattedLiveClaimableCountdown = useMemo(() => {
+    return formatCountdown(liveClaimableCountdownMs);
+  }, [liveClaimableCountdownMs]);
 
   const eligibleCount =
     drawResponse?.counts?.eligibleCount ?? latest?.counts?.eligibleCount ?? 0;
@@ -288,7 +320,7 @@ export default function PublicPage() {
   const disqualifiedPreviousWinner =
     drawResponse?.proof?.disqualifiedPreviousWinner || null;
 
-  const accumulatedSol = winnerCycle?.accumulatedSol ?? 0;
+  const accumulatedSol = liveClaimableSol ?? winnerCycle?.accumulatedSol ?? 0;
   const cycleStatus = winnerCycle?.status || 'idle';
   const cycleStartedAt = winnerCycle?.cycleStartedAt || '';
   const cycleEndingAt = nextDraw?.nextDrawAtIso || '';
@@ -411,6 +443,9 @@ export default function PublicPage() {
                   <div className="mt-2 font-mono text-sm text-[#d5b190]">
                     {formatSol(minPayoutSol)} SOL minimum before payout
                   </div>
+                  <div className="mt-2 font-mono text-xs text-[#b78f73]">
+                    live Bags value refreshes every 10 minutes
+                  </div>
                 </div>
 
                 <div className="rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5">
@@ -427,11 +462,21 @@ export default function PublicPage() {
 
                 <div className="rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5">
                   <div className="font-mono text-sm text-[#b78f73]">
-                    Ending At
+                    Live Amount Refresh
                   </div>
-                  <div className="mt-3 text-lg font-black leading-tight text-white">
-                    {formatDate(cycleEndingAt)}
+                  <div className="mt-3 text-2xl font-black text-white sm:text-3xl">
+                    {formattedLiveClaimableCountdown}
                   </div>
+                  <div className="mt-2 font-mono text-sm text-[#d5b190]">
+                    until next Bags amount update
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5">
+                <div className="font-mono text-sm text-[#b78f73]">Ending At</div>
+                <div className="mt-3 text-lg font-black leading-tight text-white">
+                  {formatDate(cycleEndingAt)}
                 </div>
               </div>
             </div>
@@ -460,7 +505,7 @@ export default function PublicPage() {
 
             <div className="rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5">
               <div className="font-mono text-sm text-[#b78f73]">
-                Accumulated
+                Live Claimable
               </div>
               <div className="mt-3 text-2xl font-black text-white">
                 {formatSol(accumulatedSol)} SOL

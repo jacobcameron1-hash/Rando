@@ -67,6 +67,14 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const includeVerification = searchParams.get('verify') === '1';
 
+    const activeWinnerWallet = winnerCycle.activeWinnerWallet || null;
+
+    let liveBagsClaimableSol: number | null = null;
+
+    if (activeWinnerWallet) {
+      liveBagsClaimableSol = await getBagsClaimableSol(activeWinnerWallet);
+    }
+
     let verification:
       | {
           activeWinnerWallet: string | null;
@@ -79,14 +87,6 @@ export async function GET(request: Request) {
       | undefined;
 
     if (includeVerification) {
-      const activeWinnerWallet = winnerCycle.activeWinnerWallet || null;
-
-      let liveBagsClaimableSol: number | null = null;
-
-      if (activeWinnerWallet) {
-        liveBagsClaimableSol = await getBagsClaimableSol(activeWinnerWallet);
-      }
-
       verification = {
         activeWinnerWallet,
         storedAccumulatedSol: winnerCycle.accumulatedSol,
@@ -106,6 +106,7 @@ export async function GET(request: Request) {
         ok: true,
         config,
         winnerCycle,
+        liveBagsClaimableSol,
         verification,
       });
     }
@@ -118,6 +119,7 @@ export async function GET(request: Request) {
         minTokens: config.minTokens,
       },
       winnerCycle,
+      liveBagsClaimableSol,
       verification,
     });
   } catch (error) {
