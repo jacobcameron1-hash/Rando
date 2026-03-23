@@ -260,14 +260,19 @@ export default function PublicPage() {
     );
   }
 
-  const displayWinnerAddress =
-    drawResponse?.winner?.owner ||
+  const activeWinnerAddress =
+    drawResponse?.proof?.winnerCycle?.activeWinnerWallet ||
     adminConfig?.winnerCycle?.activeWinnerWallet ||
-    latest?.winner?.owner ||
     '';
 
+  const displayWinnerAddress = activeWinnerAddress;
+
   const displayWinnerAmount =
-    drawResponse?.winner?.uiAmount ?? latest?.winner?.uiAmount ?? 0;
+    activeWinnerAddress && activeWinnerAddress === drawResponse?.winner?.owner
+      ? drawResponse?.winner?.uiAmount ?? 0
+      : activeWinnerAddress && activeWinnerAddress === latest?.winner?.owner
+        ? latest?.winner?.uiAmount ?? 0
+        : 0;
 
   const minPayoutSol =
     adminConfig?.config?.minPayoutSol ??
@@ -432,7 +437,7 @@ export default function PublicPage() {
             </div>
           ) : (
             <div className="rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5 font-mono text-[#b78f73]">
-              No draws yet
+              No active winner yet
             </div>
           )}
         </section>
