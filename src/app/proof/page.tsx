@@ -293,7 +293,7 @@ export default function PublicPage() {
   const winnerCycle =
     drawResponse?.proof?.winnerCycle || publicWinnerCycle || null;
 
-  const disqualifiedPreviousWinner =
+  const rawDisqualifiedPreviousWinner =
     drawResponse?.proof?.disqualifiedPreviousWinner ||
     (publicWinnerCycle?.lastDisqualifiedWinnerWallet
       ? {
@@ -308,6 +308,19 @@ export default function PublicPage() {
           claimableSolAtCheck: 0,
         }
       : null);
+
+  const shouldShowDisqualificationBanner = Boolean(
+    rawDisqualifiedPreviousWinner &&
+      rawDisqualifiedPreviousWinner.owner &&
+      rawDisqualifiedPreviousWinner.owner !== displayWinnerAddress &&
+      !rawDisqualifiedPreviousWinner.reason
+        ?.toLowerCase()
+        .includes('safe test mode simulated')
+  );
+
+  const disqualifiedPreviousWinner = shouldShowDisqualificationBanner
+    ? rawDisqualifiedPreviousWinner
+    : null;
 
   const accumulatedSol = winnerCycle?.accumulatedSol ?? 0;
   const currentClaimableSol = winnerCycle?.lastKnownClaimableSol ?? 0;
