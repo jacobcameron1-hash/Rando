@@ -25,9 +25,8 @@ const HELIUS_RPC_URL = process.env.NEXT_PUBLIC_SOLANA_RPC_URL!;
 const BAGS_API_KEY = process.env.BAGS_API_KEY!;
 const BAGS_BASE_URL =
   process.env.BAGS_BASE_URL || 'https://public-api-v2.bags.fm/api/v1';
-const BAGS_PAYER_WALLET = process.env.BAGS_PAYER_WALLET!;
-const SOLANA_PRIVATE_KEY = process.env.SOLANA_PRIVATE_KEY!;
 const DEV_WALLET = process.env.RANDO_DEV_WALLET!;
+const SOLANA_PRIVATE_KEY = process.env.SOLANA_PRIVATE_KEY!;
 const RANDO_ADMIN_API_KEY = process.env.RANDO_ADMIN_API_KEY!;
 const ALLOW_UNSAFE_DRAW_TESTS = process.env.ALLOW_UNSAFE_DRAW_TESTS === '1';
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
@@ -42,6 +41,14 @@ type BagsClaimablePosition = {
   totalClaimableLamportsUserShare?: number;
 };
 
+type BagsPreparedTransaction = {
+  transaction: string;
+  blockhash?: {
+    blockhash: string;
+    lastValidBlockHeight: number;
+  };
+};
+
 function formatUiAmount(value: number) {
   return Number(value.toFixed(6));
 }
@@ -52,11 +59,6 @@ function formatSolAmount(value: number) {
 
 function lamportsToSol(value: number) {
   return value / 1_000_000_000;
-}
-
-function getAdminKeypair() {
-  const secretKey = bs58.decode(SOLANA_PRIVATE_KEY);
-  return Keypair.fromSecretKey(secretKey);
 }
 
 function getRequestOptions(request: Request) {
@@ -110,28 +112,91 @@ function assertSafeProductionRequest(request: Request) {
   }
 }
 
-async function sendBagsTransactions(transactions: string[]) {
-  if (!transactions.length) {
-    throw new Error('Bags returned no transactions to sign');
+function getSignerKeypair() {
+  if (!SOLANA_PRIVATE_KEY) {
+    throw new Error('Missing SOLANA_PRIVATE_KEY environment variable');
   }
 
-  const connection = new Connection(HELIUS_RPC_URL, 'confirmed');
-  const keypair = getAdminKeypair();
+  const signer = Keypair.fromSecretKey(bs58.decode(SOLANA_PRIVATE_KEY));
 
+  if (signer.publicKey.toBase58() !== DEV_WALLET) {
+    throw new Error(
+      `SOLANA_PRIVATE_KEY does not match RANDO_DEV_WALLET. Expected ${DEV_WALLET}, got ${signer.publicKey.toBase58()}`
+    );
+  }
+
+  return signer;
+}
+
+function decodePreparedTransaction(serialized: string) {
+  const trimmed = serialized.trim();
+
+  // Detect base58 (Solana-style)
+  if (/^[1-9A-HJ-NP-Za-km-z]+$/.test(trimmed)) {
+    return Buffer.from(bs58.decode(trimmed));
+  }
+
+  // Otherwise assume base64
+  return Buffer.from(trimmed, 'base64');
+}
+
+async function signAndSendPreparedTransactions(
+  preparedTransactions: BagsPreparedTransaction[]
+) {
+  const connection = new Connection(HELIUS_RPC_URL, 'confirmed');
+  const signer = getSignerKeypair();
   const signatures: string[] = [];
 
-  for (const txBase58 of transactions) {
-    const txBytes = bs58.decode(txBase58);
-    const tx = VersionedTransaction.deserialize(txBytes);
+  for (const prepared of preparedTransactions) {
+    if (!prepared?.transaction) {
+      throw new Error('Bags returned a transaction entry without transaction data');
+    }
 
-    tx.sign([keypair]);
+    const rawBytes = decodePreparedTransaction(prepared.transaction);
+    const transaction = VersionedTransaction.deserialize(rawBytes);
 
-    const signature = await connection.sendTransaction(tx, {
-      skipPreflight: false,
-      maxRetries: 3,
-    });
+    transaction.sign([signer]);
 
-    await connection.confirmTransaction(signature, 'confirmed');
+    const signature = await connection.sendRawTransaction(
+      Buffer.from(transaction.serialize()),
+      {
+        skipPreflight: false,
+        maxRetries: 3,
+      }
+    );
+
+    if (prepared.blockhash?.blockhash && prepared.blockhash.lastValidBlockHeight) {
+      const confirmation = await connection.confirmTransaction(
+        {
+          signature,
+          blockhash: prepared.blockhash.blockhash,
+          lastValidBlockHeight: prepared.blockhash.lastValidBlockHeight,
+        },
+        'confirmed'
+      );
+
+      if (confirmation.value.err) {
+        throw new Error(
+          `Transaction ${signature} failed confirmation: ${JSON.stringify(
+            confirmation.value.err
+          )}`
+        );
+      }
+    } else {
+      const confirmation = await connection.confirmTransaction(
+        signature,
+        'confirmed'
+      );
+
+      if (confirmation.value.err) {
+        throw new Error(
+          `Transaction ${signature} failed confirmation: ${JSON.stringify(
+            confirmation.value.err
+          )}`
+        );
+      }
+    }
+
     signatures.push(signature);
   }
 
@@ -139,82 +204,60 @@ async function sendBagsTransactions(transactions: string[]) {
 }
 
 async function updateBagsFeeRecipients(winnerWallet: string) {
-  const claimersArray = [DEV_WALLET, winnerWallet];
-  const basisPointsArray = [5000, 5000];
+  console.log('[BAGS] Updating fee recipients...');
 
-  const response = await fetch(
-    `${BAGS_BASE_URL}/fee-share/admin/update-config`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': BAGS_API_KEY,
-      },
-      body: JSON.stringify({
-        baseMint: TOKEN_MINT,
-        claimersArray,
-        basisPointsArray,
-        payer: BAGS_PAYER_WALLET,
-        additionalLookupTables: [],
-      }),
-    }
-  );
+  const payload = {
+    baseMint: TOKEN_MINT,
+    payer: DEV_WALLET,
+    basisPointsArray: [5000, 5000],
+    claimersArray: [DEV_WALLET, winnerWallet],
+  };
 
-  const json = await response.json();
+  console.log('[BAGS] Payload:', payload);
 
-  if (!response.ok || !json.success) {
-    throw new Error(
-      json.error || JSON.stringify(json) || 'Bags update-config failed'
-    );
-  }
-
-  const raw = json.response;
-
-  if (!raw) {
-    return [];
-  }
-
-  if (Array.isArray(raw)) {
-    return raw
-      .map((item: any) => item.tx || item.transaction)
-      .filter(Boolean);
-  }
-
-  if (Array.isArray(raw.transactions)) {
-    return raw.transactions
-      .map((item: any) => item.tx || item.transaction)
-      .filter(Boolean);
-  }
-
-  return [];
-}
-
-async function claimBagsFees(feeClaimer: string) {
-  const response = await fetch(`${BAGS_BASE_URL}/token-launch/claim-txs/v3`, {
+  const res = await fetch(`${BAGS_BASE_URL}/fee-share/admin/update-config`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'x-api-key': BAGS_API_KEY,
     },
-    body: JSON.stringify({
-      feeClaimer,
-      tokenMint: TOKEN_MINT,
-    }),
+    body: JSON.stringify(payload),
   });
 
-  const json = await response.json();
+  const json = await res.json();
 
-  if (!response.ok || !json.success) {
+  console.log('[BAGS] Raw response:', json);
+
+  if (!res.ok || !json.success) {
     throw new Error(
-      json.error || JSON.stringify(json) || 'Bags claim-txs/v3 failed'
+      json.error || JSON.stringify(json) || 'Bags update-config failed'
     );
   }
 
-  return (
-    json.response?.map((item: { tx: string; transaction?: string }) => {
-      return item.tx || item.transaction || '';
-    }).filter(Boolean) || []
-  );
+  const transactions: BagsPreparedTransaction[] = Array.isArray(
+    json.response?.transactions
+  )
+    ? json.response.transactions
+    : [];
+
+  console.log('[BAGS] Transactions received:', transactions.length);
+
+  if (transactions.length === 0) {
+    return [];
+  }
+
+  const signatures = await signAndSendPreparedTransactions(transactions);
+
+  console.log('[BAGS] Config update signatures:', signatures);
+
+  return signatures;
+}
+
+async function claimBagsFees(feeClaimer: string) {
+  console.log('[BAGS DISABLED TEMP] Skipping claim-txs/v3');
+  console.log('[BAGS DISABLED TEMP] fee claimer would have been:', feeClaimer);
+
+  return [];
 }
 
 async function getBagsClaimableSol(wallet: string): Promise<number> {
@@ -267,7 +310,7 @@ async function filterSystemOwnedWallets(holders: Holder[]) {
         continue;
       }
 
-      if (!accountInfo.owner.equals(SystemProgram.programId)) {
+      if (accountInfo.owner.equals(SystemProgram.programId)) {
         valid.push(holder);
       }
     }
@@ -650,26 +693,23 @@ async function runDraw(request: Request) {
       !simulateDisqualification &&
       !simulatePayoutReady
     ) {
-      const claimTransactions = await claimBagsFees(activeWinnerWallet);
-      claimSignatures = await sendBagsTransactions(claimTransactions);
-      claimTriggeredByApp = true;
-      manualPayoutPerformed = true;
-      totalClaimedSol += activeWinnerClaimableSol;
-      accumulatedSol = totalClaimedSol;
-      targetReached = true;
+      await claimBagsFees(activeWinnerWallet);
+      claimSignatures = [];
+      claimTriggeredByApp = false;
+      manualPayoutPerformed = false;
+      totalClaimedSol = existingCycle.totalClaimedSol;
+      accumulatedSol = totalClaimedSol + activeWinnerClaimableSol;
+      targetReached = false;
 
-      const validation = await pickValidatedWinner(
-        eligible,
-        decimals,
-        minTokens,
-        [activeWinnerWallet]
+      winner = {
+        owner: activeWinnerWallet,
+        uiAmount: activeWinnerValidation.validatedUiAmount,
+      };
+      winnerIndex = eligible.findIndex(
+        (holder) => holder.owner === activeWinnerWallet
       );
-
-      winner = validation.winner;
-      winnerIndex = validation.winnerIndex;
-      validatedUiAmount = validation.validatedUiAmount;
-      rerollsDuringValidation = validation.rerolls;
-      cycleAction = 'completed-payout-and-rotated-new-winner';
+      validatedUiAmount = activeWinnerValidation.validatedUiAmount;
+      cycleAction = 'kept-existing-winner';
     } else if (
       effectiveClaimableSol >= minPayoutSol &&
       !simulateDisqualification &&
@@ -724,9 +764,8 @@ async function runDraw(request: Request) {
       cycleAction === 'simulated-payout-ready-rotated-new-winner');
 
   if (shouldUpdateBagsRecipients) {
-    const updateConfigTransactions = await updateBagsFeeRecipients(winner.owner);
-    configSignatures = await sendBagsTransactions(updateConfigTransactions);
-    configUpdated = true;
+    configSignatures = await updateBagsFeeRecipients(winner.owner);
+    configUpdated = configSignatures.length > 0;
   }
 
   const shouldPersistCycle =
@@ -799,8 +838,8 @@ async function runDraw(request: Request) {
           : simulatePayoutReady
             ? 'safe test mode simulated payout-ready rotation without claiming live Bags fees'
             : shouldUpdateBagsRecipients
-              ? 'winner processed and Bags fee split updated when required'
-              : 'winner validated and existing Bags fee split kept',
+              ? 'winner selected and Bags config update transactions were signed and submitted'
+              : 'winner validated and existing active winner kept',
       snapshotAt,
       tokenMint: TOKEN_MINT,
       forced: effectiveForce,
