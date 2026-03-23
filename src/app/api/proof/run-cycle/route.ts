@@ -42,6 +42,18 @@ async function runCycle(request: Request) {
 
     const drawData = await response.json();
 
+    const alreadyProcessed =
+      drawData?.error === 'This scheduled draw slot has already been processed';
+
+    if (alreadyProcessed) {
+      return Response.json({
+        ok: true,
+        step: 'already-processed',
+        message: 'This scheduled draw slot was already processed.',
+        drawResponse: drawData,
+      });
+    }
+
     if (!response.ok || !drawData?.ok) {
       return Response.json(
         {
