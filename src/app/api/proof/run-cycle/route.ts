@@ -12,8 +12,9 @@ function isVercelCronRequest(request: Request): boolean {
 }
 
 function isAdminRequest(request: Request): boolean {
+  if (!RANDO_ADMIN_API_KEY) return false;
   const adminKey = request.headers.get('x-rando-admin-key') || '';
-  return RANDO_ADMIN_API_KEY && adminKey === RANDO_ADMIN_API_KEY;
+  return adminKey === RANDO_ADMIN_API_KEY;
 }
 
 async function runCycle(request: Request) {
