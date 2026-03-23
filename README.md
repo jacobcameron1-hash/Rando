@@ -1,6 +1,6 @@
 # Rando
 
-A provably fair, non-custodial rewards system for Solana token holders — built on top of Bags.
+A provably fair, non-custodial reward system for Solana token holders — powered by Bags.
 
 ---
 
@@ -12,7 +12,7 @@ I suggested this feature to FinnBags — and he told me to build it myself.
 
 So I did.
 
-Rando was built from scratch in one week as a working proof-of-concept for automated, on-chain reward distribution using Bags. Everything in this project — APIs, Solana interactions, and protocol integration — was learned and implemented during that process.
+Rando was built from scratch in one week as a working production system for automated, on-chain reward distribution using Bags.
 
 This is what it looks like when the barrier to building is low enough for anyone to ship.
 
@@ -20,15 +20,29 @@ This is what it looks like when the barrier to building is low enough for anyone
 
 ## What Rando Does
 
-Rando automates holder rewards using Bags fee infrastructure — without ever taking custody of funds.
+Rando turns token holders into rotating fee recipients — automatically.
 
 Instead of manually sending rewards, Rando:
 
 - selects a provably fair eligible wallet
 - continuously validates eligibility (anti-dump protection)
-- updates Bags fee routing to the active winner
+- assigns that wallet to receive protocol fees via Bags
 
-Bags handles all fee collection and payouts on-chain.
+Bags handles all fee collection and distribution on-chain.
+
+---
+
+## 🧠 Core Concept
+
+> One holder earns the protocol’s fees at a time.
+
+Every cycle:
+
+- a new winner is selected
+- fee routing updates to that winner
+- the previous winner stops receiving fees
+
+No custody. No manual payouts. No trust required.
 
 ---
 
@@ -37,7 +51,7 @@ Bags handles all fee collection and payouts on-chain.
 - **50% → Dev wallet**
 - **50% → Active winner**
 
-Rando does **not send tokens or SOL**.
+Rando does **not send SOL or tokens**.
 
 It only updates the Bags fee configuration. All distribution is executed by Bags.
 
@@ -45,17 +59,18 @@ It only updates the Bags fee configuration. All distribution is executed by Bags
 
 ## Winner Lifecycle
 
-Each winner remains active until:
+A winner remains active until:
 
 - they accumulate enough fees to reach the payout threshold, or
 - they fall below the minimum token requirement (auto-disqualified)
 
 If disqualified:
+
 - winner is removed
 - a new eligible holder is selected
 - fee routing is updated
 
-No manual intervention required.
+This runs continuously with no manual intervention.
 
 ---
 
@@ -64,11 +79,11 @@ No manual intervention required.
 1. Fetch all token holders from Solana
 2. Filter holders:
    - Minimum token requirement
-   - Excluded wallets (dev / system)
+   - Excluded wallets (dev/system)
 3. Build eligible holder set
 4. Select a random winner
 5. Validate winner still meets requirements (anti-dump)
-6. Set Bags fee routing:
+6. Update Bags fee routing:
    - Dev (50%)
    - Winner (50%)
 7. Bags distributes fees automatically
@@ -83,27 +98,32 @@ No manual intervention required.
 - Winner validation (anti-dump protection)
 - Automatic disqualification + reroll
 - Winner lifecycle tracking
-- Duplicate draw protection
+- Duplicate slot protection (DB-level)
+- Draw locking via DB lease (Neon-safe)
 - Transparent proof + history logging
 - Bags-native fee routing (no custom payout logic)
-- **Non-custodial by design**
+- Fully **non-custodial by design**
 
 ---
 
 ## 🔐 Production Safety
 
-- Draw execution is **POST-only** (no accidental browser triggers)
-- Requires **admin API key** to run draws
-- No public endpoint can trigger payouts
+- Draw execution is **POST-only**
+- Requires **admin API key**
+- Unsafe test flags disabled in production
+- No public endpoint can trigger draws
+- Duplicate slot protection prevents replay
+- DB lease lock prevents concurrent execution
 - Bags transactions are signed server-side only
 
 ---
 
 ## API Routes
 
-- `/api/proof/run-draw` → executes draw + updates Bags routing (POST only)
-- `/api/proof/next-draw` → returns next scheduled draw
-- `/api/proof/history` → returns past draws
+- `POST /api/proof/run-draw` → execute draw + update routing
+- `GET /api/proof/history` → past draws
+- `GET /api/proof/next-draw` → next scheduled draw
+- `GET /api/proof/admin-config` → admin config (protected)
 
 ---
 
@@ -119,6 +139,25 @@ BAGS_BASE_URL=https://public-api-v2.bags.fm/api/v1
 RANDO_DEV_WALLET=
 RANDO_ADMIN_API_KEY=
 
+ALLOW_UNSAFE_DRAW_TESTS=0
+
+
+⚠️ Important:
+
+- Set `ALLOW_UNSAFE_DRAW_TESTS=1` locally only
+- Keep it `0` in Vercel production/preview
+- Never expose `SOLANA_PRIVATE_KEY`
+
+---
+
+## Architecture Notes
+
+- **Frontend:** Next.js App Router
+- **Backend:** API routes (server-side execution)
+- **Database:** Neon (HTTP) + Drizzle ORM
+- **Locking:** DB row lease (not advisory locks)
+- **Randomness:** deterministic + reproducible
+- **Execution model:** stateless-safe
 
 ---
 
@@ -133,9 +172,8 @@ RANDO_ADMIN_API_KEY=
 ### Phase 2
 - Bags integration
 - Fee routing configuration
-- Claim + payout execution
 
-### Phase 3 (Current)
+### Phase 3 (Live)
 - Winner becomes fee recipient
 - Bags handles all distribution
 - Manual payout logic removed
@@ -146,26 +184,29 @@ RANDO_ADMIN_API_KEY=
 ## Why This Matters
 
 Traditional reward systems require:
+
 - manual payouts
+- custody of funds
 - trust in a central wallet
 - opaque selection processes
 
-Rando removes all of that:
+Rando replaces that with:
 
-- No custody of funds
+- No custody
 - No manual payouts
 - Fully transparent selection
-- Native integration with Bags fee system
+- Native on-chain distribution via Bags
 
 ---
 
 ## 🛣️ Next Steps
 
 - ⏱️ Automated scheduled draws (cron)
-- 💰 Live claimable fee tracking UI
+- 💰 Live earned fee tracking UI
 - 🎯 Configurable payout thresholds
-- 🎉 Real-time UI updates
+- 🔁 Real-time UI updates
 - 🌐 Multi-token support
+- 🧪 Public “Try your token” flow
 
 ---
 
@@ -176,14 +217,20 @@ npm install
 npm run dev
 Status
 
-Hackathon proof-of-concept — built and shipped in one week.
+Live production system.
 
+Deploy
+git add .
+git commit -m "Update README for production launch"
+git push origin main
 
 ---
 
-## GitHub push steps
+## Step 3: Commit it
+
+Run:
 
 ```bash
 git add README.md
-git commit -m "Upgrade README for hackathon"
+git commit -m "Production README update"
 git push origin main
