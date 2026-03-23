@@ -1,5 +1,10 @@
+import { getCurrentDrawSlotFromAdmin } from '@/lib/draw-slot';
 import { getDrawAdminConfig } from '@/lib/draw-admin-config';
-import { resetProofWinnerCycle, withProofWinnerCycleLock } from '@/lib/proof-winner-cycle';
+import { deleteProofHistoryBySlotId } from '@/lib/proof-history';
+import {
+  resetProofWinnerCycle,
+  withProofWinnerCycleLock,
+} from '@/lib/proof-winner-cycle';
 
 const RANDO_ADMIN_API_KEY = process.env.RANDO_ADMIN_API_KEY!;
 
@@ -27,11 +32,16 @@ export async function POST(request: Request) {
 
     return await withProofWinnerCycleLock(async () => {
       const config = await getDrawAdminConfig();
+      const currentSlot = await getCurrentDrawSlotFromAdmin(new Date());
+
+      await deleteProofHistoryBySlotId(currentSlot.slotId);
+
       const winnerCycle = await resetProofWinnerCycle(config.minPayoutSol);
 
       return Response.json({
         ok: true,
         message: 'Proof winner cycle reset successfully.',
+        clearedSlotId: currentSlot.slotId,
         winnerCycle,
       });
     });
