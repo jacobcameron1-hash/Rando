@@ -139,6 +139,19 @@ function getExplorerUrl(address: string) {
   return `https://solscan.io/account/${address}`;
 }
 
+function getShareOnXUrl(address: string, amount: number) {
+  const text = [
+    'A new winner just hit on Rando 🎲',
+    '',
+    `Wallet: ${shortenAddress(address)}`,
+    `Amount: ${formatNumber(amount)}`,
+    '',
+    `https://solscan.io/account/${address}`,
+  ].join('\n');
+
+  return `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
+}
+
 export default function PublicPage() {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [disqualifications, setDisqualifications] = useState<
@@ -228,6 +241,7 @@ export default function PublicPage() {
   }, [liveClaimableCountdownMs]);
 
   const latest = history[0];
+  const previous = history[1];
 
   const formattedCountdown = useMemo(() => {
     return formatCountdown(countdownMs);
@@ -479,6 +493,56 @@ export default function PublicPage() {
                   {formatDate(cycleEndingAt)}
                 </div>
               </div>
+
+              {previous?.winner?.owner && (
+                <div className="rounded-[24px] border border-[#4a2519] bg-[#120b09] p-5">
+                  <div className="mb-3 text-lg font-black text-[#ffd7b8]">
+                    Previous Winner
+                  </div>
+
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <WalletRow address={previous.winner.owner} />
+
+                      <div className="mt-2 text-sm font-mono text-[#b78f73]">
+                        {formatDate(previous.snapshotAt)}
+                      </div>
+                    </div>
+
+                    <div className="text-left sm:text-right">
+                      <div className="text-2xl font-black text-white">
+                        {formatNumber(previous.winner.uiAmount || 0)}
+                      </div>
+                      <div className="mt-1 font-mono text-sm text-[#b78f73]">
+                        winner balance
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap items-center gap-3">
+                    <a
+                      href={getExplorerUrl(previous.winner.owner)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-mono text-[#c7a789] transition hover:border-white/20 hover:text-white"
+                    >
+                      View on Solscan
+                    </a>
+
+                    <a
+                      href={getShareOnXUrl(
+                        previous.winner.owner,
+                        previous.winner.uiAmount || 0
+                      )}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="rounded-full border border-[#e23b28] bg-[#e23b28]/10 px-4 py-2 text-sm font-mono text-[#ffd7b8] transition hover:bg-[#e23b28]/20 hover:text-white"
+                    >
+                      Share on X
+                    </a>
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <div className="rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5 font-mono text-[#b78f73]">
