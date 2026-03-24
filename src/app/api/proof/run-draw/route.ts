@@ -131,12 +131,10 @@ function getSignerKeypair() {
 function decodePreparedTransaction(serialized: string) {
   const trimmed = serialized.trim();
 
-  // Detect base58 (Solana-style)
   if (/^[1-9A-HJ-NP-Za-km-z]+$/.test(trimmed)) {
     return Buffer.from(bs58.decode(trimmed));
   }
 
-  // Otherwise assume base64
   return Buffer.from(trimmed, 'base64');
 }
 
@@ -254,10 +252,30 @@ async function updateBagsFeeRecipients(winnerWallet: string) {
 }
 
 async function claimBagsFees(feeClaimer: string) {
-  console.log('[BAGS DISABLED TEMP] Skipping claim-txs/v3');
-  console.log('[BAGS DISABLED TEMP] fee claimer would have been:', feeClaimer);
+  const response = await fetch(`${BAGS_BASE_URL}/token-launch/claim-txs/v3`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': BAGS_API_KEY,
+    },
+    body: JSON.stringify({ feeClaimer, tokenMint: TOKEN_MINT }),
+  });
 
-  return [];
+  const json = await response.json();
+
+  if (!response.ok || !json.success) {
+    throw new Error(json.error || JSON.stringify(json) || 'Bags claim-txs/v3 failed');
+  }
+
+  const prepared: BagsPreparedTransaction[] = Array.isArray(json.response)
+    ? json.response
+    : [];
+
+  if (prepared.length === 0) {
+    return [];
+  }
+
+  return signAndSendPreparedTransactions(prepared);
 }
 
 async function getBagsClaimableSol(wallet: string): Promise<number> {
@@ -693,23 +711,25 @@ async function runDraw(request: Request) {
       !simulateDisqualification &&
       !simulatePayoutReady
     ) {
-      await claimBagsFees(activeWinnerWallet);
-      claimSignatures = [];
-      claimTriggeredByApp = false;
-      manualPayoutPerformed = false;
-      totalClaimedSol = existingCycle.totalClaimedSol;
-      accumulatedSol = totalClaimedSol + activeWinnerClaimableSol;
-      targetReached = false;
+      claimSignatures = await claimBagsFees(activeWinnerWallet);
+      claimTriggeredByApp = true;
+      manualPayoutPerformed = true;
+      totalClaimedSol = existingCycle.totalClaimedSol + activeWinnerClaimableSol;
+      accumulatedSol = totalClaimedSol;
+      targetReached = true;
 
-      winner = {
-        owner: activeWinnerWallet,
-        uiAmount: activeWinnerValidation.validatedUiAmount,
-      };
-      winnerIndex = eligible.findIndex(
-        (holder) => holder.owner === activeWinnerWallet
+      const validation = await pickValidatedWinner(
+        eligible,
+        decimals,
+        minTokens,
+        [activeWinnerWallet]
       );
-      validatedUiAmount = activeWinnerValidation.validatedUiAmount;
-      cycleAction = 'kept-existing-winner';
+
+      winner = validation.winner;
+      winnerIndex = validation.winnerIndex;
+      validatedUiAmount = validation.validatedUiAmount;
+      rerollsDuringValidation = validation.rerolls;
+      cycleAction = 'completed-payout-and-rotated-new-winner';
     } else if (
       effectiveClaimableSol >= minPayoutSol &&
       !simulateDisqualification &&
