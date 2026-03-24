@@ -280,7 +280,18 @@ async function claimBagsFees(feeClaimer: string) {
     throw new Error('Unexpected Bags claim response shape');
   }
 
-  prepared = prepared.filter((tx) => tx && tx.transaction);
+prepared = prepared
+  .map((tx) => {
+    if (tx?.transaction) return tx;
+    if ((tx as any)?.tx) {
+      return {
+        ...tx,
+        transaction: (tx as any).tx,
+      };
+    }
+    return null;
+  })
+  .filter((tx): tx is BagsPreparedTransaction => Boolean(tx?.transaction));
 
   if (prepared.length === 0) {
     throw new Error('Bags returned no valid transactions to sign');
