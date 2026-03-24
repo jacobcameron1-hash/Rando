@@ -97,8 +97,6 @@ type AdminConfigResponse = {
   liveBagsClaimableSol?: number | null;
 };
 
-const LIVE_CLAIMABLE_REFRESH_MS = 10 * 60 * 1000;
-
 function formatNumber(value: number) {
   return new Intl.NumberFormat('en-US', {
     maximumFractionDigits: 2,
@@ -165,14 +163,11 @@ export default function PublicPage() {
     null
   );
   const [liveClaimableSol, setLiveClaimableSol] = useState<number | null>(null);
-  const [liveClaimableCountdownMs, setLiveClaimableCountdownMs] = useState(
-    LIVE_CLAIMABLE_REFRESH_MS
-  );
-  const [lastLiveClaimableRefreshAt, setLastLiveClaimableRefreshAt] = useState(
-    Date.now()
-  );
+  const [isRefreshingRewards, setIsRefreshingRewards] = useState(false);
 
-  async function load(refreshLiveClaimable = true) {
+  async function load(options?: { refreshLiveClaimable?: boolean }) {
+    const refreshLiveClaimable = options?.refreshLiveClaimable ?? true;
+
     try {
       const [historyResponse, nextDrawResponse, adminConfigResponse] =
         await Promise.all([
@@ -205,19 +200,39 @@ export default function PublicPage() {
             ? adminConfigData.liveBagsClaimableSol
             : null
         );
-        setLastLiveClaimableRefreshAt(Date.now());
-        setLiveClaimableCountdownMs(LIVE_CLAIMABLE_REFRESH_MS);
       }
     } catch (error) {
       console.error('Failed to load proof data', error);
     }
   }
 
+  async function handleRefreshRewards() {
+    try {
+      setIsRefreshingRewards(true);
+
+      const response = await fetch('/api/proof/admin-config', {
+        cache: 'no-store',
+      });
+      const data = await response.json();
+
+      setAdminConfig(data || null);
+      setLiveClaimableSol(
+        typeof data?.liveBagsClaimableSol === 'number'
+          ? data.liveBagsClaimableSol
+          : null
+      );
+    } catch (error) {
+      console.error('Failed to refresh accumulated rewards', error);
+    } finally {
+      setIsRefreshingRewards(false);
+    }
+  }
+
   useEffect(() => {
-    load(true);
+    load({ refreshLiveClaimable: true });
 
     const refreshInterval = setInterval(() => {
-      load(false);
+      load({ refreshLiveClaimable: false });
     }, 15000);
 
     return () => clearInterval(refreshInterval);
@@ -226,24 +241,10 @@ export default function PublicPage() {
   useEffect(() => {
     const countdownInterval = setInterval(() => {
       setCountdownMs((current) => Math.max(0, current - 1000));
-      setLiveClaimableCountdownMs(
-        Math.max(
-          0,
-          LIVE_CLAIMABLE_REFRESH_MS - (Date.now() - lastLiveClaimableRefreshAt)
-        )
-      );
     }, 1000);
 
     return () => clearInterval(countdownInterval);
-  }, [lastLiveClaimableRefreshAt]);
-
-  useEffect(() => {
-    if (liveClaimableCountdownMs > 0) {
-      return;
-    }
-
-    load(true);
-  }, [liveClaimableCountdownMs]);
+  }, []);
 
   const latest = history[0];
   const previous = history[1];
@@ -251,10 +252,6 @@ export default function PublicPage() {
   const formattedCountdown = useMemo(() => {
     return formatCountdown(countdownMs);
   }, [countdownMs]);
-
-  const formattedLiveClaimableCountdown = useMemo(() => {
-    return formatCountdown(liveClaimableCountdownMs);
-  }, [liveClaimableCountdownMs]);
 
   const eligibleCount =
     drawResponse?.counts?.eligibleCount ?? latest?.counts?.eligibleCount ?? 0;
@@ -453,9 +450,22 @@ export default function PublicPage() {
                 </div>
 
                 <div className="rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5">
-                  <div className="font-mono text-sm text-[#b78f73]">
-                    Accumulated Rewards
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="font-mono text-sm text-[#b78f73]">
+                        Accumulated Rewards
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={handleRefreshRewards}
+                      disabled={isRefreshingRewards}
+                      className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-[#c7a789] transition hover:border-white/20 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {isRefreshingRewards ? 'Refreshing...' : 'Refresh'}
+                    </button>
                   </div>
+
                   <div className="mt-3 text-2xl font-black text-white sm:text-3xl">
                     {formatSol(accumulatedSol)} SOL
                   </div>
@@ -466,40 +476,30 @@ export default function PublicPage() {
 
                 <div className="rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5">
                   <div className="font-mono text-sm text-[#b78f73]">
-                    Live Amount Refresh
+                    Next Cycle Check
                   </div>
                   <div className="mt-3 text-2xl font-black text-white sm:text-3xl">
-                    {formattedLiveClaimableCountdown}
+                    {formattedCountdown}
                   </div>
                   <div className="mt-2 font-mono text-sm text-[#d5b190]">
-                    until next Bags amount update
+                    until next draw validation
                   </div>
                 </div>
               </div>
 
               <div className="grid gap-4 lg:grid-cols-2">
                 <div className="rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5">
-                  <div className="grid gap-5 sm:grid-cols-2">
-                    <div>
-                      <div className="font-mono text-sm text-[#b78f73]">
-                        Next Cycle Check
-                      </div>
-                      <div className="mt-3 text-2xl font-black text-white sm:text-3xl">
-                        {formattedCountdown}
-                      </div>
-                      <div className="mt-2 font-mono text-sm text-[#d5b190]">
-                        until next draw validation
-                      </div>
+                  <div>
+                    <div className="font-mono text-sm text-[#b78f73]">
+                      Ending At
                     </div>
+                    <div className="mt-3 text-lg font-black leading-tight text-white">
+                      {formatDate(cycleEndingAt)}
+                    </div>
+                  </div>
 
-                    <div>
-                      <div className="font-mono text-sm text-[#b78f73]">
-                        Ending At
-                      </div>
-                      <div className="mt-3 text-lg font-black leading-tight text-white">
-                        {formatDate(cycleEndingAt)}
-                      </div>
-                    </div>
+                  <div className="mt-4 font-mono text-sm text-[#d5b190]">
+                    current cycle end target
                   </div>
                 </div>
 
