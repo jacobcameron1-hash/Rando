@@ -168,8 +168,11 @@ export default function PublicPage() {
   const [liveClaimableCountdownMs, setLiveClaimableCountdownMs] = useState(
     LIVE_CLAIMABLE_REFRESH_MS
   );
+  const [lastLiveClaimableRefreshAt, setLastLiveClaimableRefreshAt] = useState(
+    Date.now()
+  );
 
-  async function load() {
+  async function load(refreshLiveClaimable = true) {
     try {
       const [historyResponse, nextDrawResponse, adminConfigResponse] =
         await Promise.all([
@@ -195,22 +198,26 @@ export default function PublicPage() {
       setNextDraw(nextSchedule);
       setCountdownMs(nextSchedule?.countdownMs ?? 0);
       setAdminConfig(adminConfigData || null);
-      setLiveClaimableSol(
-        typeof adminConfigData?.liveBagsClaimableSol === 'number'
-          ? adminConfigData.liveBagsClaimableSol
-          : null
-      );
-      setLiveClaimableCountdownMs(LIVE_CLAIMABLE_REFRESH_MS);
+
+      if (refreshLiveClaimable) {
+        setLiveClaimableSol(
+          typeof adminConfigData?.liveBagsClaimableSol === 'number'
+            ? adminConfigData.liveBagsClaimableSol
+            : null
+        );
+        setLastLiveClaimableRefreshAt(Date.now());
+        setLiveClaimableCountdownMs(LIVE_CLAIMABLE_REFRESH_MS);
+      }
     } catch (error) {
       console.error('Failed to load proof data', error);
     }
   }
 
   useEffect(() => {
-    load();
+    load(true);
 
     const refreshInterval = setInterval(() => {
-      load();
+      load(false);
     }, 15000);
 
     return () => clearInterval(refreshInterval);
@@ -219,24 +226,23 @@ export default function PublicPage() {
   useEffect(() => {
     const countdownInterval = setInterval(() => {
       setCountdownMs((current) => Math.max(0, current - 1000));
-      setLiveClaimableCountdownMs((current) => {
-        if (current <= 1000) {
-          return LIVE_CLAIMABLE_REFRESH_MS;
-        }
-
-        return current - 1000;
-      });
+      setLiveClaimableCountdownMs(
+        Math.max(
+          0,
+          LIVE_CLAIMABLE_REFRESH_MS - (Date.now() - lastLiveClaimableRefreshAt)
+        )
+      );
     }, 1000);
 
     return () => clearInterval(countdownInterval);
-  }, []);
+  }, [lastLiveClaimableRefreshAt]);
 
   useEffect(() => {
     if (liveClaimableCountdownMs > 0) {
       return;
     }
 
-    load();
+    load(true);
   }, [liveClaimableCountdownMs]);
 
   const latest = history[0];
@@ -435,7 +441,7 @@ export default function PublicPage() {
                 </div>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-4">
+              <div className="grid gap-4 md:grid-cols-3">
                 <div className="rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5">
                   <div className="font-mono text-sm text-[#b78f73]">Balance</div>
                   <div className="mt-3 text-2xl font-black text-white sm:text-3xl">
@@ -448,28 +454,13 @@ export default function PublicPage() {
 
                 <div className="rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5">
                   <div className="font-mono text-sm text-[#b78f73]">
-                    Accumulated
+                    Accumulated Rewards
                   </div>
                   <div className="mt-3 text-2xl font-black text-white sm:text-3xl">
                     {formatSol(accumulatedSol)} SOL
                   </div>
                   <div className="mt-2 font-mono text-sm text-[#d5b190]">
                     {formatSol(minPayoutSol)} SOL minimum before payout
-                  </div>
-                  <div className="mt-2 font-mono text-xs text-[#b78f73]">
-                    live Bags value refreshes every 10 minutes
-                  </div>
-                </div>
-
-                <div className="rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5">
-                  <div className="font-mono text-sm text-[#b78f73]">
-                    Next Cycle Check
-                  </div>
-                  <div className="mt-3 text-2xl font-black text-white sm:text-3xl">
-                    {formattedCountdown}
-                  </div>
-                  <div className="mt-2 font-mono text-sm text-[#d5b190]">
-                    until next draw validation
                   </div>
                 </div>
 
@@ -486,11 +477,29 @@ export default function PublicPage() {
                 </div>
               </div>
 
-              <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)]">
+              <div className="grid gap-4 lg:grid-cols-2">
                 <div className="rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5">
-                  <div className="font-mono text-sm text-[#b78f73]">Ending At</div>
-                  <div className="mt-3 text-lg font-black leading-tight text-white">
-                    {formatDate(cycleEndingAt)}
+                  <div className="grid gap-5 sm:grid-cols-2">
+                    <div>
+                      <div className="font-mono text-sm text-[#b78f73]">
+                        Next Cycle Check
+                      </div>
+                      <div className="mt-3 text-2xl font-black text-white sm:text-3xl">
+                        {formattedCountdown}
+                      </div>
+                      <div className="mt-2 font-mono text-sm text-[#d5b190]">
+                        until next draw validation
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="font-mono text-sm text-[#b78f73]">
+                        Ending At
+                      </div>
+                      <div className="mt-3 text-lg font-black leading-tight text-white">
+                        {formatDate(cycleEndingAt)}
+                      </div>
+                    </div>
                   </div>
                 </div>
 
