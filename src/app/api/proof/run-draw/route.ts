@@ -263,7 +263,6 @@ async function claimBagsFees(feeClaimer: string) {
 
   const json = await response.json();
 
-  console.log('[BAGS CLAIM RAW]', JSON.stringify(json));
 
   if (!response.ok || !json.success) {
     throw new Error(json.error || JSON.stringify(json) || 'Bags claim-txs/v3 failed');
