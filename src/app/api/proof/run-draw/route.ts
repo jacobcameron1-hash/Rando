@@ -733,7 +733,7 @@ async function runDraw(request: Request) {
       !simulateDisqualification &&
       !simulatePayoutReady
     ) {
-      claimSignatures = await claimBagsFees(activeWinnerWallet);
+      claimSignatures = await claimBagsFees(DEV_WALLET);
       claimTriggeredByApp = true;
       manualPayoutPerformed = true;
       totalClaimedSol = existingCycle.totalClaimedSol + activeWinnerClaimableSol;
