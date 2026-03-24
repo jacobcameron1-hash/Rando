@@ -263,16 +263,27 @@ async function claimBagsFees(feeClaimer: string) {
 
   const json = await response.json();
 
+  console.log('[BAGS CLAIM RAW]', JSON.stringify(json));
+
   if (!response.ok || !json.success) {
     throw new Error(json.error || JSON.stringify(json) || 'Bags claim-txs/v3 failed');
   }
 
-  const prepared: BagsPreparedTransaction[] = Array.isArray(json.response)
-    ? json.response
-    : [];
+  let prepared: BagsPreparedTransaction[] = [];
+
+  if (Array.isArray(json.response)) {
+    prepared = json.response;
+  } else if (Array.isArray(json.response?.transactions)) {
+    prepared = json.response.transactions;
+  } else {
+    console.error('[BAGS CLAIM INVALID SHAPE]', json.response);
+    throw new Error('Unexpected Bags claim response shape');
+  }
+
+  prepared = prepared.filter((tx) => tx && tx.transaction);
 
   if (prepared.length === 0) {
-    return [];
+    throw new Error('Bags returned no valid transactions to sign');
   }
 
   return signAndSendPreparedTransactions(prepared);
