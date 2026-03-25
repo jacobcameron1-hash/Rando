@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 type HistoryItem = {
   drawId: string;
@@ -163,6 +163,12 @@ export default function PublicPage() {
   const [publicProof, setPublicProof] = useState<PublicProofResponse | null>(
     null
   );
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const didAutoRefreshAtZeroRef = useRef(false);
+  const postZeroRefreshTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null
+  );
 
   async function load() {
     try {
@@ -185,19 +191,57 @@ export default function PublicPage() {
       setPublicProof(historyData || null);
       setNextDraw(nextSchedule);
       setCountdownMs(nextSchedule?.countdownMs ?? 0);
+
+      didAutoRefreshAtZeroRef.current = false;
+
+      if (postZeroRefreshTimeoutRef.current) {
+        clearTimeout(postZeroRefreshTimeoutRef.current);
+        postZeroRefreshTimeoutRef.current = null;
+      }
     } catch (error) {
       console.error('Failed to load proof data', error);
     }
   }
 
+  async function handleRefresh() {
+    try {
+      setIsRefreshing(true);
+
+      const [historyResponse, nextDrawResponse] = await Promise.all([
+        fetch('/api/proof/history', {
+          cache: 'no-store',
+        }),
+        fetch('/api/proof/next-draw', {
+          cache: 'no-store',
+        }),
+      ]);
+
+      const historyData = await historyResponse.json();
+      const nextDrawData = await nextDrawResponse.json();
+
+      const nextSchedule = nextDrawData.schedule || null;
+
+      setHistory(historyData.history || []);
+      setDisqualifications(historyData.disqualifications || []);
+      setPublicProof(historyData || null);
+      setNextDraw(nextSchedule);
+      setCountdownMs(nextSchedule?.countdownMs ?? 0);
+
+      didAutoRefreshAtZeroRef.current = false;
+
+      if (postZeroRefreshTimeoutRef.current) {
+        clearTimeout(postZeroRefreshTimeoutRef.current);
+        postZeroRefreshTimeoutRef.current = null;
+      }
+    } catch (error) {
+      console.error('Failed to refresh proof data', error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }
+
   useEffect(() => {
     load();
-
-    const refreshInterval = setInterval(() => {
-      load();
-    }, 15000);
-
-    return () => clearInterval(refreshInterval);
   }, []);
 
   useEffect(() => {
@@ -206,6 +250,33 @@ export default function PublicPage() {
     }, 1000);
 
     return () => clearInterval(countdownInterval);
+  }, []);
+
+  useEffect(() => {
+    if (countdownMs > 0 && countdownMs <= 1000 && !didAutoRefreshAtZeroRef.current) {
+      didAutoRefreshAtZeroRef.current = true;
+
+      handleRefresh();
+
+      postZeroRefreshTimeoutRef.current = setTimeout(() => {
+        handleRefresh();
+      }, 8000);
+    }
+
+    return () => {
+      if (postZeroRefreshTimeoutRef.current && countdownMs > 1000) {
+        clearTimeout(postZeroRefreshTimeoutRef.current);
+        postZeroRefreshTimeoutRef.current = null;
+      }
+    };
+  }, [countdownMs]);
+
+  useEffect(() => {
+    return () => {
+      if (postZeroRefreshTimeoutRef.current) {
+        clearTimeout(postZeroRefreshTimeoutRef.current);
+      }
+    };
   }, []);
 
   const latest = history[0];
@@ -375,6 +446,16 @@ export default function PublicPage() {
               {drawError || drawResponse?.reason}
             </div>
           )}
+
+          <div className="mt-4">
+            <button
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="inline-flex items-center justify-center rounded-full border border-white/10 bg-white/5 px-4 py-2 font-mono text-sm text-[#c7a789] transition hover:border-white/20 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isRefreshing ? 'Refreshing...' : 'Refresh Proof'}
+            </button>
+          </div>
         </section>
 
         <section className="mb-6 rounded-[32px] border border-[#3a2417] bg-[#18100c] p-6 shadow-[0_18px_50px_rgba(0,0,0,0.42)] sm:p-8">
