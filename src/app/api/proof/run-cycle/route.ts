@@ -38,6 +38,8 @@ async function runCycle(request: Request) {
       'x-rando-admin-key': RANDO_ADMIN_API_KEY,
     };
 
+    console.log('[RUN-CYCLE] Bypass secret present:', Boolean(VERCEL_AUTOMATION_BYPASS_SECRET));
+
     if (VERCEL_AUTOMATION_BYPASS_SECRET) {
       headers['x-vercel-protection-bypass'] =
         VERCEL_AUTOMATION_BYPASS_SECRET;
