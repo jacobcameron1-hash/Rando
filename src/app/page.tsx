@@ -222,7 +222,7 @@ export default function PublicPage() {
           : null
       );
     } catch (error) {
-      console.error('Failed to refresh accumulated rewards', error);
+      console.error('Failed to refresh claimable rewards', error);
     } finally {
       setIsRefreshingRewards(false);
     }
@@ -336,10 +336,13 @@ export default function PublicPage() {
   const disqualifiedPreviousWinner =
     drawResponse?.proof?.disqualifiedPreviousWinner || null;
 
-  const accumulatedSol = liveClaimableSol ?? winnerCycle?.accumulatedSol ?? 0;
+  const currentClaimableSol =
+    liveClaimableSol ?? winnerCycle?.accumulatedSol ?? 0;
+
   const cycleStatus = winnerCycle?.status || 'idle';
   const cycleStartedAt = winnerCycle?.cycleStartedAt || '';
   const cycleEndingAt = nextDraw?.nextDrawAtIso || '';
+  const payoutReady = currentClaimableSol >= minPayoutSol;
 
   return (
     <main className="min-h-screen bg-[#070404] text-white">
@@ -453,7 +456,7 @@ export default function PublicPage() {
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <div className="font-mono text-sm text-[#b78f73]">
-                        Accumulated Rewards
+                        Current Claimable Rewards
                       </div>
                     </div>
 
@@ -467,7 +470,7 @@ export default function PublicPage() {
                   </div>
 
                   <div className="mt-3 text-2xl font-black text-white sm:text-3xl">
-                    {formatSol(accumulatedSol)} SOL
+                    {formatSol(currentClaimableSol)} SOL
                   </div>
                   <div className="mt-2 font-mono text-sm text-[#d5b190]">
                     {formatSol(minPayoutSol)} SOL minimum before payout
@@ -568,10 +571,10 @@ export default function PublicPage() {
 
             <div className="rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5">
               <div className="font-mono text-sm text-[#b78f73]">
-                Live Claimable
+                Current Claimable
               </div>
               <div className="mt-3 text-2xl font-black text-white">
-                {formatSol(accumulatedSol)} SOL
+                {formatSol(currentClaimableSol)} SOL
               </div>
             </div>
 
@@ -595,9 +598,9 @@ export default function PublicPage() {
           </div>
 
           <div className="mt-4 rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5 font-mono text-sm leading-7 text-[#d5b190]">
-            The winner remains active until payout is ready. If they still meet
-            the minimum token requirement at the next cycle check, they keep the
-            winning slot.
+            Payout is checked when the draw system runs. If current claimable
+            rewards are at or above {formatSol(minPayoutSol)} SOL at that check,
+            payout should trigger and a new winner should be selected.
           </div>
         </section>
 
