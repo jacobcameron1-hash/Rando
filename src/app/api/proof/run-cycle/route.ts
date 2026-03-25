@@ -1,5 +1,7 @@
 const CRON_SECRET = process.env.CRON_SECRET || '';
 const RANDO_ADMIN_API_KEY = process.env.RANDO_ADMIN_API_KEY || '';
+const VERCEL_AUTOMATION_BYPASS_SECRET =
+  process.env.VERCEL_AUTOMATION_BYPASS_SECRET || '';
 
 function isVercelCronRequest(request: Request): boolean {
   const authHeader = request.headers.get('authorization') || '';
@@ -32,24 +34,36 @@ async function runCycle(request: Request) {
 
     const runDrawUrl = new URL('/api/proof/run-draw', request.url).toString();
 
+    const headers: Record<string, string> = {
+      'x-rando-admin-key': RANDO_ADMIN_API_KEY,
+    };
+
+    if (VERCEL_AUTOMATION_BYPASS_SECRET) {
+      headers['x-vercel-protection-bypass'] =
+        VERCEL_AUTOMATION_BYPASS_SECRET;
+    }
+
     const response = await fetch(runDrawUrl, {
       method: 'POST',
-      headers: {
-        'x-rando-admin-key': RANDO_ADMIN_API_KEY,
-      },
+      headers,
       cache: 'no-store',
     });
 
     const responseText = await response.text();
     console.log('[RUN-CYCLE] Fetch response status:', response.status);
-    console.log('[RUN-CYCLE] Fetch response first 200 chars:', responseText.substring(0, 200));
+    console.log(
+      '[RUN-CYCLE] Fetch response first 200 chars:',
+      responseText.substring(0, 200)
+    );
 
     let drawData;
     try {
       drawData = JSON.parse(responseText);
     } catch (parseError) {
       console.error('[RUN-CYCLE] Failed to parse JSON response:', parseError);
-      throw new Error(`run-draw returned non-JSON (status ${response.status}): ${responseText.substring(0, 500)}`);
+      throw new Error(
+        `run-draw returned non-JSON (status ${response.status}): ${responseText.substring(0, 500)}`
+      );
     }
 
     const alreadyProcessed =
