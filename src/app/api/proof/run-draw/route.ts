@@ -263,7 +263,6 @@ async function claimBagsFees(feeClaimer: string) {
 
   const json = await response.json();
 
-
   if (!response.ok || !json.success) {
     throw new Error(json.error || JSON.stringify(json) || 'Bags claim-txs/v3 failed');
   }
@@ -279,18 +278,18 @@ async function claimBagsFees(feeClaimer: string) {
     throw new Error('Unexpected Bags claim response shape');
   }
 
-prepared = prepared
-  .map((tx) => {
-    if (tx?.transaction) return tx;
-    if ((tx as any)?.tx) {
-      return {
-        ...tx,
-        transaction: (tx as any).tx,
-      };
-    }
-    return null;
-  })
-  .filter((tx): tx is BagsPreparedTransaction => Boolean(tx?.transaction));
+  prepared = prepared
+    .map((tx) => {
+      if (tx?.transaction) return tx;
+      if ((tx as any)?.tx) {
+        return {
+          ...tx,
+          transaction: (tx as any).tx,
+        };
+      }
+      return null;
+    })
+    .filter((tx): tx is BagsPreparedTransaction => Boolean(tx?.transaction));
 
   if (prepared.length === 0) {
     throw new Error('Bags returned no valid transactions to sign');
@@ -732,12 +731,12 @@ async function runDraw(request: Request) {
       !simulateDisqualification &&
       !simulatePayoutReady
     ) {
-      claimSignatures = await claimBagsFees(DEV_WALLET);
-      claimTriggeredByApp = true;
-      manualPayoutPerformed = true;
-      totalClaimedSol = existingCycle.totalClaimedSol + activeWinnerClaimableSol;
-      accumulatedSol = totalClaimedSol;
+      claimSignatures = [];
+      claimTriggeredByApp = false;
+      manualPayoutPerformed = false;
       targetReached = true;
+      totalClaimedSol = existingCycle.totalClaimedSol;
+      accumulatedSol = totalClaimedSol + activeWinnerClaimableSol;
 
       const validation = await pickValidatedWinner(
         eligible,
@@ -750,7 +749,7 @@ async function runDraw(request: Request) {
       winnerIndex = validation.winnerIndex;
       validatedUiAmount = validation.validatedUiAmount;
       rerollsDuringValidation = validation.rerolls;
-      cycleAction = 'completed-payout-and-rotated-new-winner';
+      cycleAction = 'threshold-reached-rotated-new-winner-no-app-claim';
     } else if (
       effectiveClaimableSol >= minPayoutSol &&
       !simulateDisqualification &&
@@ -801,6 +800,7 @@ async function runDraw(request: Request) {
     !simulateDisqualification &&
     (cycleAction === 'started-new-winner-cycle' ||
       cycleAction === 'disqualified-and-rotated-new-winner' ||
+      cycleAction === 'threshold-reached-rotated-new-winner-no-app-claim' ||
       cycleAction === 'completed-payout-and-rotated-new-winner' ||
       cycleAction === 'simulated-payout-ready-rotated-new-winner');
 
@@ -818,6 +818,7 @@ async function runDraw(request: Request) {
     const shouldResetCycleProgress =
       cycleAction === 'started-new-winner-cycle' ||
       cycleAction === 'disqualified-and-rotated-new-winner' ||
+      cycleAction === 'threshold-reached-rotated-new-winner-no-app-claim' ||
       cycleAction === 'completed-payout-and-rotated-new-winner' ||
       cycleAction === 'simulated-payout-ready-rotated-new-winner';
 
@@ -843,7 +844,8 @@ async function runDraw(request: Request) {
           ? existingCycle.cycleStartedAt || snapshotAt
           : snapshotAt,
       cycleCompletedAt:
-        cycleAction === 'completed-payout-and-rotated-new-winner'
+        cycleAction === 'completed-payout-and-rotated-new-winner' ||
+        cycleAction === 'threshold-reached-rotated-new-winner-no-app-claim'
           ? snapshotAt
           : null,
       status: nextCycleStatus,
@@ -876,11 +878,13 @@ async function runDraw(request: Request) {
       step:
         cycleAction === 'simulated-disqualification-preview-only'
           ? 'safe test mode disqualification preview only; no live winner-cycle, history, or Bags routing was changed'
-          : simulatePayoutReady
-            ? 'safe test mode simulated payout-ready rotation without claiming live Bags fees'
-            : shouldUpdateBagsRecipients
-              ? 'winner selected and Bags config update transactions were signed and submitted'
-              : 'winner validated and existing active winner kept',
+          : cycleAction === 'threshold-reached-rotated-new-winner-no-app-claim'
+            ? 'winner threshold reached; app rotated Bags recipient without triggering a manual claim'
+            : simulatePayoutReady
+              ? 'safe test mode simulated payout-ready rotation without claiming live Bags fees'
+              : shouldUpdateBagsRecipients
+                ? 'winner selected and Bags config update transactions were signed and submitted'
+                : 'winner validated and existing active winner kept',
       snapshotAt,
       tokenMint: TOKEN_MINT,
       forced: effectiveForce,
