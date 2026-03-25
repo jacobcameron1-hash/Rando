@@ -210,15 +210,25 @@ export default function PublicPage() {
     try {
       setIsRefreshingRewards(true);
 
-      const response = await fetch('/api/proof/admin-config', {
-        cache: 'no-store',
-      });
-      const data = await response.json();
+      const [nextDrawResponse, adminConfigResponse] = await Promise.all([
+        fetch('/api/proof/next-draw', {
+          cache: 'no-store',
+        }),
+        fetch('/api/proof/admin-config', {
+          cache: 'no-store',
+        }),
+      ]);
 
-      setAdminConfig(data || null);
+      const nextDrawData = await nextDrawResponse.json();
+      const adminConfigData = await adminConfigResponse.json();
+      const nextSchedule = nextDrawData.schedule || null;
+
+      setNextDraw(nextSchedule);
+      setCountdownMs(nextSchedule?.countdownMs ?? 0);
+      setAdminConfig(adminConfigData || null);
       setLiveClaimableSol(
-        typeof data?.liveBagsClaimableSol === 'number'
-          ? data.liveBagsClaimableSol
+        typeof adminConfigData?.liveBagsClaimableSol === 'number'
+          ? adminConfigData.liveBagsClaimableSol
           : null
       );
     } catch (error) {
@@ -230,12 +240,6 @@ export default function PublicPage() {
 
   useEffect(() => {
     load({ refreshLiveClaimable: true });
-
-    const refreshInterval = setInterval(() => {
-      load({ refreshLiveClaimable: false });
-    }, 15000);
-
-    return () => clearInterval(refreshInterval);
   }, []);
 
   useEffect(() => {
