@@ -40,7 +40,17 @@ async function runCycle(request: Request) {
       cache: 'no-store',
     });
 
-    const drawData = await response.json();
+    const responseText = await response.text();
+    console.log('[RUN-CYCLE] Fetch response status:', response.status);
+    console.log('[RUN-CYCLE] Fetch response first 200 chars:', responseText.substring(0, 200));
+
+    let drawData;
+    try {
+      drawData = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error('[RUN-CYCLE] Failed to parse JSON response:', parseError);
+      throw new Error(`run-draw returned non-JSON (status ${response.status}): ${responseText.substring(0, 500)}`);
+    }
 
     const alreadyProcessed =
       drawData?.error === 'This scheduled draw slot has already been processed';
