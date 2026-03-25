@@ -329,6 +329,8 @@ export default function PublicPage() {
   const cycleStatus = winnerCycle?.status || 'idle';
   const cycleStartedAt = winnerCycle?.cycleStartedAt || '';
   const nextCycleCheckAt = nextDraw?.nextDrawAtIso || '';
+  const payoutReady = currentClaimableSol >= minPayoutSol;
+  const payoutGapSol = Math.max(0, minPayoutSol - currentClaimableSol);
 
   return (
     <main className="min-h-screen bg-[#070404] text-white">
@@ -427,6 +429,62 @@ export default function PublicPage() {
                 </div>
               </div>
 
+              <div
+                className={`rounded-[24px] border p-5 ${
+                  payoutReady
+                    ? 'border-[#355c37] bg-[#0d140e]'
+                    : 'border-[#5a2b1d] bg-[#140d0a]'
+                }`}
+              >
+                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <div className="font-mono text-sm text-[#b78f73]">
+                      Payout Trigger Check
+                    </div>
+                    <div className="mt-3 text-3xl font-black text-white">
+                      {formatSol(currentClaimableSol)} / {formatSol(minPayoutSol)} SOL
+                    </div>
+                    <div className="mt-2 font-mono text-sm text-[#d5b190]">
+                      payout triggers only when current claimable reaches the minimum
+                    </div>
+                  </div>
+
+                  <div
+                    className={`rounded-full px-4 py-2 font-mono text-sm font-semibold ${
+                      payoutReady
+                        ? 'border border-[#4d8c51] bg-[#16301a] text-[#d7ffd9]'
+                        : 'border border-[#7a3a28] bg-[#25120d] text-[#ffd7b8]'
+                    }`}
+                  >
+                    {payoutReady ? 'Payout Ready' : 'Not Ready Yet'}
+                  </div>
+                </div>
+
+                <div className="mt-4 grid gap-4 md:grid-cols-2">
+                  <div className="rounded-[20px] border border-white/5 bg-black/10 p-4">
+                    <div className="font-mono text-xs uppercase tracking-wide text-[#b78f73]">
+                      Current Claimable
+                    </div>
+                    <div className="mt-2 text-2xl font-black text-white">
+                      {formatSol(currentClaimableSol)} SOL
+                    </div>
+                  </div>
+
+                  <div className="rounded-[20px] border border-white/5 bg-black/10 p-4">
+                    <div className="font-mono text-xs uppercase tracking-wide text-[#b78f73]">
+                      Remaining To Trigger
+                    </div>
+                    <div className="mt-2 text-2xl font-black text-white">
+                      {payoutReady ? '0.0000 SOL' : `${formatSol(payoutGapSol)} SOL`}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-4 font-mono text-sm leading-7 text-[#d5b190]">
+                  Last checked: {formatDate(lastClaimCheckAt)}
+                </div>
+              </div>
+
               <div className="grid gap-4 md:grid-cols-4">
                 <div className="rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5">
                   <div className="font-mono text-sm text-[#b78f73]">Balance</div>
@@ -446,19 +504,19 @@ export default function PublicPage() {
                     {formatSol(currentClaimableSol)} SOL
                   </div>
                   <div className="mt-2 font-mono text-sm text-[#d5b190]">
-                    last checked {formatDate(lastClaimCheckAt)}
+                    exact payout trigger value
                   </div>
                 </div>
 
                 <div className="rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5">
                   <div className="font-mono text-sm text-[#b78f73]">
-                    Cycle Progress
+                    Minimum Payout
                   </div>
                   <div className="mt-3 text-2xl font-black text-white sm:text-3xl">
-                    {formatSol(accumulatedSol)} / {formatSol(minPayoutSol)} SOL
+                    {formatSol(minPayoutSol)} SOL
                   </div>
                   <div className="mt-2 font-mono text-sm text-[#d5b190]">
-                    total toward winner payout threshold
+                    threshold required to trigger payout
                   </div>
                 </div>
 
@@ -475,7 +533,7 @@ export default function PublicPage() {
                 </div>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-4 md:grid-cols-3">
                 <div className="rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5">
                   <div className="font-mono text-sm text-[#b78f73]">
                     Next Check At
@@ -491,6 +549,18 @@ export default function PublicPage() {
                   </div>
                   <div className="mt-3 text-lg font-black leading-tight text-white">
                     {formatSol(totalClaimedSol)} SOL
+                  </div>
+                </div>
+
+                <div className="rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5">
+                  <div className="font-mono text-sm text-[#b78f73]">
+                    Cycle Progress
+                  </div>
+                  <div className="mt-3 text-lg font-black leading-tight text-white">
+                    {formatSol(accumulatedSol)} SOL
+                  </div>
+                  <div className="mt-2 font-mono text-sm text-[#d5b190]">
+                    tracking only, not the payout trigger
                   </div>
                 </div>
               </div>
@@ -547,9 +617,9 @@ export default function PublicPage() {
           </div>
 
           <div className="mt-4 rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5 font-mono text-sm leading-7 text-[#d5b190]">
-            The winner remains active until payout is ready. Current Claimable is
-            the last observed Bags claimable amount. Cycle Progress tracks total
-            payout progress toward the minimum threshold.
+            Payout readiness is determined by Current Claimable, not Cycle
+            Progress. Cycle Progress is useful for tracking, but the payout only
+            triggers when the current claimable value reaches the minimum payout.
           </div>
         </section>
 
