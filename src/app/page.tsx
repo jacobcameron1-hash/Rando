@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 type HistoryItem = {
   drawId: string;
@@ -165,6 +165,11 @@ export default function PublicPage() {
   const [liveClaimableSol, setLiveClaimableSol] = useState<number | null>(null);
   const [isRefreshingRewards, setIsRefreshingRewards] = useState(false);
 
+  const didAutoRefreshAtZeroRef = useRef(false);
+  const postZeroRefreshTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null
+  );
+
   async function load(options?: { refreshLiveClaimable?: boolean }) {
     const refreshLiveClaimable = options?.refreshLiveClaimable ?? true;
 
@@ -201,6 +206,13 @@ export default function PublicPage() {
             : null
         );
       }
+
+      didAutoRefreshAtZeroRef.current = false;
+
+      if (postZeroRefreshTimeoutRef.current) {
+        clearTimeout(postZeroRefreshTimeoutRef.current);
+        postZeroRefreshTimeoutRef.current = null;
+      }
     } catch (error) {
       console.error('Failed to load proof data', error);
     }
@@ -210,19 +222,27 @@ export default function PublicPage() {
     try {
       setIsRefreshingRewards(true);
 
-      const [nextDrawResponse, adminConfigResponse] = await Promise.all([
-        fetch('/api/proof/next-draw', {
-          cache: 'no-store',
-        }),
-        fetch('/api/proof/admin-config', {
-          cache: 'no-store',
-        }),
-      ]);
+      const [nextDrawResponse, adminConfigResponse, historyResponse] =
+        await Promise.all([
+          fetch('/api/proof/next-draw', {
+            cache: 'no-store',
+          }),
+          fetch('/api/proof/admin-config', {
+            cache: 'no-store',
+          }),
+          fetch('/api/proof/history', {
+            cache: 'no-store',
+          }),
+        ]);
 
       const nextDrawData = await nextDrawResponse.json();
       const adminConfigData = await adminConfigResponse.json();
+      const historyData = await historyResponse.json();
+
       const nextSchedule = nextDrawData.schedule || null;
 
+      setHistory(historyData.history || []);
+      setDisqualifications(historyData.disqualifications || []);
       setNextDraw(nextSchedule);
       setCountdownMs(nextSchedule?.countdownMs ?? 0);
       setAdminConfig(adminConfigData || null);
@@ -231,6 +251,13 @@ export default function PublicPage() {
           ? adminConfigData.liveBagsClaimableSol
           : null
       );
+
+      didAutoRefreshAtZeroRef.current = false;
+
+      if (postZeroRefreshTimeoutRef.current) {
+        clearTimeout(postZeroRefreshTimeoutRef.current);
+        postZeroRefreshTimeoutRef.current = null;
+      }
     } catch (error) {
       console.error('Failed to refresh claimable rewards', error);
     } finally {
@@ -248,6 +275,33 @@ export default function PublicPage() {
     }, 1000);
 
     return () => clearInterval(countdownInterval);
+  }, []);
+
+  useEffect(() => {
+    if (countdownMs > 0 && countdownMs <= 1000 && !didAutoRefreshAtZeroRef.current) {
+      didAutoRefreshAtZeroRef.current = true;
+
+      handleRefreshRewards();
+
+      postZeroRefreshTimeoutRef.current = setTimeout(() => {
+        handleRefreshRewards();
+      }, 8000);
+    }
+
+    return () => {
+      if (postZeroRefreshTimeoutRef.current && countdownMs > 1000) {
+        clearTimeout(postZeroRefreshTimeoutRef.current);
+        postZeroRefreshTimeoutRef.current = null;
+      }
+    };
+  }, [countdownMs]);
+
+  useEffect(() => {
+    return () => {
+      if (postZeroRefreshTimeoutRef.current) {
+        clearTimeout(postZeroRefreshTimeoutRef.current);
+      }
+    };
   }, []);
 
   const latest = history[0];
