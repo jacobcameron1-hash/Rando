@@ -68,23 +68,17 @@ type DrawResponse = {
       accumulatedSol?: number;
       targetReached?: boolean;
       explanation?: string;
-      lastDrawId?: string | null;
-      lastUpdatedAt?: string | null;
-      lastDisqualifiedWinnerWallet?: string | null;
-      lastDisqualifiedWinnerAmount?: number;
-      lastDisqualifiedAt?: string | null;
-      lastDisqualificationReason?: string | null;
-      lastKnownClaimableSol?: number;
-      totalClaimedSol?: number;
-      lastClaimCheckAt?: string | null;
     };
   };
 };
 
-type PublicProofResponse = {
+type AdminConfigResponse = {
   ok: boolean;
-  history?: HistoryItem[];
-  disqualifications?: DisqualificationItem[];
+  config?: {
+    initialIntervalHours?: number;
+    minPayoutSol?: number;
+    minTokens?: number;
+  };
   winnerCycle?: {
     activeWinnerWallet?: string | null;
     cycleStartedAt?: string | null;
@@ -99,15 +93,8 @@ type PublicProofResponse = {
     lastDisqualifiedWinnerAmount?: number;
     lastDisqualifiedAt?: string | null;
     lastDisqualificationReason?: string | null;
-    lastKnownClaimableSol?: number;
-    totalClaimedSol?: number;
-    lastClaimCheckAt?: string | null;
   };
-  config?: {
-    initialIntervalHours?: number;
-    minPayoutSol?: number;
-    minTokens?: number;
-  };
+  liveBagsClaimableSol?: number | null;
 };
 
 function formatNumber(value: number) {
@@ -118,7 +105,7 @@ function formatNumber(value: number) {
 
 function formatSol(value: number) {
   return new Intl.NumberFormat('en-US', {
-    minimumFractionDigits: 2,
+    minimumFractionDigits: 3,
     maximumFractionDigits: 4,
   }).format(value);
 }
@@ -150,6 +137,27 @@ function getExplorerUrl(address: string) {
   return `https://solscan.io/account/${address}`;
 }
 
+function getShareOnXUrl(address: string) {
+  const text = [
+    'A new winner just hit on Rando 🎲',
+    '',
+    `Wallet: ${shortenAddress(address)}`,
+    '',
+    `https://solscan.io/account/${address}`,
+  ].join('\n');
+
+  return `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
+}
+
+function getCountdownMs(nextDrawAtIso?: string | null) {
+  if (!nextDrawAtIso) return 0;
+
+  const targetMs = new Date(nextDrawAtIso).getTime();
+  if (Number.isNaN(targetMs)) return 0;
+
+  return Math.max(0, targetMs - Date.now());
+}
+
 export default function PublicPage() {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [disqualifications, setDisqualifications] = useState<
@@ -160,37 +168,53 @@ export default function PublicPage() {
   const [copied, setCopied] = useState<string | null>(null);
   const [drawResponse, setDrawResponse] = useState<DrawResponse | null>(null);
   const [drawError, setDrawError] = useState<string | null>(null);
-  const [publicProof, setPublicProof] = useState<PublicProofResponse | null>(
+  const [adminConfig, setAdminConfig] = useState<AdminConfigResponse | null>(
     null
   );
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [liveClaimableSol, setLiveClaimableSol] = useState<number | null>(null);
+  const [isRefreshingRewards, setIsRefreshingRewards] = useState(false);
 
   const didAutoRefreshAtZeroRef = useRef(false);
   const postZeroRefreshTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null
   );
 
-  async function load() {
+  async function load(options?: { refreshLiveClaimable?: boolean }) {
+    const refreshLiveClaimable = options?.refreshLiveClaimable ?? true;
+
     try {
-      const [historyResponse, nextDrawResponse] = await Promise.all([
-        fetch('/api/proof/history', {
-          cache: 'no-store',
-        }),
-        fetch('/api/proof/next-draw', {
-          cache: 'no-store',
-        }),
-      ]);
+      const [historyResponse, nextDrawResponse, adminConfigResponse] =
+        await Promise.all([
+          fetch('/api/proof/history', {
+            cache: 'no-store',
+          }),
+          fetch('/api/proof/next-draw', {
+            cache: 'no-store',
+          }),
+          fetch('/api/proof/admin-config', {
+            cache: 'no-store',
+          }),
+        ]);
 
       const historyData = await historyResponse.json();
       const nextDrawData = await nextDrawResponse.json();
+      const adminConfigData = await adminConfigResponse.json();
 
       const nextSchedule = nextDrawData.schedule || null;
 
       setHistory(historyData.history || []);
       setDisqualifications(historyData.disqualifications || []);
-      setPublicProof(historyData || null);
       setNextDraw(nextSchedule);
-      setCountdownMs(nextSchedule?.countdownMs ?? 0);
+      setCountdownMs(getCountdownMs(nextSchedule?.nextDrawAtIso));
+      setAdminConfig(adminConfigData || null);
+
+      if (refreshLiveClaimable) {
+        setLiveClaimableSol(
+          typeof adminConfigData?.liveBagsClaimableSol === 'number'
+            ? adminConfigData.liveBagsClaimableSol
+            : null
+        );
+      }
 
       didAutoRefreshAtZeroRef.current = false;
 
@@ -203,29 +227,39 @@ export default function PublicPage() {
     }
   }
 
-  async function handleRefresh() {
+  async function handleRefreshRewards() {
     try {
-      setIsRefreshing(true);
+      setIsRefreshingRewards(true);
 
-      const [historyResponse, nextDrawResponse] = await Promise.all([
-        fetch('/api/proof/history', {
-          cache: 'no-store',
-        }),
-        fetch('/api/proof/next-draw', {
-          cache: 'no-store',
-        }),
-      ]);
+      const [nextDrawResponse, adminConfigResponse, historyResponse] =
+        await Promise.all([
+          fetch('/api/proof/next-draw', {
+            cache: 'no-store',
+          }),
+          fetch('/api/proof/admin-config', {
+            cache: 'no-store',
+          }),
+          fetch('/api/proof/history', {
+            cache: 'no-store',
+          }),
+        ]);
 
-      const historyData = await historyResponse.json();
       const nextDrawData = await nextDrawResponse.json();
+      const adminConfigData = await adminConfigResponse.json();
+      const historyData = await historyResponse.json();
 
       const nextSchedule = nextDrawData.schedule || null;
 
       setHistory(historyData.history || []);
       setDisqualifications(historyData.disqualifications || []);
-      setPublicProof(historyData || null);
       setNextDraw(nextSchedule);
-      setCountdownMs(nextSchedule?.countdownMs ?? 0);
+      setCountdownMs(getCountdownMs(nextSchedule?.nextDrawAtIso));
+      setAdminConfig(adminConfigData || null);
+      setLiveClaimableSol(
+        typeof adminConfigData?.liveBagsClaimableSol === 'number'
+          ? adminConfigData.liveBagsClaimableSol
+          : null
+      );
 
       didAutoRefreshAtZeroRef.current = false;
 
@@ -234,32 +268,53 @@ export default function PublicPage() {
         postZeroRefreshTimeoutRef.current = null;
       }
     } catch (error) {
-      console.error('Failed to refresh proof data', error);
+      console.error('Failed to refresh claimable rewards', error);
     } finally {
-      setIsRefreshing(false);
+      setIsRefreshingRewards(false);
     }
   }
 
   useEffect(() => {
-    load();
+    load({ refreshLiveClaimable: true });
   }, []);
 
   useEffect(() => {
-    const countdownInterval = setInterval(() => {
-      setCountdownMs((current) => Math.max(0, current - 1000));
-    }, 1000);
+    const recalc = () => {
+      setCountdownMs(getCountdownMs(nextDraw?.nextDrawAtIso));
+    };
 
-    return () => clearInterval(countdownInterval);
-  }, []);
+    recalc();
+
+    const countdownInterval = setInterval(recalc, 1000);
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        recalc();
+      }
+    };
+
+    const handleFocus = () => {
+      recalc();
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      clearInterval(countdownInterval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [nextDraw?.nextDrawAtIso]);
 
   useEffect(() => {
     if (countdownMs > 0 && countdownMs <= 1000 && !didAutoRefreshAtZeroRef.current) {
       didAutoRefreshAtZeroRef.current = true;
 
-      handleRefresh();
+      handleRefreshRewards();
 
       postZeroRefreshTimeoutRef.current = setTimeout(() => {
-        handleRefresh();
+        handleRefreshRewards();
       }, 8000);
     }
 
@@ -280,6 +335,7 @@ export default function PublicPage() {
   }, []);
 
   const latest = history[0];
+  const previous = history[1];
 
   const formattedCountdown = useMemo(() => {
     return formatCountdown(countdownMs);
@@ -340,68 +396,41 @@ export default function PublicPage() {
     );
   }
 
-  const publicWinnerCycle = publicProof?.winnerCycle || null;
-  const publicConfig = publicProof?.config || null;
-
-  const displayWinnerAddress =
-    drawResponse?.winner?.owner ||
-    publicWinnerCycle?.activeWinnerWallet ||
-    latest?.winner?.owner ||
+  const activeWinnerAddress =
+    drawResponse?.proof?.winnerCycle?.activeWinnerWallet ||
+    adminConfig?.winnerCycle?.activeWinnerWallet ||
     '';
 
+  const displayWinnerAddress = activeWinnerAddress;
+
   const displayWinnerAmount =
-    drawResponse?.winner?.uiAmount ?? latest?.winner?.uiAmount ?? 0;
+    activeWinnerAddress && activeWinnerAddress === drawResponse?.winner?.owner
+      ? drawResponse?.winner?.uiAmount ?? 0
+      : activeWinnerAddress && activeWinnerAddress === latest?.winner?.owner
+        ? latest?.winner?.uiAmount ?? 0
+        : 0;
 
   const minPayoutSol =
-    drawResponse?.proof?.winnerCycle?.minPayoutSol ??
-    publicConfig?.minPayoutSol ??
-    publicWinnerCycle?.minPayoutSol ??
+    adminConfig?.config?.minPayoutSol ??
+    adminConfig?.winnerCycle?.minPayoutSol ??
     0.05;
 
-  const minTokens = publicConfig?.minTokens ?? 1000000;
-  const drawFrequencyHours = publicConfig?.initialIntervalHours ?? 1;
+  const minTokens = adminConfig?.config?.minTokens ?? 1000000;
+  const drawFrequencyHours = adminConfig?.config?.initialIntervalHours ?? 1;
 
   const winnerCycle =
-    drawResponse?.proof?.winnerCycle || publicWinnerCycle || null;
+    drawResponse?.proof?.winnerCycle || adminConfig?.winnerCycle || null;
 
-  const rawDisqualifiedPreviousWinner =
-    drawResponse?.proof?.disqualifiedPreviousWinner ||
-    (publicWinnerCycle?.lastDisqualifiedWinnerWallet
-      ? {
-          owner: publicWinnerCycle.lastDisqualifiedWinnerWallet,
-          validatedUiAmount:
-            publicWinnerCycle.lastDisqualifiedWinnerAmount ?? 0,
-          minimumRequired: minTokens,
-          reason:
-            publicWinnerCycle.lastDisqualificationReason ||
-            'Dropped below minimum token threshold',
-          disqualifiedAt: publicWinnerCycle.lastDisqualifiedAt || '',
-          claimableSolAtCheck: 0,
-        }
-      : null);
+  const disqualifiedPreviousWinner =
+    drawResponse?.proof?.disqualifiedPreviousWinner || null;
 
-  const shouldShowDisqualificationBanner = Boolean(
-    rawDisqualifiedPreviousWinner &&
-      rawDisqualifiedPreviousWinner.owner &&
-      rawDisqualifiedPreviousWinner.owner !== displayWinnerAddress &&
-      !rawDisqualifiedPreviousWinner.reason
-        ?.toLowerCase()
-        .includes('safe test mode simulated')
-  );
+  const currentClaimableSol =
+    liveClaimableSol ?? winnerCycle?.accumulatedSol ?? 0;
 
-  const disqualifiedPreviousWinner = shouldShowDisqualificationBanner
-    ? rawDisqualifiedPreviousWinner
-    : null;
-
-  const accumulatedSol = winnerCycle?.accumulatedSol ?? 0;
-  const currentClaimableSol = winnerCycle?.lastKnownClaimableSol ?? 0;
-  const totalClaimedSol = winnerCycle?.totalClaimedSol ?? 0;
-  const lastClaimCheckAt = winnerCycle?.lastClaimCheckAt || '';
   const cycleStatus = winnerCycle?.status || 'idle';
   const cycleStartedAt = winnerCycle?.cycleStartedAt || '';
-  const nextCycleCheckAt = nextDraw?.nextDrawAtIso || '';
+  const cycleEndingAt = nextDraw?.nextDrawAtIso || '';
   const payoutReady = currentClaimableSol >= minPayoutSol;
-  const payoutGapSol = Math.max(0, minPayoutSol - currentClaimableSol);
 
   return (
     <main className="min-h-screen bg-[#070404] text-white">
@@ -446,16 +475,6 @@ export default function PublicPage() {
               {drawError || drawResponse?.reason}
             </div>
           )}
-
-          <div className="mt-4">
-            <button
-              onClick={handleRefresh}
-              disabled={isRefreshing}
-              className="inline-flex items-center justify-center rounded-full border border-white/10 bg-white/5 px-4 py-2 font-mono text-sm text-[#c7a789] transition hover:border-white/20 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {isRefreshing ? 'Refreshing...' : 'Refresh Proof'}
-            </button>
-          </div>
         </section>
 
         <section className="mb-6 rounded-[32px] border border-[#3a2417] bg-[#18100c] p-6 shadow-[0_18px_50px_rgba(0,0,0,0.42)] sm:p-8">
@@ -510,63 +529,7 @@ export default function PublicPage() {
                 </div>
               </div>
 
-              <div
-                className={`rounded-[24px] border p-5 ${
-                  payoutReady
-                    ? 'border-[#355c37] bg-[#0d140e]'
-                    : 'border-[#5a2b1d] bg-[#140d0a]'
-                }`}
-              >
-                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                  <div>
-                    <div className="font-mono text-sm text-[#b78f73]">
-                      Payout Trigger Check
-                    </div>
-                    <div className="mt-3 text-3xl font-black text-white">
-                      {formatSol(currentClaimableSol)} / {formatSol(minPayoutSol)} SOL
-                    </div>
-                    <div className="mt-2 font-mono text-sm text-[#d5b190]">
-                      payout triggers only when current claimable reaches the minimum
-                    </div>
-                  </div>
-
-                  <div
-                    className={`rounded-full px-4 py-2 font-mono text-sm font-semibold ${
-                      payoutReady
-                        ? 'border border-[#4d8c51] bg-[#16301a] text-[#d7ffd9]'
-                        : 'border border-[#7a3a28] bg-[#25120d] text-[#ffd7b8]'
-                    }`}
-                  >
-                    {payoutReady ? 'Payout Ready' : 'Not Ready Yet'}
-                  </div>
-                </div>
-
-                <div className="mt-4 grid gap-4 md:grid-cols-2">
-                  <div className="rounded-[20px] border border-white/5 bg-black/10 p-4">
-                    <div className="font-mono text-xs uppercase tracking-wide text-[#b78f73]">
-                      Current Claimable
-                    </div>
-                    <div className="mt-2 text-2xl font-black text-white">
-                      {formatSol(currentClaimableSol)} SOL
-                    </div>
-                  </div>
-
-                  <div className="rounded-[20px] border border-white/5 bg-black/10 p-4">
-                    <div className="font-mono text-xs uppercase tracking-wide text-[#b78f73]">
-                      Remaining To Trigger
-                    </div>
-                    <div className="mt-2 text-2xl font-black text-white">
-                      {payoutReady ? '0.0000 SOL' : `${formatSol(payoutGapSol)} SOL`}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-4 font-mono text-sm leading-7 text-[#d5b190]">
-                  Last checked: {formatDate(lastClaimCheckAt)}
-                </div>
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-4">
+              <div className="grid gap-4 md:grid-cols-3">
                 <div className="rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5">
                   <div className="font-mono text-sm text-[#b78f73]">Balance</div>
                   <div className="mt-3 text-2xl font-black text-white sm:text-3xl">
@@ -578,26 +541,27 @@ export default function PublicPage() {
                 </div>
 
                 <div className="rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5">
-                  <div className="font-mono text-sm text-[#b78f73]">
-                    Current Claimable
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="font-mono text-sm text-[#b78f73]">
+                        Current Claimable Rewards
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={handleRefreshRewards}
+                      disabled={isRefreshingRewards}
+                      className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-[#c7a789] transition hover:border-white/20 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {isRefreshingRewards ? 'Refreshing...' : 'Refresh'}
+                    </button>
                   </div>
+
                   <div className="mt-3 text-2xl font-black text-white sm:text-3xl">
                     {formatSol(currentClaimableSol)} SOL
                   </div>
                   <div className="mt-2 font-mono text-sm text-[#d5b190]">
-                    exact payout trigger value
-                  </div>
-                </div>
-
-                <div className="rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5">
-                  <div className="font-mono text-sm text-[#b78f73]">
-                    Minimum Payout
-                  </div>
-                  <div className="mt-3 text-2xl font-black text-white sm:text-3xl">
-                    {formatSol(minPayoutSol)} SOL
-                  </div>
-                  <div className="mt-2 font-mono text-sm text-[#d5b190]">
-                    threshold required to trigger payout
+                    {formatSol(minPayoutSol)} SOL minimum before payout
                   </div>
                 </div>
 
@@ -609,46 +573,70 @@ export default function PublicPage() {
                     {formattedCountdown}
                   </div>
                   <div className="mt-2 font-mono text-sm text-[#d5b190]">
-                    until next winner validation
+                    until next draw validation
                   </div>
                 </div>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-3">
+              <div className="grid gap-4 lg:grid-cols-2">
                 <div className="rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5">
-                  <div className="font-mono text-sm text-[#b78f73]">
-                    Next Check At
+                  <div>
+                    <div className="font-mono text-sm text-[#b78f73]">
+                      Ending At
+                    </div>
+                    <div className="mt-3 text-lg font-black leading-tight text-white">
+                      {formatDate(cycleEndingAt)}
+                    </div>
                   </div>
-                  <div className="mt-3 text-lg font-black leading-tight text-white">
-                    {formatDate(nextCycleCheckAt)}
+
+                  <div className="mt-4 font-mono text-sm text-[#d5b190]">
+                    current cycle end target
                   </div>
                 </div>
 
-                <div className="rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5">
-                  <div className="font-mono text-sm text-[#b78f73]">
-                    Total Claimed This Cycle
-                  </div>
-                  <div className="mt-3 text-lg font-black leading-tight text-white">
-                    {formatSol(totalClaimedSol)} SOL
-                  </div>
-                </div>
+                {previous?.winner?.owner ? (
+                  <div className="rounded-[24px] border border-[#4a2519] bg-[#120b09] p-5">
+                    <div className="mb-3 text-lg font-black text-[#ffd7b8]">
+                      Previous Winner
+                    </div>
 
-                <div className="rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5">
-                  <div className="font-mono text-sm text-[#b78f73]">
-                    Cycle Progress
+                    <div>
+                      <WalletRow address={previous.winner.owner} />
+                      <div className="mt-2 text-sm font-mono text-[#b78f73]">
+                        {formatDate(previous.snapshotAt)}
+                      </div>
+                    </div>
+
+                    <div className="mt-4 flex flex-wrap items-center gap-3">
+                      <a
+                        href={getExplorerUrl(previous.winner.owner)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-mono text-[#c7a789] transition hover:border-white/20 hover:text-white"
+                      >
+                        View on Solscan
+                      </a>
+
+                      <a
+                        href={getShareOnXUrl(previous.winner.owner)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="rounded-full border border-[#e23b28] bg-[#e23b28]/10 px-4 py-2 text-sm font-mono text-[#ffd7b8] transition hover:bg-[#e23b28]/20 hover:text-white"
+                      >
+                        Share on X
+                      </a>
+                    </div>
                   </div>
-                  <div className="mt-3 text-lg font-black leading-tight text-white">
-                    {formatSol(accumulatedSol)} SOL
+                ) : (
+                  <div className="rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5 font-mono text-[#b78f73]">
+                    No previous winner yet
                   </div>
-                  <div className="mt-2 font-mono text-sm text-[#d5b190]">
-                    tracking only, not the payout trigger
-                  </div>
-                </div>
+                )}
               </div>
             </div>
           ) : (
             <div className="rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5 font-mono text-[#b78f73]">
-              No draws yet
+              No active winner yet
             </div>
           )}
         </section>
@@ -689,18 +677,18 @@ export default function PublicPage() {
 
             <div className="rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5">
               <div className="font-mono text-sm text-[#b78f73]">
-                Next Validation
+                Cycle Ending
               </div>
               <div className="mt-3 text-lg font-black leading-tight text-white">
-                {formatDate(nextCycleCheckAt)}
+                {formatDate(cycleEndingAt)}
               </div>
             </div>
           </div>
 
           <div className="mt-4 rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5 font-mono text-sm leading-7 text-[#d5b190]">
-            Payout readiness is determined by Current Claimable, not Cycle
-            Progress. Cycle Progress is useful for tracking, but the payout only
-            triggers when the current claimable value reaches the minimum payout.
+            Payout is checked when the draw system runs. If current claimable
+            rewards are at or above {formatSol(minPayoutSol)} SOL at that check,
+            payout should trigger and a new winner should be selected.
           </div>
         </section>
 
@@ -810,7 +798,7 @@ export default function PublicPage() {
 
         <section className="mb-6 grid gap-4 md:grid-cols-3">
           <div className="rounded-[26px] border border-[#3a2417] bg-[#120b09] p-5 shadow-[0_10px_30px_rgba(0,0,0,0.35)]">
-            <div className="font-mono text-sm text-[#b78f73]">Next Check</div>
+            <div className="font-mono text-sm text-[#b78f73]">Next Draw</div>
             <div className="mt-3 text-2xl font-black leading-tight text-white">
               {nextDraw?.nextDrawAtIso ? formatDate(nextDraw.nextDrawAtIso) : '—'}
             </div>
