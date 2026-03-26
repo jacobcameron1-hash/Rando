@@ -1,4 +1,6 @@
 import { getDrawAdminConfig } from '@/lib/draw-admin-config';
+import { getCurrentDrawSlotFromAdmin } from '@/lib/draw-slot';
+import { deleteProofHistoryBySlotId } from '@/lib/proof-history';
 import {
   getProofWinnerCycle,
   resetProofWinnerCycle,
@@ -157,24 +159,36 @@ export async function POST(request: Request) {
     const body = await request.json().catch(() => ({}));
     const action = body?.action;
 
-    if (action !== 'reset-winner-cycle') {
-      return Response.json(
-        {
-          ok: false,
-          error: 'Unsupported action',
-        },
-        { status: 400 }
-      );
+    if (action === 'reset-winner-cycle') {
+      const config = await getDrawAdminConfig();
+      const winnerCycle = await resetProofWinnerCycle(config.minPayoutSol);
+
+      return Response.json({
+        ok: true,
+        action: 'reset-winner-cycle',
+        winnerCycle,
+      });
     }
 
-    const config = await getDrawAdminConfig();
-    const winnerCycle = await resetProofWinnerCycle(config.minPayoutSol);
+    if (action === 'reset-current-slot-lock') {
+      const currentSlot = await getCurrentDrawSlotFromAdmin(new Date());
 
-    return Response.json({
-      ok: true,
-      action: 'reset-winner-cycle',
-      winnerCycle,
-    });
+      await deleteProofHistoryBySlotId(currentSlot.slotId);
+
+      return Response.json({
+        ok: true,
+        action: 'reset-current-slot-lock',
+        slotId: currentSlot.slotId,
+      });
+    }
+
+    return Response.json(
+      {
+        ok: false,
+        error: 'Unsupported action',
+      },
+      { status: 400 }
+    );
   } catch (error) {
     console.error('[admin-config route] POST failed:', {
       error,
@@ -185,7 +199,7 @@ export async function POST(request: Request) {
     return Response.json(
       {
         ok: false,
-        error: error instanceof Error ? error.message : 'Failed to reset winner cycle',
+        error: error instanceof Error ? error.message : 'Failed to update admin config',
       },
       { status: 500 }
     );
