@@ -149,6 +149,15 @@ function getShareOnXUrl(address: string) {
   return `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
 }
 
+function getCountdownMs(nextDrawAtIso?: string | null) {
+  if (!nextDrawAtIso) return 0;
+
+  const targetMs = new Date(nextDrawAtIso).getTime();
+  if (Number.isNaN(targetMs)) return 0;
+
+  return Math.max(0, targetMs - Date.now());
+}
+
 export default function PublicPage() {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [disqualifications, setDisqualifications] = useState<
@@ -196,7 +205,7 @@ export default function PublicPage() {
       setHistory(historyData.history || []);
       setDisqualifications(historyData.disqualifications || []);
       setNextDraw(nextSchedule);
-      setCountdownMs(nextSchedule?.countdownMs ?? 0);
+      setCountdownMs(getCountdownMs(nextSchedule?.nextDrawAtIso));
       setAdminConfig(adminConfigData || null);
 
       if (refreshLiveClaimable) {
@@ -244,7 +253,7 @@ export default function PublicPage() {
       setHistory(historyData.history || []);
       setDisqualifications(historyData.disqualifications || []);
       setNextDraw(nextSchedule);
-      setCountdownMs(nextSchedule?.countdownMs ?? 0);
+      setCountdownMs(getCountdownMs(nextSchedule?.nextDrawAtIso));
       setAdminConfig(adminConfigData || null);
       setLiveClaimableSol(
         typeof adminConfigData?.liveBagsClaimableSol === 'number'
@@ -270,15 +279,40 @@ export default function PublicPage() {
   }, []);
 
   useEffect(() => {
-    const countdownInterval = setInterval(() => {
-      setCountdownMs((current) => Math.max(0, current - 1000));
-    }, 1000);
+    const recalc = () => {
+      setCountdownMs(getCountdownMs(nextDraw?.nextDrawAtIso));
+    };
 
-    return () => clearInterval(countdownInterval);
-  }, []);
+    recalc();
+
+    const countdownInterval = setInterval(recalc, 1000);
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        recalc();
+      }
+    };
+
+    const handleFocus = () => {
+      recalc();
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      clearInterval(countdownInterval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [nextDraw?.nextDrawAtIso]);
 
   useEffect(() => {
-    if (countdownMs > 0 && countdownMs <= 1000 && !didAutoRefreshAtZeroRef.current) {
+    if (
+      countdownMs > 0 &&
+      countdownMs <= 1000 &&
+      !didAutoRefreshAtZeroRef.current
+    ) {
       didAutoRefreshAtZeroRef.current = true;
 
       handleRefreshRewards();
