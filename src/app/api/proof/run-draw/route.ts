@@ -642,7 +642,7 @@ async function runDraw(request: Request) {
 
   const existingCycle = await getProofWinnerCycle();
 
-  let winner: Holder;
+  let winner: Holder | null = null;
   let winnerIndex = -1;
   let validatedUiAmount = 0;
   let rerollsDuringValidation = 0;
@@ -781,6 +781,10 @@ async function runDraw(request: Request) {
     } else {
       cycleAction = 'started-new-winner-cycle';
     }
+  }
+
+  if (!winner) {
+    throw new Error('Winner was not resolved for this draw');
   }
 
   const shouldUpdateBagsRecipients =
