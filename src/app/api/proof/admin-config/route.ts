@@ -1,5 +1,8 @@
 import { getDrawAdminConfig } from '@/lib/draw-admin-config';
-import { getProofWinnerCycle } from '@/lib/proof-winner-cycle';
+import {
+  getProofWinnerCycle,
+  resetProofWinnerCycle,
+} from '@/lib/proof-winner-cycle';
 
 const RANDO_ADMIN_API_KEY = process.env.RANDO_ADMIN_API_KEY!;
 const BAGS_API_KEY = process.env.BAGS_API_KEY!;
@@ -133,6 +136,56 @@ export async function GET(request: Request) {
       {
         ok: false,
         error: 'Failed to load admin config',
+      },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    if (!isAuthorizedRequest(request)) {
+      return Response.json(
+        {
+          ok: false,
+          error: 'Unauthorized',
+        },
+        { status: 401 }
+      );
+    }
+
+    const body = await request.json().catch(() => ({}));
+    const action = body?.action;
+
+    if (action !== 'reset-winner-cycle') {
+      return Response.json(
+        {
+          ok: false,
+          error: 'Unsupported action',
+        },
+        { status: 400 }
+      );
+    }
+
+    const config = await getDrawAdminConfig();
+    const winnerCycle = await resetProofWinnerCycle(config.minPayoutSol);
+
+    return Response.json({
+      ok: true,
+      action: 'reset-winner-cycle',
+      winnerCycle,
+    });
+  } catch (error) {
+    console.error('[admin-config route] POST failed:', {
+      error,
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+
+    return Response.json(
+      {
+        ok: false,
+        error: error instanceof Error ? error.message : 'Failed to reset winner cycle',
       },
       { status: 500 }
     );
