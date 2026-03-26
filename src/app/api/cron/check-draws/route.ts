@@ -75,7 +75,7 @@ export async function GET(req: NextRequest) {
 async function executeDraw(project: typeof projects.$inferSelect) {
   const connection = getConnection();
   const vaultKeypair = decryptKeypair(project.vaultKeypairEncrypted);
-  const drawNumber = project.drawCount + 1;
+  const attemptedDrawNumber = project.drawCount + 1;
 
   await claimFeesForVault(vaultKeypair, project.tokenMint);
 
@@ -118,7 +118,7 @@ async function executeDraw(project: typeof projects.$inferSelect) {
     const seedInput = [
       project.tokenMint,
       project.id,
-      drawNumber,
+      attemptedDrawNumber,
       project.nextDrawAt.toISOString(),
     ].join(':');
 
@@ -165,21 +165,31 @@ async function executeDraw(project: typeof projects.$inferSelect) {
     }
   }
 
-  await db.insert(draws).values({
-    id: nanoid(),
-    projectId: project.id,
-    drawNumber,
-    winnerWallet: winnerResult.winner ?? null,
-    prizeAmountLamports: winnerResult.winner ? prizeAmount : null,
-    prizeTxSignature: prizeTxSig ?? null,
-    attempts: winnerResult.attempts,
-    rolledOver: winnerResult.rolledOver,
-  });
+  const completedDrawNumber = winnerResult.rolledOver
+    ? project.drawCount
+    : attemptedDrawNumber;
+
+  if (winnerResult.winner && !winnerResult.rolledOver) {
+    await db.insert(draws).values({
+      id: nanoid(),
+      projectId: project.id,
+      drawNumber: attemptedDrawNumber,
+      winnerWallet: winnerResult.winner,
+      prizeAmountLamports: prizeAmount,
+      prizeTxSignature: prizeTxSig ?? null,
+      attempts: winnerResult.attempts,
+      rolledOver: false,
+    });
+  } else {
+    console.log(
+      `[cron] Draw rollover for project ${project.id}; threshold not met or no payable winner`
+    );
+  }
 
   await db.insert(snapshots).values({
     id: nanoid(),
     projectId: project.id,
-    drawNumber,
+    drawNumber: completedDrawNumber,
     holders: endHolders.map((h) => ({
       wallet: h.wallet,
       balance: h.balance.toString(),
@@ -190,20 +200,21 @@ async function executeDraw(project: typeof projects.$inferSelect) {
     project.baseIntervalMs,
     project.incrementMs,
     project.capMs,
-    drawNumber,
+    completedDrawNumber,
   );
 
   await db
     .update(projects)
     .set({
-      drawCount: drawNumber,
+      drawCount: completedDrawNumber,
       nextDrawAt,
       updatedAt: new Date(),
     })
     .where(eq(projects.id, project.id));
 
   return {
-    drawNumber,
+    drawNumber: attemptedDrawNumber,
+    completedDrawNumber,
     winner: winnerResult.winner,
     rolledOver: winnerResult.rolledOver,
     prizeAmountSol: prizeAmount / 1e9,
