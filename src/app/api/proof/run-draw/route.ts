@@ -394,10 +394,16 @@ async function getCurrentUiAmountForOwner(
   return totalRaw / Math.pow(10, decimals);
 }
 
-function getBlockedRecentWinners(history: Awaited<ReturnType<typeof readProofHistory>>) {
+function getBlockedRecentWinners(
+  history: Awaited<ReturnType<typeof readProofHistory>>
+) {
   const uniqueWinners: string[] = [];
 
   for (const item of history) {
+    if (item.isWinnerEvent === false) {
+      continue;
+    }
+
     const owner = item.winner?.owner;
     if (!owner) continue;
 
@@ -642,7 +648,7 @@ async function runDraw(request: Request) {
 
   const existingCycle = await getProofWinnerCycle();
 
-  let winner: Holder | null = null;
+  let winner: Holder;
   let winnerIndex = -1;
   let validatedUiAmount = 0;
   let rerollsDuringValidation = 0;
@@ -657,7 +663,6 @@ async function runDraw(request: Request) {
   let configUpdated = false;
   let claimTriggeredByApp = false;
   let manualPayoutPerformed = false;
-  let keepExistingWinner = false;
   let disqualifiedPreviousWinner:
     | {
         owner: string;
@@ -718,7 +723,9 @@ async function runDraw(request: Request) {
         disqualifiedAt: snapshotAt,
         claimableSolAtCheck: activeWinnerClaimableSol,
       };
-    } else if (
+    }
+
+    if (
       effectiveClaimableSol >= minPayoutSol &&
       !simulateDisqualification &&
       !simulatePayoutReady
@@ -727,6 +734,8 @@ async function runDraw(request: Request) {
       claimTriggeredByApp = false;
       manualPayoutPerformed = false;
       targetReached = true;
+      totalClaimedSol = existingCycle.totalClaimedSol;
+      accumulatedSol = totalClaimedSol + activeWinnerClaimableSol;
     } else if (
       effectiveClaimableSol >= minPayoutSol &&
       !simulateDisqualification &&
@@ -736,61 +745,61 @@ async function runDraw(request: Request) {
       manualPayoutPerformed = false;
       targetReached = true;
       cycleAction = 'simulated-payout-ready-rotated-new-winner';
-    } else {
-      keepExistingWinner = true;
+    } else if (!disqualifiedPreviousWinner) {
       cycleAction = 'kept-existing-winner-below-threshold';
-      winner = {
-        owner: activeWinnerWallet,
-        uiAmount: activeWinnerValidation.validatedUiAmount,
-      };
-      winnerIndex = eligible.findIndex(
+    }
+
+    simulatedNextWinnerPreview = {
+      owner: activeWinnerWallet,
+      uiAmount: activeWinnerValidation.validatedUiAmount,
+      winnerIndex: eligible.findIndex(
         (holder) => holder.owner === activeWinnerWallet
+      ),
+    };
+  }
+
+  const exclusionOwners = [...blockedRecentWinners, ...excludedWallets];
+
+  const validation = await pickValidatedWinner(
+    eligible,
+    decimals,
+    minTokens,
+    exclusionOwners
+  );
+
+  winner = validation.winner;
+  winnerIndex = validation.winnerIndex;
+  validatedUiAmount = validation.validatedUiAmount;
+  rerollsDuringValidation = validation.rerolls;
+
+  if (disqualifiedPreviousWinner) {
+    cycleAction = simulateDisqualification
+      ? 'simulated-disqualification-preview-only'
+      : 'disqualified-and-rotated-new-winner';
+  } else if (currentCycleCanBeKept && targetReached && simulatePayoutReady) {
+    cycleAction = 'simulated-payout-ready-rotated-new-winner';
+  } else if (currentCycleCanBeKept && targetReached) {
+    cycleAction = 'threshold-reached-rotated-new-winner-no-app-claim';
+  } else if (currentCycleCanBeKept) {
+    winner = {
+      owner: existingCycle.activeWinnerWallet!,
+      uiAmount: simulatedNextWinnerPreview?.uiAmount ?? validatedUiAmount,
+    };
+    winnerIndex =
+      simulatedNextWinnerPreview?.winnerIndex ??
+      eligible.findIndex(
+        (holder) => holder.owner === existingCycle.activeWinnerWallet
       );
-      validatedUiAmount = activeWinnerValidation.validatedUiAmount;
-      simulatedNextWinnerPreview = {
-        owner: activeWinnerWallet,
-        uiAmount: activeWinnerValidation.validatedUiAmount,
-        winnerIndex,
-      };
-    }
-  }
-
-  if (!keepExistingWinner) {
-    const exclusionOwners = [...blockedRecentWinners, ...excludedWallets];
-
-    const validation = await pickValidatedWinner(
-      eligible,
-      decimals,
-      minTokens,
-      exclusionOwners
-    );
-
-    winner = validation.winner;
-    winnerIndex = validation.winnerIndex;
-    validatedUiAmount = validation.validatedUiAmount;
-    rerollsDuringValidation = validation.rerolls;
-
-    if (disqualifiedPreviousWinner) {
-      cycleAction = simulateDisqualification
-        ? 'simulated-disqualification-preview-only'
-        : 'disqualified-and-rotated-new-winner';
-    } else if (currentCycleCanBeKept && targetReached && simulatePayoutReady) {
-      cycleAction = 'simulated-payout-ready-rotated-new-winner';
-    } else if (currentCycleCanBeKept && targetReached) {
-      cycleAction = 'threshold-reached-rotated-new-winner-no-app-claim';
-    } else {
-      cycleAction = 'started-new-winner-cycle';
-    }
-  }
-
-  if (!winner) {
-    throw new Error('Winner was not resolved for this draw');
+    validatedUiAmount = simulatedNextWinnerPreview?.uiAmount ?? validatedUiAmount;
+    cycleAction = 'kept-existing-winner-below-threshold';
+  } else {
+    cycleAction = 'started-new-winner-cycle';
   }
 
   const shouldUpdateBagsRecipients =
-    !keepExistingWinner &&
     !simulateDisqualification &&
-    cycleAction !== 'simulated-disqualification-preview-only';
+    cycleAction !== 'simulated-disqualification-preview-only' &&
+    cycleAction !== 'kept-existing-winner-below-threshold';
 
   if (shouldUpdateBagsRecipients) {
     configSignatures = await updateBagsFeeRecipients(winner.owner);
@@ -803,56 +812,51 @@ async function runDraw(request: Request) {
   let nextCycle = existingCycle;
 
   if (shouldPersistCycle) {
-    if (keepExistingWinner) {
-      nextCycle = await setProofWinnerCycle({
-        tokenMint: TOKEN_MINT,
-        activeWinnerWallet: winner.owner,
-        cycleStartedAt: existingCycle.cycleStartedAt || snapshotAt,
-        cycleCompletedAt: null,
-        status: 'active',
-        minPayoutSol,
-        accumulatedSol,
-        targetReached: false,
-        lastDrawId: drawId,
-        lastDisqualifiedWinnerWallet: existingCycle.lastDisqualifiedWinnerWallet,
-        lastDisqualifiedWinnerAmount: existingCycle.lastDisqualifiedWinnerAmount,
-        lastDisqualifiedAt: existingCycle.lastDisqualifiedAt,
-        lastDisqualificationReason: existingCycle.lastDisqualificationReason,
-        lastKnownClaimableSol: activeWinnerClaimableSol,
-        totalClaimedSol,
-        lastClaimCheckAt: activeWinnerClaimCheckAt || snapshotAt,
-      });
-    } else {
-      nextCycle = await setProofWinnerCycle({
-        tokenMint: TOKEN_MINT,
-        activeWinnerWallet: winner.owner,
-        cycleStartedAt: snapshotAt,
-        cycleCompletedAt:
-          cycleAction === 'threshold-reached-rotated-new-winner-no-app-claim'
-            ? snapshotAt
-            : null,
-        status: 'active',
-        minPayoutSol,
-        accumulatedSol: targetReached ? 0 : accumulatedSol,
-        targetReached: false,
-        lastDrawId: drawId,
-        lastDisqualifiedWinnerWallet:
-          disqualifiedPreviousWinner?.owner ??
-          existingCycle.lastDisqualifiedWinnerWallet,
-        lastDisqualifiedWinnerAmount:
-          disqualifiedPreviousWinner?.validatedUiAmount ??
-          existingCycle.lastDisqualifiedWinnerAmount,
-        lastDisqualifiedAt:
-          disqualifiedPreviousWinner?.disqualifiedAt ??
-          existingCycle.lastDisqualifiedAt,
-        lastDisqualificationReason:
-          disqualifiedPreviousWinner?.reason ??
-          existingCycle.lastDisqualificationReason,
-        lastKnownClaimableSol: 0,
-        totalClaimedSol: targetReached ? 0 : totalClaimedSol,
-        lastClaimCheckAt: activeWinnerClaimCheckAt || snapshotAt,
-      });
-    }
+    nextCycle = await setProofWinnerCycle({
+      tokenMint: TOKEN_MINT,
+      activeWinnerWallet: winner.owner,
+      cycleStartedAt:
+        cycleAction === 'kept-existing-winner-below-threshold'
+          ? existingCycle.cycleStartedAt || snapshotAt
+          : snapshotAt,
+      cycleCompletedAt:
+        cycleAction === 'threshold-reached-rotated-new-winner-no-app-claim'
+          ? snapshotAt
+          : null,
+      status: 'active',
+      minPayoutSol,
+      accumulatedSol:
+        cycleAction === 'kept-existing-winner-below-threshold'
+          ? accumulatedSol
+          : targetReached
+            ? 0
+            : accumulatedSol,
+      targetReached: false,
+      lastDrawId: drawId,
+      lastDisqualifiedWinnerWallet:
+        disqualifiedPreviousWinner?.owner ??
+        existingCycle.lastDisqualifiedWinnerWallet,
+      lastDisqualifiedWinnerAmount:
+        disqualifiedPreviousWinner?.validatedUiAmount ??
+        existingCycle.lastDisqualifiedWinnerAmount,
+      lastDisqualifiedAt:
+        disqualifiedPreviousWinner?.disqualifiedAt ??
+        existingCycle.lastDisqualifiedAt,
+      lastDisqualificationReason:
+        disqualifiedPreviousWinner?.reason ??
+        existingCycle.lastDisqualificationReason,
+      lastKnownClaimableSol:
+        cycleAction === 'kept-existing-winner-below-threshold'
+          ? activeWinnerClaimableSol
+          : 0,
+      totalClaimedSol:
+        cycleAction === 'kept-existing-winner-below-threshold'
+          ? totalClaimedSol
+          : targetReached
+            ? 0
+            : totalClaimedSol,
+      lastClaimCheckAt: activeWinnerClaimCheckAt || snapshotAt,
+    });
   }
 
   const responseBody = {
@@ -864,13 +868,15 @@ async function runDraw(request: Request) {
           ? 'safe test mode disqualification preview only; no live winner-cycle, history, or Bags routing was changed'
           : cycleAction === 'threshold-reached-rotated-new-winner-no-app-claim'
             ? 'winner threshold reached; app rotated Bags recipient without triggering a manual claim'
-            : cycleAction === 'kept-existing-winner-below-threshold'
-              ? 'active winner is still eligible and below threshold, so the same winner was kept and continues accumulating'
-              : simulatePayoutReady
-                ? 'safe test mode simulated payout-ready rotation without claiming live Bags fees'
-                : shouldUpdateBagsRecipients
-                  ? 'winner selected and Bags config update transactions were signed and submitted'
-                  : 'winner validated and existing active winner kept',
+            : cycleAction === 'rotated-new-winner-hourly'
+              ? 'hourly draw selected a new winner and updated Bags routing'
+              : cycleAction === 'kept-existing-winner-below-threshold'
+                ? 'active winner is still eligible and below threshold, so the same winner was kept and continues accumulating'
+                : simulatePayoutReady
+                  ? 'safe test mode simulated payout-ready rotation without claiming live Bags fees'
+                  : shouldUpdateBagsRecipients
+                    ? 'winner selected and Bags config update transactions were signed and submitted'
+                    : 'winner validated and existing active winner kept',
       snapshotAt,
       tokenMint: TOKEN_MINT,
       forced: effectiveForce,
@@ -948,7 +954,7 @@ async function runDraw(request: Request) {
         totalClaimedSol: formatSolAmount(nextCycle.totalClaimedSol),
         lastClaimCheckAt: nextCycle.lastClaimCheckAt,
         explanation:
-          'The active winner now stays in place until the minimum payout threshold is reached or the winner becomes ineligible.',
+          'Each hourly draw now selects a new winner, and a recent winner cannot win again until two different other wallets have won.',
       },
     },
     slot: {
@@ -1003,6 +1009,12 @@ async function runDraw(request: Request) {
       tokenMint: TOKEN_MINT,
       slotId: slotIdToCheck,
       scheduledDrawAt: currentSlot.nextDrawAtIso,
+      cycleAction,
+      isWinnerEvent:
+        cycleAction === 'started-new-winner-cycle' ||
+        cycleAction === 'disqualified-and-rotated-new-winner' ||
+        cycleAction === 'threshold-reached-rotated-new-winner-no-app-claim' ||
+        cycleAction === 'completed-payout-and-rotated-new-winner',
       winner: {
         owner: winner.owner,
         uiAmount: formatUiAmount(winner.uiAmount),

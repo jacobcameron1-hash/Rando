@@ -7,6 +7,8 @@ export type ProofHistoryItem = {
   tokenMint: string;
   slotId?: string;
   scheduledDrawAt?: string;
+  cycleAction?: string;
+  isWinnerEvent?: boolean;
   winner: {
     owner: string;
     uiAmount: number;
@@ -34,9 +36,21 @@ async function ensureHistoryTableExists() {
       token_mint text NOT NULL,
       slot_id text,
       scheduled_draw_at timestamptz,
+      cycle_action text,
+      is_winner_event boolean NOT NULL DEFAULT true,
       winner jsonb NOT NULL,
       counts jsonb NOT NULL
     )
+  `);
+
+  await db.execute(sql`
+    ALTER TABLE proof_history
+    ADD COLUMN IF NOT EXISTS cycle_action text
+  `);
+
+  await db.execute(sql`
+    ALTER TABLE proof_history
+    ADD COLUMN IF NOT EXISTS is_winner_event boolean NOT NULL DEFAULT true
   `);
 
   await db.execute(
@@ -45,6 +59,10 @@ async function ensureHistoryTableExists() {
 
   await db.execute(
     sql`CREATE INDEX IF NOT EXISTS proof_history_slot_id_idx ON proof_history (slot_id)`
+  );
+
+  await db.execute(
+    sql`CREATE INDEX IF NOT EXISTS proof_history_is_winner_event_idx ON proof_history (is_winner_event)`
   );
 
   await db.execute(sql`
@@ -70,6 +88,9 @@ function mapRowToItem(row: any): ProofHistoryItem {
         ? row.scheduled_draw_at.toISOString()
         : new Date(row.scheduled_draw_at).toISOString()
       : undefined,
+    cycleAction: row.cycle_action || undefined,
+    isWinnerEvent:
+      typeof row.is_winner_event === 'boolean' ? row.is_winner_event : true,
     winner: row.winner,
     counts: row.counts,
   };
@@ -86,6 +107,8 @@ export async function readProofHistory(): Promise<ProofHistoryItem[]> {
         token_mint,
         slot_id,
         scheduled_draw_at,
+        cycle_action,
+        is_winner_event,
         winner,
         counts
       FROM proof_history
@@ -114,6 +137,8 @@ export async function writeProofHistory(
         token_mint,
         slot_id,
         scheduled_draw_at,
+        cycle_action,
+        is_winner_event,
         winner,
         counts
       )
@@ -123,6 +148,8 @@ export async function writeProofHistory(
         ${item.tokenMint},
         ${item.slotId ?? null},
         ${item.scheduledDrawAt ?? null},
+        ${item.cycleAction ?? null},
+        ${item.isWinnerEvent ?? true},
         ${JSON.stringify(item.winner)}::jsonb,
         ${JSON.stringify(item.counts)}::jsonb
       )
@@ -142,6 +169,8 @@ export async function prependProofHistoryItem(
       token_mint,
       slot_id,
       scheduled_draw_at,
+      cycle_action,
+      is_winner_event,
       winner,
       counts
     )
@@ -151,6 +180,8 @@ export async function prependProofHistoryItem(
       ${item.tokenMint},
       ${item.slotId ?? null},
       ${item.scheduledDrawAt ?? null},
+      ${item.cycleAction ?? null},
+      ${item.isWinnerEvent ?? true},
       ${JSON.stringify(item.winner)}::jsonb,
       ${JSON.stringify(item.counts)}::jsonb
     )
@@ -172,6 +203,8 @@ export async function findProofHistoryBySlotId(
       token_mint,
       slot_id,
       scheduled_draw_at,
+      cycle_action,
+      is_winner_event,
       winner,
       counts
     FROM proof_history

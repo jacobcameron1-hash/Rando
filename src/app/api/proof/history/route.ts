@@ -22,7 +22,12 @@ export async function GET() {
       getDrawAdminConfig(),
     ]);
 
-    const latestThree = history.slice(0, 3).map((item) => ({
+    // ✅ ONLY show real winner events
+    const realWinnerHistory = history.filter(
+      (item) => item.isWinnerEvent !== false
+    );
+
+    const latestThree = realWinnerHistory.slice(0, 3).map((item) => ({
       drawId: item.drawId,
       snapshotAt: item.snapshotAt,
       tokenMint: item.tokenMint,
