@@ -646,9 +646,18 @@ export default function PublicPage() {
                         rel="noopener noreferrer"
                         className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-mono text-[#c7a789] transition hover:border-white/20 hover:text-white"
                       >
-                        View on Solscan
+                        View Wallet
                       </a>
-
+                      {previous.payout?.solscanUrl && (
+                        <a
+                          href={previous.payout.solscanUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-mono text-[#c7a789] transition hover:border-white/20 hover:text-white"
+                        >
+                          View Payout Tx ↗
+                        </a>
+                      )}
                       <a
                         href={getShareOnXUrl(previous.winner.owner)}
                         target="_blank"
