@@ -185,6 +185,7 @@ export default function PublicPage() {
   const [tokenMintSolscanUrl, setTokenMintSolscanUrl] = useState<string | null>(
     null
   );
+  const [bagsFeeShareUrl, setBagsFeeShareUrl] = useState<string | null>(null);
   const [isRefreshingRewards, setIsRefreshingRewards] = useState(false);
 
   const didAutoRefreshAtZeroRef = useRef(false);
@@ -218,6 +219,7 @@ export default function PublicPage() {
       setHistory(historyData.history || []);
       setTokenMint(historyData.tokenMint || null);
       setTokenMintSolscanUrl(historyData.tokenMintSolscanUrl || null);
+      setBagsFeeShareUrl(historyData.bagsFeeShareUrl || null);
       setTotalPayoutSol(
         typeof historyData.totalPayoutSol === 'number'
           ? historyData.totalPayoutSol
@@ -278,6 +280,7 @@ export default function PublicPage() {
       setHistory(historyData.history || []);
       setTokenMint(historyData.tokenMint || null);
       setTokenMintSolscanUrl(historyData.tokenMintSolscanUrl || null);
+      setBagsFeeShareUrl(historyData.bagsFeeShareUrl || null);
       setDisqualifications(historyData.disqualifications || []);
       setTotalPayoutSol(
         typeof historyData.totalPayoutSol === 'number'
@@ -471,7 +474,6 @@ export default function PublicPage() {
   const cycleStatus = winnerCycle?.status || 'idle';
   const cycleStartedAt = winnerCycle?.cycleStartedAt || '';
   const cycleEndingAt = nextDraw?.nextDrawAtIso || '';
-  const payoutReady = currentClaimableSol >= minPayoutSol;
 
   return (
     <main className="min-h-screen bg-[#070404] text-white">
@@ -907,12 +909,15 @@ export default function PublicPage() {
               </div>
               <div className="mt-4">
                 <a
-                  href="https://solscan.io/token/EZthQ6SUL51jJihQiFMDiZVmZiRMNjMQoTb7rNvTBAGS"
+                  href={
+                    bagsFeeShareUrl ||
+                    'https://bags.fm/EZthQ6SUL51jJihQiFMDiZVmZiRMNjMQoTb7rNvTBAGS'
+                  }
                   target="_blank"
                   rel="noopener noreferrer"
                   className="rounded-full border border-white/10 bg-white/5 px-4 py-2 font-mono text-sm text-[#c7a789] transition hover:border-white/20 hover:text-white"
                 >
-                  View on Solscan ↗
+                  View on Bags ↗
                 </a>
               </div>
             </div>
