@@ -8,6 +8,7 @@ type HistoryItem = {
   winner?: {
     owner: string;
     uiAmount: number;
+    winnerIndex?: number;
   };
   counts?: {
     eligibleCount?: number;
@@ -180,6 +181,10 @@ export default function PublicPage() {
   const [liveClaimableSol, setLiveClaimableSol] = useState<number | null>(null);
   const [totalPayoutSol, setTotalPayoutSol] = useState<number | null>(null);
   const [totalPayoutCount, setTotalPayoutCount] = useState<number | null>(null);
+  const [tokenMint, setTokenMint] = useState<string | null>(null);
+  const [tokenMintSolscanUrl, setTokenMintSolscanUrl] = useState<string | null>(
+    null
+  );
   const [isRefreshingRewards, setIsRefreshingRewards] = useState(false);
 
   const didAutoRefreshAtZeroRef = useRef(false);
@@ -211,6 +216,8 @@ export default function PublicPage() {
       const nextSchedule = nextDrawData.schedule || null;
 
       setHistory(historyData.history || []);
+      setTokenMint(historyData.tokenMint || null);
+      setTokenMintSolscanUrl(historyData.tokenMintSolscanUrl || null);
       setTotalPayoutSol(
         typeof historyData.totalPayoutSol === 'number'
           ? historyData.totalPayoutSol
@@ -269,6 +276,8 @@ export default function PublicPage() {
       const nextSchedule = nextDrawData.schedule || null;
 
       setHistory(historyData.history || []);
+      setTokenMint(historyData.tokenMint || null);
+      setTokenMintSolscanUrl(historyData.tokenMintSolscanUrl || null);
       setDisqualifications(historyData.disqualifications || []);
       setTotalPayoutSol(
         typeof historyData.totalPayoutSol === 'number'
@@ -837,6 +846,79 @@ export default function PublicPage() {
           </div>
         </section>
 
+        <section className="mb-6 rounded-[32px] border border-[#3a2417] bg-[#18100c] p-6 shadow-[0_18px_50px_rgba(0,0,0,0.42)] sm:p-8">
+          <div className="mb-2 text-3xl font-black text-white sm:text-4xl">
+            Verify On-Chain
+          </div>
+          <div className="mb-6 font-mono text-sm text-[#b78f73]">
+            Every data point on this page can be independently verified on Solana
+          </div>
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5">
+              <div className="font-mono text-xs uppercase tracking-wide text-[#b78f73]">
+                Token Mint
+              </div>
+              <div className="mt-3 break-all font-mono text-sm text-white">
+                {tokenMint || 'EZthQ6SUL51jJihQiFMDiZVmZiRMNjMQoTb7rNvTBAGS'}
+              </div>
+              <div className="mt-4">
+                <a
+                  href={
+                    tokenMintSolscanUrl ||
+                    'https://solscan.io/token/EZthQ6SUL51jJihQiFMDiZVmZiRMNjMQoTb7rNvTBAGS'
+                  }
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-full border border-white/10 bg-white/5 px-4 py-2 font-mono text-sm text-[#c7a789] transition hover:border-white/20 hover:text-white"
+                >
+                  View Token ↗
+                </a>
+              </div>
+            </div>
+
+            <div className="rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5">
+              <div className="font-mono text-xs uppercase tracking-wide text-[#b78f73]">
+                Current Winner Wallet
+              </div>
+              <div className="mt-3 break-all font-mono text-sm text-white">
+                {displayWinnerAddress || '—'}
+              </div>
+              <div className="mt-4">
+                {displayWinnerAddress && (
+                  <a
+                    href={`https://solscan.io/account/${displayWinnerAddress}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded-full border border-white/10 bg-white/5 px-4 py-2 font-mono text-sm text-[#c7a789] transition hover:border-white/20 hover:text-white"
+                  >
+                    Verify Wallet ↗
+                  </a>
+                )}
+              </div>
+            </div>
+
+            <div className="rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5">
+              <div className="font-mono text-xs uppercase tracking-wide text-[#b78f73]">
+                Bags Fee Routing
+              </div>
+              <div className="mt-3 font-mono text-sm leading-6 text-[#d5b190]">
+                Fee recipients are set on-chain via Bags. Verify the active
+                routing config directly.
+              </div>
+              <div className="mt-4">
+                <a
+                  href="https://solscan.io/token/EZthQ6SUL51jJihQiFMDiZVmZiRMNjMQoTb7rNvTBAGS"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-full border border-white/10 bg-white/5 px-4 py-2 font-mono text-sm text-[#c7a789] transition hover:border-white/20 hover:text-white"
+                >
+                  View on Solscan ↗
+                </a>
+              </div>
+            </div>
+          </div>
+        </section>
+
         <section className="mb-6 grid gap-4 md:grid-cols-4">
           <div className="rounded-[26px] border border-[#3a2417] bg-[#120b09] p-5 shadow-[0_10px_30px_rgba(0,0,0,0.35)]">
             <div className="font-mono text-sm text-[#b78f73]">Total Paid Out</div>
@@ -857,6 +939,9 @@ export default function PublicPage() {
             </div>
             <div className="mt-2 font-mono text-sm text-[#ffd2ae]">
               {formattedCountdown}
+            </div>
+            <div className="mt-3 font-mono text-xs text-[#6a4f3b]">
+              Last draw: {history[0]?.snapshotAt ? formatDate(history[0].snapshotAt) : '—'}
             </div>
           </div>
 
@@ -894,7 +979,7 @@ export default function PublicPage() {
           </div>
 
           <div className="space-y-4">
-            {history.slice(0, 5).map((item) => (
+            {history.slice(0, 10).map((item) => (
               <div
                 key={item.drawId}
                 className="rounded-[24px] border border-[#3a2417] bg-[#0f0907] p-5"
@@ -914,6 +999,13 @@ export default function PublicPage() {
                     <div className="mt-1 font-mono text-sm text-[#b78f73]">
                       winner balance
                     </div>
+                    {item.winner?.winnerIndex !== undefined &&
+                      item.counts?.eligibleCount && (
+                        <div className="mt-2 font-mono text-xs text-[#6a4f3b]">
+                          selected #{item.winner.winnerIndex + 1} of{' '}
+                          {item.counts.eligibleCount} eligible
+                        </div>
+                      )}
                   </div>
                 </div>
 
