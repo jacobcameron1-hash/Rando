@@ -776,8 +776,8 @@ async function runDraw(request: Request) {
     ) {
       // Claim all fees from Bags to DEV_WALLET, then transfer to winner.
       const lamportsToClaim = Math.round(activeWinnerClaimableSol * 1_000_000_000);
-      // Reserve ~10,000 lamports to cover the transfer transaction fee.
-      const lamportsToSend = Math.max(0, lamportsToClaim - 10_000);
+      // Send 50% to winner, dev wallet keeps 50%. Reserve ~10,000 lamports for transfer tx fee.
+      const lamportsToSend = Math.max(0, Math.floor(lamportsToClaim * 0.5) - 10_000);
       claimSignatures = await claimBagsFees(DEV_WALLET);
       payoutSignature = await sendSolToWinner(activeWinnerWallet, lamportsToSend);
       claimTriggeredByApp = true;
