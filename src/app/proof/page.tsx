@@ -13,6 +13,12 @@ type HistoryItem = {
     eligibleCount?: number;
     holderCountAfterExclusions?: number;
   };
+  payout?: {
+    amountSol: number;
+    signature: string;
+    timestamp: string;
+    solscanUrl: string;
+  } | null;
 };
 
 type DisqualificationItem = {
@@ -172,6 +178,8 @@ export default function PublicPage() {
     null
   );
   const [liveClaimableSol, setLiveClaimableSol] = useState<number | null>(null);
+  const [totalPayoutSol, setTotalPayoutSol] = useState<number | null>(null);
+  const [totalPayoutCount, setTotalPayoutCount] = useState<number | null>(null);
   const [isRefreshingRewards, setIsRefreshingRewards] = useState(false);
 
   const didAutoRefreshAtZeroRef = useRef(false);
@@ -203,6 +211,16 @@ export default function PublicPage() {
       const nextSchedule = nextDrawData.schedule || null;
 
       setHistory(historyData.history || []);
+      setTotalPayoutSol(
+        typeof historyData.totalPayoutSol === 'number'
+          ? historyData.totalPayoutSol
+          : null
+      );
+      setTotalPayoutCount(
+        typeof historyData.totalPayoutCount === 'number'
+          ? historyData.totalPayoutCount
+          : null
+      );
       setDisqualifications(historyData.disqualifications || []);
       setNextDraw(nextSchedule);
       setCountdownMs(getCountdownMs(nextSchedule?.nextDrawAtIso));
@@ -252,6 +270,16 @@ export default function PublicPage() {
 
       setHistory(historyData.history || []);
       setDisqualifications(historyData.disqualifications || []);
+      setTotalPayoutSol(
+        typeof historyData.totalPayoutSol === 'number'
+          ? historyData.totalPayoutSol
+          : null
+      );
+      setTotalPayoutCount(
+        typeof historyData.totalPayoutCount === 'number'
+          ? historyData.totalPayoutCount
+          : null
+      );
       setNextDraw(nextSchedule);
       setCountdownMs(getCountdownMs(nextSchedule?.nextDrawAtIso));
       setAdminConfig(adminConfigData || null);
@@ -308,7 +336,11 @@ export default function PublicPage() {
   }, [nextDraw?.nextDrawAtIso]);
 
   useEffect(() => {
-    if (countdownMs > 0 && countdownMs <= 1000 && !didAutoRefreshAtZeroRef.current) {
+    if (
+      countdownMs > 0 &&
+      countdownMs <= 1000 &&
+      !didAutoRefreshAtZeroRef.current
+    ) {
       didAutoRefreshAtZeroRef.current = true;
 
       handleRefreshRewards();
@@ -796,7 +828,19 @@ export default function PublicPage() {
           </div>
         </section>
 
-        <section className="mb-6 grid gap-4 md:grid-cols-3">
+        <section className="mb-6 grid gap-4 md:grid-cols-4">
+          <div className="rounded-[26px] border border-[#3a2417] bg-[#120b09] p-5 shadow-[0_10px_30px_rgba(0,0,0,0.35)]">
+            <div className="font-mono text-sm text-[#b78f73]">Total Paid Out</div>
+            <div className="mt-3 text-3xl font-black text-white">
+              {totalPayoutSol !== null ? `${formatSol(totalPayoutSol)} SOL` : '—'}
+            </div>
+            <div className="mt-2 font-mono text-sm text-[#b78f73]">
+              {totalPayoutCount !== null
+                ? `${totalPayoutCount} winner${totalPayoutCount !== 1 ? 's' : ''} paid`
+                : 'verified on-chain'}
+            </div>
+          </div>
+
           <div className="rounded-[26px] border border-[#3a2417] bg-[#120b09] p-5 shadow-[0_10px_30px_rgba(0,0,0,0.35)]">
             <div className="font-mono text-sm text-[#b78f73]">Next Draw</div>
             <div className="mt-3 text-2xl font-black leading-tight text-white">
@@ -863,6 +907,32 @@ export default function PublicPage() {
                     </div>
                   </div>
                 </div>
+
+                {item.payout ? (
+                  <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-[#2d1a12] pt-4">
+                    <div className="font-mono text-xs text-[#b78f73]">
+                      Payout:{' '}
+                      <span className="text-white">
+                        {formatSol(item.payout.amountSol)} SOL
+                      </span>
+                    </div>
+                    <a
+                      href={item.payout.solscanUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="rounded-full border border-white/10 bg-white/5 px-3 py-1 font-mono text-xs text-[#c7a789] transition hover:border-white/20 hover:text-white"
+                    >
+                      View Tx ↗
+                    </a>
+                    <div className="font-mono text-xs text-[#6a4f3b]">
+                      {shortenAddress(item.payout.signature)}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-4 border-t border-[#2d1a12] pt-4 font-mono text-xs text-[#6a4f3b]">
+                    Payout pending
+                  </div>
+                )}
               </div>
             ))}
 
