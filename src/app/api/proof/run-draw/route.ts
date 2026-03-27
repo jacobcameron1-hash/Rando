@@ -16,6 +16,7 @@ import {
   Keypair,
   PublicKey,
   SystemProgram,
+  Transaction,
   VersionedTransaction,
 } from '@solana/web3.js';
 import bs58 from 'bs58';
@@ -202,14 +203,16 @@ async function signAndSendPreparedTransactions(
   return signatures;
 }
 
-async function updateBagsFeeRecipients(winnerWallet: string) {
+async function updateBagsFeeRecipients() {
   console.log('[BAGS] Updating fee recipients...');
 
+  // Route 100% of fees to DEV_WALLET so the backend can claim and forward to winner.
+  // The winner receives SOL via a direct on-chain transfer after claiming, not via Bags routing.
   const payload = {
     baseMint: TOKEN_MINT,
     payer: DEV_WALLET,
-    basisPointsArray: [5000, 5000],
-    claimersArray: [DEV_WALLET, winnerWallet],
+    basisPointsArray: [10000],
+    claimersArray: [DEV_WALLET],
   };
 
   console.log('[BAGS] Payload:', payload);
@@ -297,6 +300,45 @@ async function claimBagsFees(feeClaimer: string) {
   }
 
   return signAndSendPreparedTransactions(prepared);
+}
+
+async function sendSolToWinner(winnerWallet: string, lamports: number): Promise<string> {
+  console.log(`[PAYOUT] Sending ${lamports} lamports to winner ${winnerWallet}`);
+
+  const connection = new Connection(HELIUS_RPC_URL, 'confirmed');
+  const signer = getSignerKeypair();
+
+  const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+
+  const transaction = new Transaction().add(
+    SystemProgram.transfer({
+      fromPubkey: signer.publicKey,
+      toPubkey: new PublicKey(winnerWallet),
+      lamports,
+    })
+  );
+  transaction.recentBlockhash = blockhash;
+  transaction.feePayer = signer.publicKey;
+  transaction.sign(signer);
+
+  const signature = await connection.sendRawTransaction(transaction.serialize(), {
+    skipPreflight: false,
+    maxRetries: 3,
+  });
+
+  const confirmation = await connection.confirmTransaction(
+    { signature, blockhash, lastValidBlockHeight },
+    'confirmed'
+  );
+
+  if (confirmation.value.err) {
+    throw new Error(
+      `Payout transaction failed: ${JSON.stringify(confirmation.value.err)}`
+    );
+  }
+
+  console.log(`[PAYOUT] Confirmed. Signature: ${signature}`);
+  return signature;
 }
 
 async function getBagsClaimableSol(wallet: string): Promise<number> {
@@ -660,6 +702,7 @@ async function runDraw(request: Request) {
   let targetReached = false;
   let configSignatures: string[] = [];
   let claimSignatures: string[] = [];
+  let payoutSignature: string | null = null;
   let configUpdated = false;
   let claimTriggeredByApp = false;
   let manualPayoutPerformed = false;
@@ -690,7 +733,8 @@ async function runDraw(request: Request) {
   if (currentCycleCanBeKept) {
     const activeWinnerWallet = existingCycle.activeWinnerWallet!;
 
-    activeWinnerClaimableSol = await getBagsClaimableSol(activeWinnerWallet);
+    // Fees now accumulate to DEV_WALLET (100% bps). Check there, not the winner wallet.
+    activeWinnerClaimableSol = await getBagsClaimableSol(DEV_WALLET);
     activeWinnerClaimCheckAt = snapshotAt;
 
     const inferredUserClaimedSol = Math.max(
@@ -730,12 +774,17 @@ async function runDraw(request: Request) {
       !simulateDisqualification &&
       !simulatePayoutReady
     ) {
-      claimSignatures = [];
-      claimTriggeredByApp = false;
-      manualPayoutPerformed = false;
+      // Claim all fees from Bags to DEV_WALLET, then transfer to winner.
+      const lamportsToClaim = Math.round(activeWinnerClaimableSol * 1_000_000_000);
+      // Reserve ~10,000 lamports to cover the transfer transaction fee.
+      const lamportsToSend = Math.max(0, lamportsToClaim - 10_000);
+      claimSignatures = await claimBagsFees(DEV_WALLET);
+      payoutSignature = await sendSolToWinner(activeWinnerWallet, lamportsToSend);
+      claimTriggeredByApp = true;
+      manualPayoutPerformed = true;
       targetReached = true;
-      totalClaimedSol = existingCycle.totalClaimedSol;
-      accumulatedSol = totalClaimedSol + activeWinnerClaimableSol;
+      totalClaimedSol = existingCycle.totalClaimedSol + activeWinnerClaimableSol;
+      accumulatedSol = totalClaimedSol;
     } else if (
       effectiveClaimableSol >= minPayoutSol &&
       !simulateDisqualification &&
@@ -802,7 +851,7 @@ async function runDraw(request: Request) {
     cycleAction !== 'kept-existing-winner-below-threshold';
 
   if (shouldUpdateBagsRecipients) {
-    configSignatures = await updateBagsFeeRecipients(winner.owner);
+    configSignatures = await updateBagsFeeRecipients();
     configUpdated = configSignatures.length > 0;
   }
 
@@ -987,18 +1036,21 @@ async function runDraw(request: Request) {
       ),
       recipients: [
         {
-          role: 'dev',
+          role: 'dev-claimer',
           wallet: DEV_WALLET,
-          basisPoints: 5000,
+          basisPoints: 10000,
+          note: 'Claims 100% from Bags then transfers directly to winner on-chain',
         },
         {
           role: 'winner',
           wallet: nextCycle.activeWinnerWallet,
-          basisPoints: 5000,
+          basisPoints: 10000,
+          note: 'Receives SOL via direct transfer after backend claim',
         },
       ],
       claimSignatures,
       configSignatures,
+      payoutSignature,
     },
   };
 
