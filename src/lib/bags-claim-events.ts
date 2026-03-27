@@ -56,7 +56,7 @@ export async function getAllWinnerClaimEvents(): Promise<WinnerClaimEvent[]> {
     .filter((e) => !e.isCreator && e.wallet !== DEV_WALLET)
     .map((e) => ({
       wallet: e.wallet,
-      amountSol: Number(e.amount),
+      amountSol: Number(e.amount) / 1_000_000_000,
       signature: e.signature,
       timestamp: e.timestamp,
     }));
@@ -72,21 +72,23 @@ export function findClaimForCycle(
   winnerWallet: string,
   cycleStartedAt: string | null
 ): WinnerClaimEvent | null {
-  if (!cycleStartedAt) return null;
+  if (!winnerWallet || !cycleStartedAt) return null;
 
   const cycleStart = new Date(cycleStartedAt).getTime();
+  // Look back 48 hours before the cycle start to catch claims
+  // that Bags processed around the same time as the draw
+  const lookbackMs = 48 * 60 * 60 * 1000;
 
-  // Find the first claim for this wallet that happened after the cycle started
-  return (
-    claimEvents
-      .filter(
-        (e) =>
-          e.wallet === winnerWallet &&
-          new Date(e.timestamp).getTime() >= cycleStart
-      )
-      .sort(
-        (a, b) =>
-          new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-      )[0] ?? null
-  );
+  const matches = claimEvents
+    .filter(
+      (e) =>
+        e.wallet === winnerWallet &&
+        new Date(e.timestamp).getTime() >= cycleStart - lookbackMs
+    )
+    .sort(
+      (a, b) =>
+        new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    );
+
+  return matches[0] ?? null;
 }
