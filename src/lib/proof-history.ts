@@ -9,6 +9,8 @@ export type ProofHistoryItem = {
   scheduledDrawAt?: string;
   cycleAction?: string;
   isWinnerEvent?: boolean;
+  payoutSignature?: string | null;
+  payoutAmountSol?: number | null;
   winner: {
     owner: string;
     uiAmount: number;
@@ -71,6 +73,16 @@ async function ensureHistoryTableExists() {
     WHERE slot_id IS NOT NULL
   `);
 
+  await db.execute(sql`
+    ALTER TABLE proof_history
+    ADD COLUMN IF NOT EXISTS payout_signature text
+  `);
+
+  await db.execute(sql`
+    ALTER TABLE proof_history
+    ADD COLUMN IF NOT EXISTS payout_amount_sol numeric
+  `);
+
   tableReady = true;
 }
 
@@ -91,6 +103,8 @@ function mapRowToItem(row: any): ProofHistoryItem {
     cycleAction: row.cycle_action || undefined,
     isWinnerEvent:
       typeof row.is_winner_event === 'boolean' ? row.is_winner_event : true,
+    payoutSignature: row.payout_signature ?? null,
+    payoutAmountSol: row.payout_amount_sol != null ? Number(row.payout_amount_sol) : null,
     winner: row.winner,
     counts: row.counts,
   };
@@ -109,6 +123,8 @@ export async function readProofHistory(): Promise<ProofHistoryItem[]> {
         scheduled_draw_at,
         cycle_action,
         is_winner_event,
+        payout_signature,
+        payout_amount_sol,
         winner,
         counts
       FROM proof_history
@@ -139,6 +155,8 @@ export async function writeProofHistory(
         scheduled_draw_at,
         cycle_action,
         is_winner_event,
+        payout_signature,
+        payout_amount_sol,
         winner,
         counts
       )
@@ -150,6 +168,8 @@ export async function writeProofHistory(
         ${item.scheduledDrawAt ?? null},
         ${item.cycleAction ?? null},
         ${item.isWinnerEvent ?? true},
+        ${item.payoutSignature ?? null},
+        ${item.payoutAmountSol ?? null},
         ${JSON.stringify(item.winner)}::jsonb,
         ${JSON.stringify(item.counts)}::jsonb
       )
@@ -171,6 +191,8 @@ export async function prependProofHistoryItem(
       scheduled_draw_at,
       cycle_action,
       is_winner_event,
+      payout_signature,
+      payout_amount_sol,
       winner,
       counts
     )
@@ -182,6 +204,8 @@ export async function prependProofHistoryItem(
       ${item.scheduledDrawAt ?? null},
       ${item.cycleAction ?? null},
       ${item.isWinnerEvent ?? true},
+      ${item.payoutSignature ?? null},
+      ${item.payoutAmountSol ?? null},
       ${JSON.stringify(item.winner)}::jsonb,
       ${JSON.stringify(item.counts)}::jsonb
     )

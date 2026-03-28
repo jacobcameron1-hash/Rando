@@ -78,7 +78,7 @@ async function ensureProofWinnerCycleTableExists() {
       cycle_started_at timestamptz,
       cycle_completed_at timestamptz,
       status text NOT NULL DEFAULT 'idle',
-      min_payout_sol numeric(18, 9) NOT NULL DEFAULT 0.05,
+      min_payout_sol numeric(18, 9) NOT NULL DEFAULT 0.01,
       accumulated_sol numeric(18, 9) NOT NULL DEFAULT 0,
       target_reached boolean NOT NULL DEFAULT false,
       last_draw_id text,
@@ -162,7 +162,7 @@ function mapRow(row: Record<string, unknown>): ProofWinnerCycleRecord {
     cycleStartedAt: asIsoString(row.cycle_started_at),
     cycleCompletedAt: asIsoString(row.cycle_completed_at),
     status: asString(row.status, 'idle'),
-    minPayoutSol: asNumber(row.min_payout_sol, 0.05),
+    minPayoutSol: asNumber(row.min_payout_sol, 0.01),
     accumulatedSol: asNumber(row.accumulated_sol, 0),
     targetReached: asBoolean(row.target_reached, false),
     lastDrawId: typeof row.last_draw_id === 'string' ? row.last_draw_id : null,
@@ -285,7 +285,7 @@ export async function getProofWinnerCycle(): Promise<ProofWinnerCycleRecord> {
     cycleStartedAt: null,
     cycleCompletedAt: null,
     status: 'idle',
-    minPayoutSol: 0.05,
+    minPayoutSol: 0.01,
     accumulatedSol: 0,
     targetReached: false,
     lastDrawId: null,
@@ -516,7 +516,7 @@ export async function getRecentProofWinnerDisqualifications(
 }
 
 export async function resetProofWinnerCycle(
-  minPayoutSol = 0.05
+  minPayoutSol = 0.01
 ): Promise<ProofWinnerCycleRecord> {
   return setProofWinnerCycle({
     activeWinnerWallet: null,

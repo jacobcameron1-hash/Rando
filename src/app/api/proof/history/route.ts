@@ -4,10 +4,6 @@ import {
   getRecentProofWinnerDisqualifications,
 } from '@/lib/proof-winner-cycle';
 import { getDrawAdminConfig } from '@/lib/draw-admin-config';
-import {
-  getAllWinnerClaimEvents,
-  findClaimForCycle,
-} from '@/lib/bags-claim-events';
 
 const TOKEN_MINT = 'EZthQ6SUL51jJihQiFMDiZVmZiRMNjMQoTb7rNvTBAGS';
 const BAGS_FEE_SHARE_URL = `https://bags.fm/${TOKEN_MINT}`;
@@ -22,60 +18,31 @@ function formatSolAmount(value: number) {
 
 export async function GET() {
   try {
-    const [history, disqualifications, winnerCycle, config, claimEvents] =
+    const [history, disqualifications, winnerCycle, config] =
       await Promise.all([
         readProofHistory(),
         getRecentProofWinnerDisqualifications(3),
         getProofWinnerCycle(),
         getDrawAdminConfig(),
-        getAllWinnerClaimEvents(),
       ]);
 
     const realWinnerHistory = history.filter(
       (item) => item.isWinnerEvent !== false
     );
 
-    const getEventTimestampMs = (timestamp: string | number): number => {
-      if (typeof timestamp === 'number') return timestamp * 1000;
-
-      const numeric = Number(timestamp);
-      if (Number.isFinite(numeric) && /^\d+$/.test(timestamp)) {
-        return numeric * 1000;
-      }
-
-      return new Date(timestamp).getTime();
-    };
-
-    const drawHistoryWallets = new Set(
-      realWinnerHistory.map((item) => item.winner?.owner).filter(Boolean)
-    );
-
-    const earliestDrawAt =
-      realWinnerHistory.length > 0
-        ? new Date(
-            realWinnerHistory[realWinnerHistory.length - 1].snapshotAt
-          ).getTime()
-        : 0;
-
-    const scopedClaimEvents = claimEvents.filter((e) => {
-      if (!drawHistoryWallets.has(e.wallet)) return false;
-
-      const ts = getEventTimestampMs(e.timestamp);
-      return Number.isFinite(ts) && ts >= earliestDrawAt - 24 * 60 * 60 * 1000;
-    });
-
-    const totalPayoutSol = scopedClaimEvents.reduce(
-      (sum, e) => sum + e.amountSol,
+    // Payouts are now tracked directly in proof_history via payout_signature.
+    // Sum all recorded payout amounts for the total.
+    const totalPayoutSol = realWinnerHistory.reduce(
+      (sum, item) => sum + (item.payoutAmountSol ?? 0),
       0
     );
-    const totalPayoutCount = scopedClaimEvents.length;
+    const totalPayoutCount = realWinnerHistory.filter(
+      (item) => item.payoutSignature
+    ).length;
 
     const latestTen = realWinnerHistory.slice(0, 10).map((item) => {
-      const claim = findClaimForCycle(
-        scopedClaimEvents,
-        item.winner?.owner,
-        item.snapshotAt
-      );
+      const sig = item.payoutSignature ?? null;
+      const amountSol = item.payoutAmountSol ?? null;
 
       return {
         drawId: item.drawId,
@@ -83,12 +50,12 @@ export async function GET() {
         tokenMint: item.tokenMint,
         winner: item.winner,
         counts: item.counts,
-        payout: claim
+        payout: sig
           ? {
-              amountSol: formatSolAmount(claim.amountSol),
-              signature: claim.signature,
-              timestamp: claim.timestamp,
-              solscanUrl: `https://solscan.io/tx/${claim.signature}`,
+              amountSol: formatSolAmount(amountSol ?? 0),
+              signature: sig,
+              timestamp: item.snapshotAt,
+              solscanUrl: `https://solscan.io/tx/${sig}`,
             }
           : null,
       };

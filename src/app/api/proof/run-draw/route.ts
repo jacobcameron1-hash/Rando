@@ -1067,6 +1067,8 @@ async function runDraw(request: Request) {
         cycleAction === 'disqualified-and-rotated-new-winner' ||
         cycleAction === 'threshold-reached-rotated-new-winner-no-app-claim' ||
         cycleAction === 'completed-payout-and-rotated-new-winner',
+      payoutSignature: payoutSignature ?? null,
+      payoutAmountSol: payoutSignature ? activeWinnerClaimableSol * 0.5 : null,
       winner: {
         owner: winner.owner,
         uiAmount: formatUiAmount(winner.uiAmount),
