@@ -734,7 +734,10 @@ async function runDraw(request: Request) {
     const activeWinnerWallet = existingCycle.activeWinnerWallet!;
 
     // Fees now accumulate to DEV_WALLET (100% bps). Check there, not the winner wallet.
-    activeWinnerClaimableSol = await getBagsClaimableSol(DEV_WALLET);
+    // activeWinnerClaimableSol tracks the full DEV_WALLET balance internally.
+    // winnerShareSol is the 50% the winner will actually receive — used for display and threshold.
+    const totalDevClaimableSol = await getBagsClaimableSol(DEV_WALLET);
+    activeWinnerClaimableSol = totalDevClaimableSol * 0.5;
     activeWinnerClaimCheckAt = snapshotAt;
 
     const inferredUserClaimedSol = Math.max(
@@ -774,10 +777,11 @@ async function runDraw(request: Request) {
       !simulateDisqualification &&
       !simulatePayoutReady
     ) {
-      // Claim all fees from Bags to DEV_WALLET, then transfer to winner.
-      const lamportsToClaim = Math.round(activeWinnerClaimableSol * 1_000_000_000);
-      // Send 50% to winner, dev wallet keeps 50%. Reserve ~10,000 lamports for transfer tx fee.
-      const lamportsToSend = Math.max(0, Math.floor(lamportsToClaim * 0.5) - 10_000);
+      // Claim all fees from Bags to DEV_WALLET, then transfer winner's 50% share.
+      // activeWinnerClaimableSol is already the 50% share; multiply by 2 to get the full claimable amount.
+      const lamportsToClaim = Math.round(activeWinnerClaimableSol * 2 * 1_000_000_000);
+      // Winner receives their 50% share. Reserve ~10,000 lamports for transfer tx fee.
+      const lamportsToSend = Math.max(0, Math.round(activeWinnerClaimableSol * 1_000_000_000) - 10_000);
       claimSignatures = await claimBagsFees(DEV_WALLET);
       payoutSignature = await sendSolToWinner(activeWinnerWallet, lamportsToSend);
       claimTriggeredByApp = true;
@@ -1068,7 +1072,7 @@ async function runDraw(request: Request) {
         cycleAction === 'threshold-reached-rotated-new-winner-no-app-claim' ||
         cycleAction === 'completed-payout-and-rotated-new-winner',
       payoutSignature: payoutSignature ?? null,
-      payoutAmountSol: payoutSignature ? activeWinnerClaimableSol * 0.5 : null,
+      payoutAmountSol: payoutSignature ? activeWinnerClaimableSol : null,
       winner: {
         owner: winner.owner,
         uiAmount: formatUiAmount(winner.uiAmount),
