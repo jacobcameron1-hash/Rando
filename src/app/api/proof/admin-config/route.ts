@@ -11,6 +11,7 @@ const BAGS_API_KEY = process.env.BAGS_API_KEY!;
 const BAGS_BASE_URL =
   process.env.BAGS_BASE_URL || 'https://public-api-v2.bags.fm/api/v1';
 const TOKEN_MINT = 'EZthQ6SUL51jJihQiFMDiZVmZiRMNjMQoTb7rNvTBAGS';
+const DEV_WALLET = process.env.RANDO_DEV_WALLET!;
 
 type BagsClaimablePosition = {
   baseMint?: string;
@@ -76,8 +77,10 @@ export async function GET(request: Request) {
 
     let liveBagsClaimableSol: number | null = null;
 
-    if (activeWinnerWallet) {
-      liveBagsClaimableSol = await getBagsClaimableSol(activeWinnerWallet);
+    if (activeWinnerWallet && DEV_WALLET) {
+      // Fees accumulate 100% to DEV_WALLET. Winner's share is 50% of that.
+      const totalDevClaimable = await getBagsClaimableSol(DEV_WALLET);
+      liveBagsClaimableSol = totalDevClaimable * 0.5;
     }
 
     let verification:
