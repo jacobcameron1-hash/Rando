@@ -1,6 +1,6 @@
 # Rando
 
-A provably fair, non-custodial reward system for Solana token holders — powered by Bags.
+A provably fair, non-custodial reward system for Solana token holders.
 
 ---
 
@@ -12,7 +12,7 @@ I suggested this feature to FinnBags — and he told me to build it myself.
 
 So I did.
 
-Rando was built from scratch in one week as a working production system for automated, on-chain reward distribution using Bags.
+Rando was built from scratch in one week as a working production system for automated, on-chain reward distribution.
 
 This is what it looks like when the barrier to building is low enough for anyone to ship.
 
@@ -20,43 +20,45 @@ This is what it looks like when the barrier to building is low enough for anyone
 
 ## What Rando Does
 
-Rando turns token holders into rotating fee recipients — automatically.
+Rando selects a token holder and routes protocol rewards to them.
 
-Instead of manually sending rewards, Rando:
+* A winner is chosen from eligible holders
+* Rewards accumulate over time
+* When conditions are met, payout is executed
+* A new winner is selected
 
-- selects a provably fair eligible wallet
-- continuously validates eligibility (anti-dump protection)
-- assigns that wallet to receive protocol fees via Bags
-
-Bags handles all fee collection and distribution on-chain.
+This runs continuously with no manual intervention.
 
 ---
 
 ## 🧠 Core Concept
 
-> One holder earns the protocol’s fees at a time.
+> Hourly draws — rewards accumulate until payout, and the winner gets it all.
 
-Unlike traditional “draw every cycle” systems:
+Instead of isolated draws:
 
-- A winner is selected once
-- That winner remains active
-- They accumulate fees continuously
-- They are only replaced if:
-  - payout threshold is reached, or
-  - they become ineligible
+* A winner is selected
+* Rewards accumulate during their cycle
+* The cycle continues until payout conditions are met
+* Then a new winner is selected
 
-This creates a **continuous reward stream**, not a one-off payout.
+This creates a **continuous reward system**, not one-off distributions.
 
 ---
 
-## ⚙️ Live Distribution Model
+## ⚙️ Distribution Model
 
-- **50% → Dev wallet**
-- **50% → Active winner**
+* **50% → Dev wallet**
+* **50% → Active winner**
 
-Rando does **not send SOL or tokens**.
+Rewards are sourced from protocol activity.
 
-It only updates the Bags fee configuration. All distribution is executed by Bags.
+Rando:
+
+* tracks accumulation
+* determines when payout should occur
+* executes payout when conditions are met
+* rotates the winner
 
 ---
 
@@ -64,16 +66,20 @@ It only updates the Bags fee configuration. All distribution is executed by Bags
 
 A winner remains active until:
 
-- they accumulate enough fees to reach the payout threshold, or
-- they fall below the minimum token requirement (auto-disqualified)
+* payout threshold is reached, or
+* they fall below the minimum token requirement (auto-disqualified)
 
-If disqualified:
+### If threshold is reached:
 
-- winner is removed
-- a new eligible holder is selected
-- fee routing is updated
+* payout is executed
+* winner cycle completes
+* a new winner is selected
 
-This runs continuously with no manual intervention.
+### If disqualified:
+
+* winner is removed
+* a new eligible holder is selected
+* accumulation continues under new winner
 
 ---
 
@@ -81,17 +87,20 @@ This runs continuously with no manual intervention.
 
 1. Fetch all token holders from Solana
 2. Filter holders:
-   - Minimum token requirement
-   - Excluded wallets
-   - **System-owned wallets only (critical for Bags compatibility)**
+
+   * Minimum token requirement
+   * Excluded wallets
+   * **System-owned wallets only**
 3. Build eligible holder set
-4. Select a random winner
-5. Validate winner still meets requirements (anti-dump)
-6. Start or continue winner cycle
-7. Update Bags fee routing:
-   - Dev (50%)
-   - Winner (50%)
-8. Bags distributes fees automatically
+4. Select a random winner (provably fair)
+5. Validate eligibility (anti-dump protection)
+6. Track reward accumulation
+7. Evaluate cycle state:
+
+   * continue accumulating
+   * rotate winner
+   * execute payout
+8. Persist results + proof history
 
 ---
 
@@ -99,62 +108,58 @@ This runs continuously with no manual intervention.
 
 Rando **only selects system-owned wallets**:
 
-
+```
 Owner = 11111111111111111111111111111111
-
+```
 
 This ensures:
 
-- winners are real user wallets
-- Bags can use them as valid fee claimers
-- program-owned accounts (PDAs, vaults) are excluded
-
-This distinction is required for safe production operation.
+* winners are real user wallets
+* avoids program-owned accounts (PDAs, vaults)
+* prevents invalid payout targets
 
 ---
 
 ## Core Features
 
-- Deterministic draw scheduling (slot-based)
-- Provably fair random selection
-- On-chain holder snapshot + filtering
-- **System wallet validation (Bags compatibility)**
-- Winner validation (anti-dump protection)
-- Automatic disqualification + reroll
-- Winner lifecycle tracking (persistent cycle)
-- Duplicate slot protection (DB-level)
-- Draw locking via DB lease (Neon-safe)
-- Transparent proof + history logging
-- Bags-native fee routing (no custom payout logic)
-- Fully **non-custodial by design**
+* Deterministic draw scheduling
+* Provably fair random selection
+* On-chain holder snapshot + filtering
+* System wallet validation
+* Winner validation (anti-dump protection)
+* Automatic disqualification + reroll
+* Persistent winner cycle (not per-draw reset)
+* Threshold-based payout execution
+* Duplicate draw protection
+* DB locking (safe concurrent execution)
+* Transparent proof + history logging
 
 ---
 
 ## 🔐 Production Safety
 
-- Draw execution is **POST-only**
-- Requires **admin API key**
-- Unsafe test flags disabled in production
-- No public endpoint can trigger draws
-- Duplicate slot protection prevents replay
-- DB lease lock prevents concurrent execution
-- Bags transactions are signed server-side only
-- Only system-owned wallets can become winners
+* Draw execution is **POST-only**
+* Requires **admin API key**
+* No public endpoint can trigger draws
+* Duplicate slot protection prevents replay
+* DB lease lock prevents concurrent execution
+* Payout execution is server-side only
+* Only valid wallets can receive rewards
 
 ---
 
 ## API Routes
 
-- `POST /api/proof/run-draw` → execute draw + update routing
-- `GET /api/proof/history` → past draws
-- `GET /api/proof/next-draw` → next scheduled draw
-- `GET /api/proof/admin-config` → admin config (protected)
+* `POST /api/proof/run-draw` → run draw / cycle step
+* `GET /api/proof/history` → past draws
+* `GET /api/proof/next-draw` → next scheduled draw
+* `GET /api/proof/admin-config` → config (protected)
 
 ---
 
 ## 🔐 Environment Variables
 
-
+```
 NEXT_PUBLIC_SOLANA_RPC_URL=
 BAGS_API_KEY=
 SOLANA_PRIVATE_KEY=
@@ -164,45 +169,24 @@ RANDO_DEV_WALLET=
 RANDO_ADMIN_API_KEY=
 
 ALLOW_UNSAFE_DRAW_TESTS=0
-
+```
 
 ⚠️ Important:
 
-- Set `ALLOW_UNSAFE_DRAW_TESTS=1` locally only
-- Keep it `0` in Vercel production/preview
-- Never expose `SOLANA_PRIVATE_KEY`
+* Set `ALLOW_UNSAFE_DRAW_TESTS=1` locally only
+* Keep it `0` in production
+* Never expose `SOLANA_PRIVATE_KEY`
 
 ---
 
-## Architecture Notes
+## Architecture
 
-- **Frontend:** Next.js App Router
-- **Backend:** API routes (server-side execution)
-- **Database:** Neon (HTTP) + Drizzle ORM
-- **Locking:** DB row lease (not advisory locks)
-- **Randomness:** deterministic + reproducible
-- **Execution model:** stateless-safe
-
----
-
-## Phases
-
-### Phase 1
-- Draw scheduling
-- Holder snapshot + filtering
-- Random selection
-- Proof logging
-
-### Phase 2
-- Bags integration
-- Fee routing configuration
-
-### Phase 3 (Live)
-- Winner becomes fee recipient
-- Persistent winner cycle (not per-draw reset)
-- Bags handles all distribution
-- Manual payout logic removed
-- Fully non-custodial reward system
+* **Frontend:** Next.js
+* **Backend:** API routes
+* **Database:** Neon + Drizzle
+* **Locking:** DB lease system
+* **Execution model:** stateless-safe
+* **Randomness:** deterministic + reproducible
 
 ---
 
@@ -210,29 +194,26 @@ ALLOW_UNSAFE_DRAW_TESTS=0
 
 Traditional reward systems require:
 
-- manual payouts
-- custody of funds
-- trust in a central wallet
-- opaque selection processes
+* manual payouts
+* custody of funds
+* trust in a central operator
 
 Rando replaces that with:
 
-- No custody
-- No manual payouts
-- Continuous reward accumulation
-- Fully transparent selection
-- Native on-chain distribution via Bags
+* automated execution
+* no custody
+* transparent selection
+* continuous reward accumulation
 
 ---
 
 ## 🛣️ Next Steps
 
-- ⏱️ Automated scheduled draws (cron stabilization)
-- 💰 Live earned fee tracking UI
-- 🎯 Configurable payout thresholds
-- 🔁 Real-time UI updates
-- 🌐 Multi-token support
-- 🧪 Public “Try your token” flow
+* ⏱️ Cron reliability / scheduling stabilization
+* 💰 Live reward tracking UI
+* 🎯 Configurable payout thresholds
+* 🔁 Real-time UI updates
+* 🌐 Multi-token support
+* 🧪 Public “try your token” flow
 
 ---
-
